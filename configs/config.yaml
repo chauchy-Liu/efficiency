@@ -1,0 +1,23 @@
+#ip: 10.191.2.16
+# ip: 127.0.0.1
+
+# port: 8807
+
+# minio_enable: True
+# url: 10.104.2.160:9000 #172.16.1.189:9000  #10.104.2.160:9000 #82.157.145.88:19000 #172.24.108.18:9000
+# # domainName: osp.spic #null #osp.spic
+# accesskey: minioadmin
+# secretkey: nt-Y9@xAfyyMoHBc
+# bucketName: wind-efficiency-pictures
+url: 127.0.0.1:19090 #172.16.1.189:9000  #10.104.2.160:9000 #82.157.145.88:19000 #172.24.108.18:9000
+# domainName: osp.spic #null #osp.spic
+accesskey: minioadmin
+secretkey: Zhang123.
+bucketName: wind-efficiency-pictures
+
+# 数据库配置
+DB_HOST: 10.104.2.160 #172.16.3.232
+DB_PORT: 3306
+DB_USERNAME: iwind
+DB_PASSWORD: IotPlatform!v1.0
+DB_DATABASE: ewind
