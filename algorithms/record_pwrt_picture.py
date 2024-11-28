@@ -8,12 +8,18 @@ import asyncio
 from datetime import datetime as datetime
 from configs.config import algConfig
 import data.efficiency_function as turbine_efficiency_function
-from db.db import insertWindDirectionPicture, upload, insertPwTurbineAll, insertWindFrequencyPicture, insertAirDensityPicture,insertTurbulencePicture,insertNavigationBiasDirectionPicture,insertNavigationBiasControlPicture,insertPitchAnglePicture,insertPitchActionPicture,insertTorqueControlPicture, insertAllWindFrequencyPicture, insertAllAirDensityPicture,insertAllTurbulencePicture
+from db.db import insertWindDirectionPicture, upload, insertPwTurbineAll, insertPwTimeAll, insertWindFrequencyPicture, insertAirDensityPicture,insertTurbulencePicture,insertNavigationBiasDirectionPicture,insertNavigationBiasControlPicture,insertPitchAnglePicture,insertPitchActionPicture,insertTorqueControlPicture, insertAllWindFrequencyPicture, insertAllAirDensityPicture,insertAllTurbulencePicture
 from matplotlib import pyplot as plt
 from pylab import mpl
 import sys
 import statistics as st
 from scipy import signal,integrate
+
+mpl.interactive(False)
+plt.switch_backend('agg')
+# plt.rcParams['font.sans-serif'] = ['SimHei'] #Windows
+# plt.rcParams['font.sans-serif'] = ['Heiti TC'] #mac
+plt.rcParams['font.sans-serif'] = ['Arial Unicode MS'] #mac
 
 name = algConfig['record_pwrt_picture']['name']#'叶片角度不平衡'
 # 把所需测点定义到每个算法里
@@ -33,8 +39,7 @@ resample_interval = algConfig['record_pwrt_picture']['resample_interval']
 error_data_time_duration = algConfig['record_pwrt_picture']['error_data_time_duration']
 need_all_turbines = algConfig['record_pwrt_picture']['need_all_turbines']
 store_file = algConfig['record_pwrt_picture']['store_file']
-
-def judge_model(algorithms_configs):
+async def judge_model(algorithms_configs):
     algorithms_configs['zuobiao'] = pd.DataFrame()
     algorithms_configs['pw_df_alltime'] = pd.DataFrame()
     algorithms_configs['pw_turbine_all'] = pd.DataFrame()
@@ -58,11 +63,12 @@ def judge_model(algorithms_configs):
     windbinreg = algorithms_configs['windbinreg']
     ManufacturerID = algorithms_configs['ManufacturerID']
     rotor_radius = algorithms_configs['rotor_radius']
-    turbine_err_all = algorithms_configs['rotor_radius']
+    turbine_err_all = algorithms_configs['turbine_err_all']
     pw_df_alltime = algorithms_configs['pw_df_alltime']
     pw_df_alltime['windbin'] = windbin
     wind_ti_all = pd.DataFrame()
     wind_ti_all['windbin'] = windbin
+    # zuobiao_all = algorithms_configs['zuobiao_all']
     #######################################
     for num in range(len(Turbine_attr_type)): 
         turbine_name = wtids[num]            
@@ -139,10 +145,10 @@ def judge_model(algorithms_configs):
         pw_df_alltime.iloc[i,1] = np.nanmedian(pw_df_alltime.iloc[i,2::2]) 
     ################################################################3
     #mysql记录
-    insertPwTurbineAll(pw_turbine_all, algorithms_configs)
+    insertPwTimeAll(pw_df_alltime, algorithms_configs)
     ################################################################3
     # zuobiao.insert(0,'type',np.unique(Turbine_attr['turbineTypeID'])[i_type])
-    zuobiao.insert(0,'type',np.unique(algorithms_configs['typeName']))
+    zuobiao.insert(0,'type',algorithms_configs['typeName'])
     ###某机型风频绘制, 输出内容：风资源2
     wind_freq = turbine_efficiency_function.winddistribute(Df_all_m_all,windbin,windbinreg)
     
@@ -160,9 +166,9 @@ def judge_model(algorithms_configs):
     insertWindFrequencyPicture(algorithms_configs, url_picture)
     ########################################################
     #某机型月平均空气密度及风速，输出内容：风资源3
-    altitude_farm, picture_path = np.nanmean(zuobiao['Z'])
-    turbine_efficiency_function.monthdata(Df_all_m_all,altitude_farm,path)
-    zuobiao_all = zuobiao_all.append(zuobiao)#全场1min数据
+    altitude_farm= np.nanmean(zuobiao['Z'])
+    month_data, picture_path = turbine_efficiency_function.monthdata(Df_all_m_all,altitude_farm,path)
+    algorithms_configs['zuobiao_all'] = pd.concat([algorithms_configs['zuobiao_all'], zuobiao])#.append(zuobiao)#全场1min数据
     ########################################################
     #上传图片到minio
     url_picture = upload(picture_path, algorithms_configs)
@@ -556,7 +562,7 @@ def judge_model(algorithms_configs):
         
         ###########分段统计#########
         (data_fenduan,fenduan) = turbine_efficiency_function.FenDuan(df_all_clear,Pwrat_Rate,Rotspd_Connect,Rotspd_Rate,turbine_name)
-        fenduan_all = fenduan_all.append(fenduan)
+        fenduan_all = pd.concat([fenduan_all, fenduan])#.append(fenduan)
         
         ###图形不展示
         fig = plt.figure(figsize=(10,8),dpi=100)  
@@ -957,9 +963,10 @@ def judge_model(algorithms_configs):
         #一定比例的散点超出实测功率曲线正负5%
         #data为清洗后的数据，功率曲线不用补全
             pw_df_temp = pw_df_alltime.loc[:,['windbin',turbine_name]]
+            pw_df_temp.columns = pd.MultiIndex.from_tuples([('windbin', ''), (turbine_name, '')])
             pw_df_temp = pw_df_temp.dropna()
             df_all_clear['windbin'] = pd.cut(df_all_clear['wspd','nanmean'],windbinreg,labels=windbin)
-            df_all_clear.reset_index(level=0,inplace=True)
+            # df_all_clear.reset_index(level=0,inplace=True)
             df_all_clear = pd.merge(df_all_clear,pw_df_temp,how='inner',on='windbin')
             df_all_clear.set_index(('localtime',''),inplace= True) 
             (data_temp,pw_df_limit) =  turbine_efficiency_function.Wind_Power_Dissociation(df_all_clear,pw_df_temp,turbine_name)
@@ -1083,18 +1090,18 @@ def judge_model(algorithms_configs):
         picture_path = path + '/' + 'windfreq.png'
         url_picture = upload(picture_path, algorithms_configs)
         #mysql记录
-        insertAllWindFrequencyPicture(algorithms_configs, url_picture, turbine_name)
+        insertAllWindFrequencyPicture(algorithms_configs, url_picture)
         ########################################################
         
         #全场月平均空气密度及风速
-        altitude_farm = np.nanmean(zuobiao_all['Z'])
+        altitude_farm = np.nanmean(algorithms_configs['zuobiao_all']['Z'])
         month_data, filename = turbine_efficiency_function.monthdata(Df_all_m_all_alltype,altitude_farm,path)
         ########################################################
         #上传图片到minio
         picture_path = filename
         url_picture = upload(picture_path, algorithms_configs)
         #mysql记录
-        insertAllAirDensityPicture(algorithms_configs, url_picture, turbine_name)
+        insertAllAirDensityPicture(algorithms_configs, url_picture)
         ########################################################
         
 
@@ -1118,5 +1125,5 @@ def judge_model(algorithms_configs):
         picture_path = filename
         url_picture = upload(picture_path, algorithms_configs)
         #mysql记录
-        insertAllTurbulencePicture(algorithms_configs, url_picture, turbine_name)
+        insertAllTurbulencePicture(algorithms_configs, url_picture)
         ########################################################

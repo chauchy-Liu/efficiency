@@ -24,6 +24,13 @@ from sklearn.ensemble import GradientBoostingRegressor
 import xgboost as xgb
 from sklearn.metrics import accuracy_score
 
+mpl.interactive(False)
+plt.switch_backend('agg')
+# plt.rcParams['font.sans-serif'] = ['SimHei'] #Windows
+# plt.rcParams['font.sans-serif'] = ['Heiti'] #mac
+plt.rcParams['font.sans-serif'] = ['Arial Unicode MS'] #mac
+
+
 def thresholdfun_orig(data,threshold):
     temp_all = pd.DataFrame()    
     wind_bin = np.arange(2.0,np.ceil(np.nanmax(data['wspd'])),0.5)
@@ -245,8 +252,8 @@ def winddir_err_before_new(data,dirbin,windbin2,dirbin1,windbin1,path,turbine_na
     
     if (((np.max(yfit)-np.min(yfit))>0.4*(1 - np.cos(3.14159*(err_result_min - err_result)/180.0)))&((yfit[0]+yfit[-1])*0.5<yfit[round(len(yfit)/2)])):#0.3~0.4
         err_result_get = err_result
-        plt.rcParams['axes.unicode_minus'] = False
-        mpl.rcParams['font.sans-serif'] = ['SimHei'] 
+        # plt.rcParams['axes.unicode_minus'] = False
+        # mpl.rcParams['font.sans-serif'] = ['SimHei'] 
         fig = plt.figure(figsize=(10,8),dpi=100)
         plt.subplot(1,1,1)    
         plt.title(str(turbine_name)+'对风偏差角度：'+str('%.1f' %err_result_get)+'，理论损失电量：'+str('{:.2%}'.format((1 - np.cos(3.14159*err_result_get/180.0)**2)*0.75)),fontsize=16)
@@ -718,6 +725,15 @@ def Turbine_Warning(data,turbine_name,fault_code,state_code):
 
     data_warning = data.dropna(axis=0,subset=[('fault','mymode')])
     data_warning['snum'] = data_warning['state','nanmean']
+    #列分级
+    columns = []
+    for elem in state_code.columns.to_list():
+        if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
+            pass
+        else:
+            columns.append((elem, ''))
+    if len(columns) > 0:
+        state_code.columns = pd.MultiIndex.from_tuples(columns)
     data_warning.reset_index(level=0,inplace=True)
     data_warning = pd.merge(data_warning,state_code,how='left',on='snum')
     data_warning.set_index(('localtime',''),inplace= True)
@@ -729,9 +745,18 @@ def Turbine_Warning(data,turbine_name,fault_code,state_code):
     if len(data_warning) > 0: 
         data_warning.reset_index(level=0,inplace=True)
         #data_fault = pd.merge(data_fault,fault_type,how='left',on='fnum')
+        #列分级
+        columns = []
+        for elem in fault_code.columns.to_list():
+            if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
+                pass
+            else:
+                columns.append((elem, ''))
+        if len(columns) > 0:
+            fault_code.columns = pd.MultiIndex.from_tuples(columns)
         data_warning = pd.merge(data_warning,fault_code,how='left',on='fnum')#远景机组正常发电状态故障码不为0,右结合故障统计可能不齐全
         data_warning.set_index(('localtime',''),inplace= True)
-        data_warning = data_warning[((data_warning['type']=='正常发电'))]#&(data_fault['pwrat','nanmean']<10.0)可能导致只发生一次的故障统计不到
+        data_warning = data_warning[((data_warning['state_type']=='正常发电'))]#&(data_fault['pwrat','nanmean']<10.0)可能导致只发生一次的故障统计不到
         fault_wtid = np.unique(data_warning['fnum'])    
         
         for j in range(len(fault_wtid)):
@@ -759,9 +784,27 @@ def Turbine_Fault_Loss(data,turbine_name,pw_df_temp,fault_code,state_code):
     
     data_fault = data.dropna(axis=0,subset=[('fault','mymode')])
     #data_fault = data_fault[data_fault['fault','mymode']<3000]#金风3000以上为告警
+    #列分级
+    columns = []
+    for elem in pw_df_temp.columns.to_list():
+        if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
+            pass
+        else:
+            columns.append((elem, ''))
+    if len(columns) > 0:
+        pw_df_temp.columns = pd.MultiIndex.from_tuples(columns)
     data_fault.reset_index(level=0,inplace=True)
     data_fault = pd.merge(data_fault,pw_df_temp,how='left',on='windbin')
     data_fault['snum'] = data_fault['state','mymode']
+    #列分级
+    columns = []
+    for elem in state_code.columns.to_list():
+        if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
+            pass
+        else:
+            columns.append((elem, ''))
+    if len(columns) > 0:
+        state_code.columns = pd.MultiIndex.from_tuples(columns)
     data_fault = pd.merge(data_fault,state_code,how='left',on='snum')
     data_fault.set_index(('localtime',''),inplace= True)
 
@@ -774,9 +817,18 @@ def Turbine_Fault_Loss(data,turbine_name,pw_df_temp,fault_code,state_code):
     if len(data_fault) > 0: 
         data_fault.reset_index(level=0,inplace=True)
         #data_fault = pd.merge(data_fault,fault_type,how='left',on='fnum')
+        #列分级
+        columns = []
+        for elem in fault_code.columns.to_list():
+            if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
+                pass
+            else:
+                columns.append((elem, ''))
+        if len(columns) > 0:
+            fault_code.columns = pd.MultiIndex.from_tuples(columns)
         data_fault = pd.merge(data_fault,fault_code,how='left',on='fnum')#远景机组正常发电状态故障码不为0,右结合故障统计可能不齐全
         data_fault.set_index(('localtime',''),inplace= True)
-        data_fault = data_fault[((data_fault['type']=='故障停机'))]#&(data_fault['pwrat','nanmean']<10.0)可能导致只发生一次的故障统计不到
+        data_fault = data_fault[((data_fault['state_type']=='故障停机'))]#&(data_fault['pwrat','nanmean']<10.0)可能导致只发生一次的故障统计不到
         fault_wtid = np.unique(data_fault['fnum'])    
         
         for j in range(len(fault_wtid)):
@@ -809,6 +861,15 @@ def Grid_Limit_Loss(data,turbine_name,pw_df_temp,fault_code,state_code):
     data_limgrid = pd.DataFrame()
     
     data_limgrid = data[data['statel','mymode']==90001]
+    #列分级
+    columns = []
+    for elem in pw_df_temp.columns.to_list():
+        if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
+            pass
+        else:
+            columns.append((elem, ''))
+    if len(columns) > 0:
+        pw_df_temp.columns = pd.MultiIndex.from_tuples(columns)
     data_limgrid.reset_index(level=0,inplace=True)
     data_limgrid = pd.merge(data_limgrid,pw_df_temp,how='left',on='windbin')
     data_limgrid.set_index(('localtime',''),inplace= True)  
@@ -833,16 +894,34 @@ def Stop_Loss(data,turbine_name,pw_df_temp,state_code):
     
     #fault_type = fault_code[(fault_code['type']=='服务状态')|(fault_code['type']=='用户停机')|(fault_code['type']=='计划停机')]
     data_stop = data.dropna(axis=0,subset=[('state','mymode')])
+    #列分级
+    columns = []
+    for elem in pw_df_temp.columns.to_list():
+        if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
+            pass
+        else:
+            columns.append((elem, ''))
+    if len(columns) > 0:
+        pw_df_temp.columns = pd.MultiIndex.from_tuples(columns)
     data_stop.reset_index(level=0,inplace=True)
     data_stop = pd.merge(data_stop,pw_df_temp,how='left',on='windbin')
     data_stop.set_index(('localtime',''),inplace= True)
 
     data_stop['snum'] = data_stop['state','mymode']
+    #列分级
+    columns = []
+    for elem in state_code.columns.to_list():
+        if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
+            pass
+        else:
+            columns.append((elem, ''))
+    if len(columns) > 0:
+        state_code.columns = pd.MultiIndex.from_tuples(columns)
     data_stop.reset_index(level=0,inplace=True)
     data_stop = pd.merge(data_stop,state_code,how='left',on='snum')
     data_stop.set_index(('localtime',''),inplace= True)
     
-    data_stop = data_stop[(data_stop['type']=='服务状态')|(data_stop['type']=='用户停机')|   ##机组故障码计划停机信息
+    data_stop = data_stop[(data_stop['state_type']=='服务状态')|(data_stop['state_type']=='用户停机')|   ##机组故障码计划停机信息
                           ((data_stop['fault','nanmean']==0)&(data_stop['pitch1','nanmean']>=85)
                           &(data_stop['wspd','nanmean']>=np.min(temp['windbin']))&(data_stop['pwrat','nanmean']<10.0))]  ###其它自行判断的计划停机信息
     
@@ -863,6 +942,15 @@ def Grid_Fault_Loss(data,turbine_name,pw_df_temp,fault_code,state_code):
     #fault_type = fault_code[fault_code['type']=='电网故障']  
     
     data_grid = data.dropna(axis=0,subset=[('fault','mymode')])
+    #列分级
+    columns = []
+    for elem in pw_df_temp.columns.to_list():
+        if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
+            pass
+        else:
+            columns.append((elem, ''))
+    if len(columns) > 0:
+        pw_df_temp.columns = pd.MultiIndex.from_tuples(columns)
     data_grid.reset_index(level=0,inplace=True)
     data_grid = pd.merge(data_grid,pw_df_temp,how='left',on='windbin')
     data_grid.set_index(('localtime',''),inplace= True)
@@ -873,14 +961,33 @@ def Grid_Fault_Loss(data,turbine_name,pw_df_temp,fault_code,state_code):
     data_grid['shift'] = data_grid['flt1']-data_grid['fnum']
     data_grid = data_grid[data_grid[('fault','mymode')]!=0]
     
+    
     data_grid.reset_index(level=0,inplace=True)
+    #列分级
+    columns = []
+    for elem in fault_code.columns.to_list():
+        if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
+            pass
+        else:
+            columns.append((elem, ''))
+    if len(columns) > 0:
+        fault_code.columns = pd.MultiIndex.from_tuples(columns)
     data_grid = pd.merge(data_grid,fault_code,how='left',on='fnum')
+    #列分级
+    columns = []
+    for elem in state_code.columns.to_list():
+        if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
+            pass
+        else:
+            columns.append((elem, ''))
+    if len(columns) > 0:
+        state_code.columns = pd.MultiIndex.from_tuples(columns)
     data_grid = pd.merge(data_grid,state_code,how='left',on='snum')
     data_grid.set_index(('localtime',''),inplace= True)
     
-    data_grid = data_grid.dropna(axis=0,subset=['type'])
+    data_grid = data_grid.dropna(axis=0,subset=[('state_type','')])
     
-    data_grid = data_grid[data_grid['type']=='电网故障']
+    data_grid = data_grid[data_grid['state_type']=='电网故障']
 
     if len(data_grid) > 0: 
         
@@ -907,6 +1014,15 @@ def Turbine_Technology_Loss(data,turbine_name,pw_df_temp,fault_code,state_code):
     #fault_type = fault_code[fault_code['type']=='技术待命']  
     
     data_technology = data.dropna(axis=0,subset=[('fault','mymode')])
+    #列分级
+    columns = []
+    for elem in pw_df_temp.columns.to_list():
+        if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
+            pass
+        else:
+            columns.append((elem, ''))
+    if len(columns) > 0:
+        pw_df_temp.columns = pd.MultiIndex.from_tuples(columns)
     data_technology.reset_index(level=0,inplace=True)
     data_technology = pd.merge(data_technology,pw_df_temp,how='left',on='windbin')
     data_technology.set_index(('localtime',''),inplace= True)
@@ -921,13 +1037,31 @@ def Turbine_Technology_Loss(data,turbine_name,pw_df_temp,fault_code,state_code):
     
     data_technology = data_technology[data_technology[('fault','mymode')]!=0]
     data_technology.reset_index(level=0,inplace=True)
+    #列分级
+    columns = []
+    for elem in fault_code.columns.to_list():
+        if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
+            pass
+        else:
+            columns.append((elem, ''))
+    if len(columns) > 0:
+        fault_code.columns = pd.MultiIndex.from_tuples(columns)
     data_technology = pd.merge(data_technology,fault_code,how='left',on='fnum')
+    #列分级
+    columns = []
+    for elem in state_code.columns.to_list():
+        if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
+            pass
+        else:
+            columns.append((elem, ''))
+    if len(columns) > 0:
+        state_code.columns = pd.MultiIndex.from_tuples(columns)
     data_technology = pd.merge(data_technology,state_code,how='left',on='snum')
     data_technology.set_index(('localtime',''),inplace= True)
     
-    data_technology = data_technology.dropna(axis=0,subset=['type'])
+    data_technology = data_technology.dropna(axis=0,subset=[('state_type','')])
     
-    data_technology = data_technology[(data_technology['type']=='技术待命')]
+    data_technology = data_technology[(data_technology['state_type']=='技术待命')]
     #data_technology = data_technology[(data_technology['statety','mymode']==60)|(data_technology['type']=='技术待命')]
 
     if len(data_technology) > 0: 
@@ -955,6 +1089,15 @@ def Turbine_Technology_Loss(data,turbine_name,pw_df_temp,fault_code,state_code):
 def Turbine_Limit_Loss(data,turbine_name,pw_df_temp,Pitch_Min,Pwrat_Rate,Rotspd_Connect,state): 
     limturbine_loss = pd.DataFrame()
     data_limt = data[(data['statel','nanmean']==90002)&(data['state','nanmean']==state)]
+    #列分级
+    columns = []
+    for elem in pw_df_temp.columns.to_list():
+        if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
+            pass
+        else:
+            columns.append((elem, ''))
+    if len(columns) > 0:
+        pw_df_temp.columns = pd.MultiIndex.from_tuples(columns)
     data_limt.reset_index(level=0,inplace=True)
     data_limt = pd.merge(data_limt,pw_df_temp,how='left',on='windbin')
     data_limt.set_index(('localtime',''),inplace= True)
@@ -965,7 +1108,15 @@ def Turbine_Limit_Loss(data,turbine_name,pw_df_temp,Pitch_Min,Pwrat_Rate,Rotspd_
     
     pw_df_lim['windbin'] = pw_df_temp['windbin']+1.0
     pw_df_lim['pwrat_lim'] = pw_df_temp[turbine_name]*0.95
-    
+    #列分级
+    columns = []
+    for elem in pw_df_lim.columns.to_list():
+        if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
+            pass
+        else:
+            columns.append((elem, ''))
+    if len(columns) > 0:
+        pw_df_lim.columns = pd.MultiIndex.from_tuples(columns)
     data_limt = pd.merge(data_limt,pw_df_lim,how='outer',on='windbin')#,suffixes=('_org','_lim'))
     #出图展示data_limt风速功率散点、风机功率曲线、功率曲线下线
     '''
@@ -1009,7 +1160,9 @@ def Wind_Power_Dissociation(data,pw_df,turbine_name):
     pw_df_down = pd.DataFrame()
     pw_df_down['windbin'] = pw_df['windbin']+1.0
     pw_df_down['pwrat_down'] = pw_df[turbine_name]*0.95 
-    
+    #列表分级
+    pw_df_up.columns = pd.MultiIndex.from_tuples([('windbin', ''), ('pwrat_up', '')])
+    pw_df_down.columns = pd.MultiIndex.from_tuples([('windbin', ''), ('pwrat_down', '')])
     pw_df_limit = pd.merge(pw_df,pw_df_up,how='inner',on='windbin')
     pw_df_limit = pd.merge(pw_df_limit,pw_df_down,how='inner',on='windbin')
     

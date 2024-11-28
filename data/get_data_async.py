@@ -16,16 +16,17 @@ import utils.time_util as time_util
 from datetime import timedelta
 from configs import config
 import logging
-from configs.config import AccessKey, SecretKey, GW_Url, OrgId, algConfig, state
+from configs.config import AccessKey, SecretKey, GW_Url, OrgId, algConfig
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import time
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 import importlib
 import os
 from logging.handlers import RotatingFileHandler
 from data.efficiency_function import mymode
+import configs.config as config
 
 #能效分析中需要在算法中用到的输入变量量
 # Pwrat_Rate = None
@@ -111,7 +112,7 @@ async def getWindFarm(wind_farm):
     
     ResponsePoint = poseidon.urlopen(AccessKey, SecretKey, url_asset)
     #print(ResponsePoint)
-    if ResponsePoint['pagination']['pageSize'] > 0:
+    if ResponsePoint and ResponsePoint['pagination']['pageSize'] > 0:
         WindFarm_attr = pd.DataFrame(ResponsePoint['data'][wind_farm]['mdmObjects']['EnOS_Wind_Farm'][:])
         WindFarm_attr['风电场名'] = list(map(lambda x: x['name'], WindFarm_attr['attributes']))
         WindFarm_attr['mdmId'] = list(map(lambda x: x['mdmId'], WindFarm_attr['attributes']))
@@ -436,8 +437,8 @@ async def TimeDeviceSlice(algorithms_configs): #, ai_points, resample_interval, 
         #di测点一般7天有一次数据, 小于7天可能获取不到数据
         di_startTime = value['startTime']
         di_endTime = value['endTime']
-        if di_endTime - di_startTime < timedelta(days=7):
-            di_startTime = di_endTime - timedelta(days=7)
+        # if di_endTime - di_startTime < timedelta(days=7):
+        #     di_startTime = di_endTime - timedelta(days=7)
         #时间分片
         date_range = []
         if endTime - startTime > timedelta(hours=12):
@@ -590,9 +591,9 @@ async def TimeDeviceSlice(algorithms_configs): #, ai_points, resample_interval, 
             for pointkey, evalue in name.ai_rename.items():
                 if pointkey in ai_df[key].columns.tolist():
                     ai_df[key].rename(columns={pointkey:evalue}, inplace=True)
-                    if pointkey in name.ai_points:
-                        index_key = name.ai_points.index(pointkey)
-                        name.ai_points[index_key] = evalue
+                    # if pointkey in name.ai_points:
+                        # index_key = name.ai_points.index(pointkey)
+                        # name.ai_points[index_key] = evalue
         #去重复列名
         ai_df[key] = ai_df[key].dropna(axis=1,thresh=int(len(ai_df[key])*0.1))#某列非空值数量小于总数的10%剔除该列
         ai_df[key] = ai_df[key].loc[:,~ai_df[key].columns.duplicated()]
@@ -631,9 +632,9 @@ async def TimeDeviceSlice(algorithms_configs): #, ai_points, resample_interval, 
                 for pointkey, evalue in name.di_rename.items():
                     if pointkey in di_df[key].columns.tolist():
                         di_df[key].rename(columns={pointkey:evalue}, inplace=True)
-                        if pointkey in name.di_points:
-                            index_key = name.di_points.index(pointkey)
-                            name.di_points[index_key] = evalue
+                        # if pointkey in name.di_points:
+                        #     index_key = name.di_points.index(pointkey)
+                        #     name.di_points[index_key] = evalue
             #去重复列名
             di_df[key] = di_df[key].dropna(axis=1,how='all')
             di_df[key] = di_df[key].loc[:,~di_df[key].columns.duplicated()]
@@ -676,9 +677,9 @@ async def TimeDeviceSlice(algorithms_configs): #, ai_points, resample_interval, 
                 for pointkey, evalue in name.cj_di_rename.items():
                     if pointkey in cj_di_df[key].columns.tolist():
                         cj_di_df[key].rename(columns={pointkey:evalue}, inplace=True)
-                        if pointkey in name.cj_di_points:
-                            index_key = name.cj_di_points.index(pointkey)
-                            name.cj_di_points[index_key] = evalue
+                        # if pointkey in name.cj_di_points:
+                        #     index_key = name.cj_di_points.index(pointkey)
+                        #     name.cj_di_points[index_key] = evalue
             #去重复列名
             cj_di_df[key] = cj_di_df[key].dropna(axis=1,how='all')
             cj_di_df[key] = cj_di_df[key].loc[:,~cj_di_df[key].columns.duplicated()]
@@ -721,9 +722,9 @@ async def TimeDeviceSlice(algorithms_configs): #, ai_points, resample_interval, 
                 for pointkey, evalue in name.ty_di_rename.items():
                     if pointkey in ty_di_df[key].columns.tolist():
                         ty_di_df[key].rename(columns={pointkey:evalue}, inplace=True)
-                        if pointkey in name.ty_di_points:
-                            index_key = name.ty_di_points.index(pointkey)
-                            name.ty_di_points[index_key] = evalue
+                        # if pointkey in name.ty_di_points:
+                        #     index_key = name.ty_di_points.index(pointkey)
+                        #     name.ty_di_points[index_key] = evalue
             #去重复列名
             ty_di_df[key] = ty_di_df[key].dropna(axis=1,how='all')
             ty_di_df[key] = ty_di_df[key].loc[:,~ty_di_df[key].columns.duplicated()]
@@ -752,9 +753,9 @@ async def TimeDeviceSlice(algorithms_configs): #, ai_points, resample_interval, 
                 for pointkey, evalue in name.general_rename.items():
                     if pointkey in general_df[key].columns.tolist():
                         general_df[key].rename(columns={pointkey:evalue}, inplace=True)
-                        if pointkey in name.general_points:
-                            index_key = name.general_points.index(pointkey)
-                            name.general_points[index_key] = evalue
+                        # if pointkey in name.general_points:
+                        #     index_key = name.general_points.index(pointkey)
+                        #     name.general_points[index_key] = evalue
             #去重复列名
             general_df[key] = general_df[key].dropna(axis=1,how='all')
             general_df[key] = general_df[key].loc[:,~general_df[key].columns.duplicated()]
@@ -977,17 +978,22 @@ async def getDataForMultiAlgorithms(algorithms_configs): #assetIds：风机id ,m
     
 
 
-def wash_data(Df_all, algorithms_configs, algorithm_name):
+def wash_data(Df_all, algorithms_configs):
     turbine_name = Df_all.iloc[0]['wtid']
     Df_all.drop('assetId',axis=1,inplace=True)
     Df_all.drop('wtid',axis=1,inplace=True)
     Df_all.drop('algorithm',axis=1,inplace=True)
     Df_all_m = Df_all.resample('10min',closed='left').apply({mymode,np.nanmean,np.nanmax,np.nanmin,np.nanstd})
     Df_all_m.insert(0,'wtid',turbine_name)  
-    Df_all.insert(0,'wtid',turbine_name) 
-    algorithms_configs['Df_all_all'] = np.concat([algorithms_configs['Df_all_all'],Df_all])#.append(Df_all)#全场1min数据
-    algorithms_configs['Df_all_m_all'] = np.concat([algorithms_configs['Df_all_m_all']],Df_all_m)#.append(Df_all_m)#全10min场数据  
+    Df_all.insert(0,'wtid',turbine_name)  
+    Df_all_m.loc[:,'localtime'] = Df_all_m.index
+    Df_all.loc[:,'localtime'] = Df_all.index
+    algorithms_configs['Df_all_all'] = pd.concat([algorithms_configs['Df_all_all'],Df_all])#.append(Df_all)#全场1min数据
+    algorithms_configs['Df_all_m_all'] = pd.concat([algorithms_configs['Df_all_m_all'],Df_all_m])#.append(Df_all_m)#全10min场数据  
 
+    
+
+def define_parameters(algorithms_configs, algorithm_name):
     ##############################################################
     algorithms_configs['Df_all_all'].loc[:,algorithms_configs['Df_all_all'].dtypes=='float64'] = algorithms_configs['Df_all_all'].loc[:,algorithms_configs['Df_all_all'].dtypes=='float64'].astype('float32')
     algorithms_configs['Df_all_m_all'].loc[:,algorithms_configs['Df_all_m_all'].dtypes=='float64'] = algorithms_configs['Df_all_m_all'].loc[:,algorithms_configs['Df_all_m_all'].dtypes=='float64'].astype('float32')
@@ -1020,8 +1026,8 @@ def wash_data(Df_all, algorithms_configs, algorithm_name):
     #aaa = pd.Series(np.unique(Df_all_m_all['fault','mymode']))
     #aaa = aaa.dropna()
     
-    algorithms_configs['Df_all_all_alltype'] = algorithms_configs['Df_all_all_alltype'].append(algorithms_configs['Df_all_all'])#全场1min数据
-    algorithms_configs['Df_all_m_all_alltype'] = algorithms_configs['Df_all_m_all_alltype'].append(algorithms_configs['Df_all_m_all'])#全10min场数据
+    algorithms_configs['Df_all_all_alltype'] = pd.concat([algorithms_configs['Df_all_all_alltype'],algorithms_configs['Df_all_all']])#.append(algorithms_configs['Df_all_all'])#全场1min数据
+    algorithms_configs['Df_all_m_all_alltype'] = pd.concat([algorithms_configs['Df_all_m_all_alltype'],algorithms_configs['Df_all_m_all']])#.append(algorithms_configs['Df_all_m_all'])#全10min场数据
     algorithms_configs['Df_all_all_alltype'].loc[:,algorithms_configs['Df_all_all_alltype'].dtypes=='float64'] = algorithms_configs['Df_all_all_alltype'].loc[:,algorithms_configs['Df_all_all_alltype'].dtypes=='float64'].astype('float32')
     algorithms_configs['Df_all_m_all_alltype'].loc[:,algorithms_configs['Df_all_m_all_alltype'].dtypes=='float64'] = algorithms_configs['Df_all_m_all_alltype'].loc[:,algorithms_configs['Df_all_m_all_alltype'].dtypes=='float64'].astype('float32')
     '''
@@ -1042,28 +1048,28 @@ def wash_data(Df_all, algorithms_configs, algorithm_name):
         Df_all_m = algorithms_configs['Df_all_m_all'][algorithms_configs['Df_all_m_all']['wtid'] == algorithms_configs['wtids'][i]]
         algorithms_configs['turbine_param_all'].loc[i,'wtid'] = algorithms_configs['wtids'][i]
         
-        if algConfig[algorithm_name]['Pitch_Min'] != None:
-            temp = Df_all_m[(Df_all_m['pwrat','nanmean']>10.0)&(Df_all_m['pwrat','nanmean']<algorithms_configs['Pwrat_Rate']*0.2)&(Df_all_m['statel','nanmean']==90002)&(Df_all_m['state','nanmean']==state)&(Df_all_m['statety','nanmean']==71)]
+        if algorithms_configs['Pitch_Min'] != None and algorithms_configs[algorithm_name]['endTime']-algorithms_configs[algorithm_name]['startTime'] > timedelta(days=29):
+            temp = Df_all_m[(Df_all_m['pwrat','nanmean']>10.0)&(Df_all_m['pwrat','nanmean']<algorithms_configs['Pwrat_Rate']*0.2)&(Df_all_m['statel','nanmean']==90002)&(Df_all_m['state','nanmean']==algorithms_configs['state'])&(Df_all_m['statety','nanmean']==71)]
             if len(temp)>0:
                 Pitch_Min = round((np.mean(temp['pitch1','nanmean'].nsmallest(20)) + np.mean(temp['pitch1','nanmax'].nsmallest(20))) * 0.5,1)
             else:
                 Pitch_Min = 0.0
             algorithms_configs['turbine_param_all'].loc[i,'Pitch_Min'] = Pitch_Min
         else:
-            algorithms_configs['turbine_param_all'].loc[i,'Pitch_Min'] = algConfig[algorithm_name]['Pitch_Min']
+            algorithms_configs['turbine_param_all'].loc[i,'Pitch_Min'] = algorithms_configs['Pitch_Min']
 
-        if algConfig[algorithm_name]['Rotspd_Rate'] != None:
-            temp = Df_all_m[(Df_all_m['pwrat','nanmean']>algorithms_configs['Pwrat_Rate']*0.95)&(Df_all_m['pwrat','nanmean']<algorithms_configs['Pwrat_Rate']*1.1)&(Df_all_m['rotspd','nanmean']>1.1)&(Df_all_m['state','nanmean']==state)&(Df_all_m['statety','nanmean']==71)]
+        if algorithms_configs['Rotspd_Rate'] != None and algorithms_configs[algorithm_name]['endTime']-algorithms_configs[algorithm_name]['startTime'] > timedelta(days=29):
+            temp = Df_all_m[(Df_all_m['pwrat','nanmean']>algorithms_configs['Pwrat_Rate']*0.95)&(Df_all_m['pwrat','nanmean']<algorithms_configs['Pwrat_Rate']*1.1)&(Df_all_m['rotspd','nanmean']>1.1)&(Df_all_m['state','nanmean']==algorithms_configs['state'])&(Df_all_m['statety','nanmean']==71)]
             if len(temp)>0:
                 Rotspd_Rate = round(np.nanmean(temp['rotspd','nanmean']),1)
             else:
                 Rotspd_Rate = np.nan
             algorithms_configs['turbine_param_all'].loc[i,'Rotspd_Rate'] = Rotspd_Rate
         else:
-            algorithms_configs['turbine_param_all'].loc[i,'Rotspd_Rate'] = algConfig[algorithm_name]['Rotspd_Rate']
+            algorithms_configs['turbine_param_all'].loc[i,'Rotspd_Rate'] = algorithms_configs['Rotspd_Rate']
         
-        if algConfig[algorithm_name]['Rotspd_Connect'] != None:
-            temp = Df_all_m[(Df_all_m['pwrat','nanmean']>10.0)&(Df_all_m['pwrat','nanmean']<algorithms_configs['Pwrat_Rate']*0.08)&(Df_all_m['pitch1','mymode']<=(Pitch_Min+1.0))&(Df_all_m['state','nanmean']==state)&(Df_all_m['statety','nanmean']==71)]
+        if algorithms_configs['Rotspd_Connect'] != None and algorithms_configs[algorithm_name]['endTime']-algorithms_configs[algorithm_name]['startTime'] > timedelta(days=29):
+            temp = Df_all_m[(Df_all_m['pwrat','nanmean']>10.0)&(Df_all_m['pwrat','nanmean']<algorithms_configs['Pwrat_Rate']*0.08)&(Df_all_m['pitch1','mymode']<=(Pitch_Min+1.0))&(Df_all_m['state','nanmean']==algorithms_configs['state'])&(Df_all_m['statety','nanmean']==71)]
             if len(temp)>0:
                 #Rotspd_Connect = round(np.mean(temp['rotspd','nanmean'].nlargest(50)),1)
                 rotspd_q1 = temp['rotspd','nanmean'].quantile(0.6)##分位数
@@ -1073,7 +1079,7 @@ def wash_data(Df_all, algorithms_configs, algorithm_name):
                 Rotspd_Connect = np.nan
             algorithms_configs['turbine_param_all'].loc[i,'Rotspd_Connect'] = Rotspd_Connect
         else:
-            algorithms_configs['turbine_param_all'].loc[i,'Rotspd_Connect'] = algConfig[algorithm_name]['Rotspd_Connect']
+            algorithms_configs['turbine_param_all'].loc[i,'Rotspd_Connect'] = algorithms_configs['Rotspd_Connect']
 
     algorithms_configs['turbine_param_all']['Rotspd_Rate'].fillna(value=np.nanmean(algorithms_configs['turbine_param_all']['Rotspd_Rate']),inplace=True)
     algorithms_configs['turbine_param_all']['Rotspd_Connect'].fillna(value=np.nanmean(algorithms_configs['turbine_param_all']['Rotspd_Connect']),inplace=True)

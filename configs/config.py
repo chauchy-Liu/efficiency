@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
 import pandas as pd
+from faultcode.faultcode_MINYANG_GANSU_QINGSHUI import pwrat as  pwrat_
+from faultcode.faultcode_MINYANG_GANSU_QINGSHUI import wspd as wspd_
 """
 常量值
 """
 
 # 应用风场的assetId
 Wind_Farm = 'rWlbaEnM' #甘肃清水
+Wind_Farm_Name = '甘肃清水' #甘肃清水
 
 
+wspd = wspd_
+pwrat = pwrat_
 
 #模块附加区分名
 extraModelName = None#'B'
@@ -17,33 +22,9 @@ extraModelName = None#'B'
 Alarm_Push_Url = 'http://10.67.68.188:9001/api-smartisolar/sub-warn/warn/receiveWarnInfo'
 # Alarm_Push_Url = 'http://10.67.68.188:9001/api/v1/standardAlarmGateway/attributes'
 
-# 并网转速
-Rotspd_Connect = 1100.0 
-# 额定转速
-Rotspd_Rate = 1750.0 
-# 转矩控制系数
 
-# 最小桨距角
-Pitch_Min = 0.0
 
-# 并网状态
-state = 120
 
-# # 合计风速
-# fitWindSpd = [3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13]
-# # 合计功率
-# fitPrWt = [165.6, 311.7, 513.0, 762.2, 1059.0, 1414.3, 1838.5, 2337.5, 2915.7, 3568.9, 4125.8, 4501.9, 4732.7, 4860.9, 4933.1, 4974.3, 5000, 5000, 5000, 5000, 5000]
-wspd = pd.Series([3. , 3.5, 4. , 4.5, 5. , 5.5, 6. , 6.5, 7. , 7.5, 8. , 8.5, 9. ,
-                  9.5,10. ,10.5,11. ,11.5,12. ,12.5,13. ,13.5,14. ,14.5,15. ,15.5,16. ,
-                  16.5,17. ,17.5,18. ,18.5,19. ,19.5,20. ,20.5,21. ,21.5,22. ,22.5,23. ,
-                  23.5,24. ,24.5,25. ])
-pwrat = pd.Series([82.9268983640725,211.668043505953,380.430463874846,578.018055610271,
-                   806.258679758194,1075.72335386021,1396.87062422361,1772.39038244023,
-                   2204.25905148393,2689.92574885952,3175.20934602753,3631.26338609218,
-                   4019.15321346442,4342.28857348341,4591.08420339705,4774.80924338475,
-                   4885.72134358665,4942.70409051099,4976.12517848215,4992.72980237122,5000,
-                   5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,
-                   4800,4600,4400,4200,4000,3800,3600,3400,3200,3000])
 
 
 AccessKey = '3f207c85-64b4-476c-a23d-64624bbc0669'
@@ -155,7 +136,7 @@ scheduleConfig = {
 
 # turbine number setup
 turbineConfig = {
-    'turbineNameList' : ['#07']#None #["#01","#10"]
+    'turbineNameList' : ['#07', '#06']#None #["#01","#10"]
 }
 
 #各算法测点配置
@@ -212,10 +193,10 @@ algConfig = {
         'general_points' : ["WTUR.AIStatusCode", "WTUR.AIStatusCode_Map"],
         'general_rename' : {'WTUR.AIStatusCode':'fault','WTUR.AIStatusCode_Map':'fault'},
         'private_points' : {},
-        'time_duration' : '90D',
+        'time_duration' : '20D',
         'resample_interval' : '1m', # 原始数据采样间隔
         'error_data_time_duration' : '60m', #'500m',
-        'need_all_turbines' : False,
+        'need_all_turbines' : True,
         'store_file' : True,
         'threshold': {}
     },
@@ -271,10 +252,10 @@ algConfig = {
         'general_points' : ["WTUR.AIStatusCode", "WTUR.AIStatusCode_Map"],
         'general_rename' : {'WTUR.AIStatusCode':'fault','WTUR.AIStatusCode_Map':'fault'},
         'private_points' : {},
-        'time_duration' : '90D',
+        'time_duration' : '2D',
         'resample_interval' : '1m', # 原始数据采样间隔
         'error_data_time_duration' : '60m', #'500m',
-        'need_all_turbines' : False,
+        'need_all_turbines' : True,
         'store_file' : True,
         'threshold': {}
     },

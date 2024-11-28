@@ -16,6 +16,7 @@ import statistics as st
 from scipy import signal,integrate
 from datetime import datetime
 from configs.config import wspd, pwrat
+# from faultcode.faultcode_MINYANG_GANSU_QINGSHUI import wspd, pwrat
 
 def analyse(farmName, typeName:str, startTime, endTime):
     #赋值

@@ -15,7 +15,7 @@ import sys
 import statistics as st
 from scipy import signal,integrate
 from datetime import datetime
-from configs.config import wspd, pwrat
+# from configs.config import wspd, pwrat
 
 
 def analyse(farmName, typeName:list, startTime, endTime):

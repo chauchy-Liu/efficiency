@@ -5,7 +5,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import algorithms
 # from data.get_data import getData, getWindTurbines, getDataForMultiAlgorithms
 from data.get_data_async import getWindTurbines, getDataForMultiAlgorithms, getWindTurbinesNode, getWindFarm
-from configs.config import Wind_Farm, EXCEPT_MODLES, extraModelName, scheduleConfig, turbineConfig, algConfig
+from configs.config import Wind_Farm, EXCEPT_MODLES, extraModelName, scheduleConfig, turbineConfig, algConfig, Wind_Farm_Name
 from utils import time_util, display_util
 import datetime
 import importlib
@@ -226,6 +226,7 @@ async def _do_execute(multi_algorithms, algorithms_configs, mainLog): #startTime
         algorithmLogs[name].info("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
     # 获取风场
     algorithms_configs['farmId'] = Wind_Farm
+    algorithms_configs['farmName'] = Wind_Farm_Name
     WindFarm_attr = await getWindFarm(Wind_Farm)
     path_farm = str('result/')+str(WindFarm_attr.loc[0,'二级公司'])+'/'+str(WindFarm_attr.loc[0,'风电场名'])
     if os.path.exists(path_farm)==False:
@@ -283,6 +284,11 @@ async def _do_execute(multi_algorithms, algorithms_configs, mainLog): #startTime
             algorithms_configs['fault_code'] = faultcode_MINYANG_GANSU_TONGWEI.fault
             algorithms_configs['state_code'] = faultcode_MINYANG_GANSU_TONGWEI.state
             '''
+            algorithms_configs['wspd'] = faultcode_MINYANG_GANSU_QINGSHUI.wspd
+            algorithms_configs['pwrat'] = faultcode_MINYANG_GANSU_QINGSHUI.pwrat
+            algorithms_configs['Rotspd_Connect'] = faultcode_MINYANG_GANSU_QINGSHUI.Rotspd_Connect
+            algorithms_configs['Rotspd_Rate'] = faultcode_MINYANG_GANSU_QINGSHUI.Rotspd_Rate
+            algorithms_configs['Pitch_Min'] = faultcode_MINYANG_GANSU_QINGSHUI.Pitch_Min
         elif (algorithms_configs['ManufacturerID']=='H1')|(algorithms_configs['ManufacturerID']=='HZ'):#海装32
             algorithms_configs['state'] = 32
             algorithms_configs['fault_code'] = faultcode_HZ.fault
@@ -353,14 +359,14 @@ async def _do_execute(multi_algorithms, algorithms_configs, mainLog): #startTime
         algorithms_configs['turbine_param_all'] = pd.DataFrame()
 
         # 运行单机型预警项目的主体逻辑函数
-        await algorithms_turbines_stream(algorithms_configs['Turbine_attr_type'], mainLog, algorithmLogs, multi_algorithms, algorithms_configs)
+        await algorithms_turbines_stream(mainLog, algorithmLogs, multi_algorithms, algorithms_configs)#algorithms_configs['Turbine_attr_type']
 
         
     gc.collect()
     mainLog.info(f'##############################################\!\!\!本次请求的所有模型已跑完,注：本次请求的mainlog日志会覆盖上次请求的日志!\!\!################################################')
 
 
-async def algorithms_turbines_stream(df_wind_turbine, mainLog, algorithmLogs, multi_algorithms, algorithms_configs):
+async def algorithms_turbines_stream(mainLog, algorithmLogs, multi_algorithms, algorithms_configs): #df_wind_turbine, 
     # 控制风机数量
     if 'changeMeasurePointQueue' in algorithms_configs[multi_algorithms[-1].__name__.split('.')[-1]]:
         turbineNameList = []
@@ -369,7 +375,7 @@ async def algorithms_turbines_stream(df_wind_turbine, mainLog, algorithmLogs, mu
     else:
         turbineNameList = turbineConfig['turbineNameList'] #["16#"]#
     if turbineNameList != None and len(turbineNameList) > 0:
-        df_wind_turbine = df_wind_turbine[df_wind_turbine["name"].isin(turbineNameList)]
+        algorithms_configs['Turbine_attr_type'] = algorithms_configs['Turbine_attr_type'][algorithms_configs['Turbine_attr_type']["name"].isin(turbineNameList)]
     # df_wind_turbine = df_wind_turbine.iloc[0:3]
     # df_wind_turbine = df_wind_turbine.iloc[[2]]
 
@@ -382,8 +388,8 @@ async def algorithms_turbines_stream(df_wind_turbine, mainLog, algorithmLogs, mu
 
     
     mainLog.info(f'开始执行算法{multi_algorithms}') #，执行时间范围{startTime}-{endTime}
-    mainLog.info(f'获取风场{Wind_Farm}的风机数量为{df_wind_turbine.shape[0]}')
-    assetIds = df_wind_turbine['mdmId']
+    mainLog.info(f'获取风场{Wind_Farm}的风机数量为'+str(algorithms_configs['Turbine_attr_type'].shape[0]))
+    assetIds = algorithms_configs['Turbine_attr_type']['mdmId']
     #获取每个风机私有节点id
     # try:
     #     multiModelAssetIds = await getWindTurbinesNode(assetIds, algorithms_configs, nameConstrain=extraModelName) #一个风机可能会有多个模型资产Id
@@ -461,7 +467,7 @@ async def algorithms_turbines_stream(df_wind_turbine, mainLog, algorithmLogs, mu
         mainLog.info(f'===================================开始准备{name}预警模型，模型已完成的数量进度{algorithm_index}/{len(multi_algorithms)}==============================================')
         data_df = {'data_df':pd.DataFrame()}
         # 2. 每台风机执行算法
-        for index, row in df_wind_turbine.iterrows():
+        for index, row in algorithms_configs['Turbine_attr_type'].iterrows():
             no_alarm_models = []    # 正常执行、有数据、无告警模型
             alarm_models = []       # 正常执行、有数据、有告警模型
             exception_models = []   # 执行发生异常模型
@@ -472,7 +478,7 @@ async def algorithms_turbines_stream(df_wind_turbine, mainLog, algorithmLogs, mu
             assetId = row['mdmId'] #风机id
             turbineName = row['name']
             ratedPower = row['ratedPower']
-            mainLog.info(f'-----------------------------------开始执行风机{assetId}预警模型{name}: {turbineIndex}/{df_wind_turbine.shape[0]}----------------------------------------------')
+            mainLog.info(f'-----------------------------------开始执行风机{assetId}预警模型{name}: {turbineIndex}/'+str(algorithms_configs['Turbine_attr_type'].shape[0])+'----------------------------------------------')
             # 判断是否需要全场数据
             # if algConfig[name]['need_all_turbines'] == False:
             data_df['data_df'] = pd.DataFrame()
@@ -485,7 +491,7 @@ async def algorithms_turbines_stream(df_wind_turbine, mainLog, algorithmLogs, mu
                     #添加任务
                     mainLog.info(f"需要全场风机：算法名>{name_i},风机名>{turbineName}")
                     algorithmLogs[name].info(f"需要全场风机：算法名>{name_i},风机名>{turbineName}")
-                    if turbineIndex == df_wind_turbine.shape[0]:
+                    if turbineIndex == algorithms_configs['Turbine_attr_type'].shape[0]:
                         algorithms_configs[name_i]['PrepareTurbines'] = True
                         # algorithms_configs[name_i]['param_assetIds']  += [assetId] #= assetIds.tolist() #[assetId]
                         # algorithms_configs[name_i]['param_turbine_num'] += [turbineName]
@@ -502,7 +508,7 @@ async def algorithms_turbines_stream(df_wind_turbine, mainLog, algorithmLogs, mu
                         # algorithms_configs[name_i]['param_turbine_num'] += [turbineName]
                 else:
                     algorithms_configs[name_i]['PrepareTurbines'] = True
-                algorithms_configs[name_i]['param_private_assetIds'] = [[]]*df_wind_turbine.shape[0]#[multiModelAssetIds[turbineIndex-1][name_i]]
+                algorithms_configs[name_i]['param_private_assetIds'] = [[]]*algorithms_configs['Turbine_attr_type'].shape[0]#[multiModelAssetIds[turbineIndex-1][name_i]]
                 algorithms_configs[name_i]['param_assetIds'] = [assetId]
                 algorithms_configs[name_i]['param_turbine_num'] = [turbineName]
             ################################
@@ -516,9 +522,9 @@ async def algorithms_turbines_stream(df_wind_turbine, mainLog, algorithmLogs, mu
             if 'changeMeasurePointQueue' in algConfig[name] and algConfig[name]['changeDateRange'] != algorithm.time_duration:
                 #对当前风机初始化为空列表
                 algorithms_configs[name]['changeMeasurePointQueue'][turbineName] = deepcopy(algConfig[name]['changeMeasurePointQueue'])
-                await single_measure_point_batch(mainLog, turbineName, algorithms_configs, name, algorithm, assetId, algorithmLogs, data_df, idMaps, turbineIndex, df_wind_turbine, startTurbineTime, ratedPower, row, data_empty_models, no_alarm_models, exception_models, alarm_models, total_data_empty_models,total_alarm_models,total_no_alarm_models,total_exception_models,total_data_empty_turbines, total_no_alarm_turbines, total_alarm_turbines, total_exception_turbines)
+                await single_measure_point_batch(mainLog, turbineName, algorithms_configs, name, algorithm, assetId, algorithmLogs, data_df, idMaps, turbineIndex, algorithms_configs['Turbine_attr_type'], startTurbineTime, ratedPower, row, data_empty_models, no_alarm_models, exception_models, alarm_models, total_data_empty_models,total_alarm_models,total_no_alarm_models,total_exception_models,total_data_empty_turbines, total_no_alarm_turbines, total_alarm_turbines, total_exception_turbines)
             else:
-                await single_measure_point_batch(mainLog, turbineName, algorithms_configs, name, algorithm, assetId, algorithmLogs, data_df, idMaps, turbineIndex, df_wind_turbine, startTurbineTime, ratedPower, row, data_empty_models, no_alarm_models, exception_models, alarm_models, total_data_empty_models,total_alarm_models,total_no_alarm_models,total_exception_models,total_data_empty_turbines, total_no_alarm_turbines, total_alarm_turbines, total_exception_turbines)
+                await single_measure_point_batch(mainLog, turbineName, algorithms_configs, name, algorithm, assetId, algorithmLogs, data_df, idMaps, turbineIndex, algorithms_configs['Turbine_attr_type'], startTurbineTime, ratedPower, row, data_empty_models, no_alarm_models, exception_models, alarm_models, total_data_empty_models,total_alarm_models,total_no_alarm_models,total_exception_models,total_data_empty_turbines, total_no_alarm_turbines, total_alarm_turbines, total_exception_turbines)
 
         all_total_data_empty_models += total_data_empty_models
         all_total_alarm_models += total_alarm_models
@@ -526,7 +532,7 @@ async def algorithms_turbines_stream(df_wind_turbine, mainLog, algorithmLogs, mu
         all_total_exception_models += total_exception_models
 
         
-        mainLog.info(f'预警模型<{name}>执行完成所有风机<{df_wind_turbine.shape[0]}>：\n\
+        mainLog.info(f'预警模型<{name}>执行完成所有风机<'+str(algorithms_configs['Turbine_attr_type'].shape[0])+f'>：\n\
                                 正常执行、有数据、无告警模型有{total_no_alarm_turbines},\n\
                                 正常执行、有数据、有告警模型有{total_alarm_turbines},\n\
                                 正常执行、无数据的模型有{total_data_empty_turbines},\n\
@@ -580,13 +586,13 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
         days = str(date).split('-')[2]
         if days[0] == '0':
             days = days[1]
-        if name != 'Efficiency_ana_V3' or (name == 'Efficiency_ana_V3' and days == '1') or (name == 'Efficiency_ana_V3' and not os.path.exists('Efficiency_ana_V3.pkl.gz')):
-            algorithmData = await getDataForMultiAlgorithms({name:algorithms_configs[name]}) #mainLog, algorithmLogs, 
-        else:
-            if algorithms_configs[name]['PrepareTurbines'] == True:
-                algorithmData = {name: pd.read_pickle('Efficiency_ana_V3.pkl.gz')}
-            else:
-                algorithmData = {name: pd.DataFrame()}
+        # if name != 'Efficiency_ana_V3' or (name == 'Efficiency_ana_V3' and days == '1') or (name == 'Efficiency_ana_V3' and not os.path.exists('Efficiency_ana_V3.pkl.gz')):
+        algorithmData = await getDataForMultiAlgorithms({name:algorithms_configs[name]}) #mainLog, algorithmLogs, 
+        # else:
+        #     if algorithms_configs[name]['PrepareTurbines'] == True:
+        #         algorithmData = {name: pd.read_pickle('Efficiency_ana_V3.pkl.gz')}
+        #     else:
+        #         algorithmData = {name: pd.DataFrame()}
     except Exception as e:
         errorInfomation = traceback.format_exc()
         mainLog.info(f'\033[31m{errorInfomation}\033[0m')
@@ -616,33 +622,36 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
         # idMaps[name] = str(taskId)
     #提取算法对应的数据
     if name in algorithmData.keys():
-        data_df['data_df'] = pd.concat([data_df['data_df'], algorithmData[name]])
-    else:
-        data_df['data_df'] = pd.concat([data_df['data_df'], pd.DataFrame()])
-    if data_df['data_df'].empty:
-        data_empty_models.append(name)
-        total_data_empty_models += data_empty_models
-        total_data_empty_turbines += [algorithms_configs[name]['param_assetIds'][-1]+'/'+algorithms_configs[name]['param_turbine_num'][-1]]
-        #更新algorithm_model表,部分字段
-        mainLog.info(f'model表，模型{name}更新algorithm_model，时间，进度字段{turbineIndex}')
-        algorithmLogs[name].info(f'model表，模型{name}更新algorithm_model，时间，进度字段{turbineIndex}')
-        endAlgorithmTime = datetime.now()
-        # UpdateTubineNum(name, startAlgorithmTime, endAlgorithmTime, df_wind_turbine.shape[0], turbineIndex)#mysqlClient, 
-        #更新AlgorithmDetail
-        mainLog.info(f"detail表，风机名>{turbineName}, 算法名>{name}, 数据为空")
-        algorithmLogs[name].info(f"detail表，风机名>{turbineName}, 算法名>{name}, 数据为空")
-        # InsertAlgorithmDetail(idMaps[name], turbineName, startTurbineTime, 2, assetId, "从中台没有提取到数据")#mysqlClient, 
-        #撤销重命名
-        if len(algorithm.ai_rename) != 0:
-            for key, evalue in algorithm.ai_rename.items():
-                if evalue in algorithm.ai_points:
-                    index_key = algorithm.ai_points.index(evalue)
-                    algorithm.ai_points[index_key] = key
-        return None# continue
+        # 清洗数据
+        get_data_async.wash_data(algorithmData[name], algorithms_configs)
+        # data_df['data_df'] = pd.concat([data_df['data_df'], algorithmData[name]])
+    # else:
+        # data_df['data_df'] = pd.concat([data_df['data_df'], pd.DataFrame()])
+    # if data_df['data_df'].empty:
+    #     data_empty_models.append(name)
+    #     total_data_empty_models += data_empty_models
+    #     total_data_empty_turbines += [algorithms_configs[name]['param_assetIds'][-1]+'/'+algorithms_configs[name]['param_turbine_num'][-1]]
+    #     #更新algorithm_model表,部分字段
+    #     mainLog.info(f'model表，模型{name}更新algorithm_model，时间，进度字段{turbineIndex}')
+    #     algorithmLogs[name].info(f'model表，模型{name}更新algorithm_model，时间，进度字段{turbineIndex}')
+    #     endAlgorithmTime = datetime.now()
+    #     # UpdateTubineNum(name, startAlgorithmTime, endAlgorithmTime, df_wind_turbine.shape[0], turbineIndex)#mysqlClient, 
+    #     #更新AlgorithmDetail
+    #     mainLog.info(f"detail表，风机名>{turbineName}, 算法名>{name}, 数据为空")
+    #     algorithmLogs[name].info(f"detail表，风机名>{turbineName}, 算法名>{name}, 数据为空")
+    #     # InsertAlgorithmDetail(idMaps[name], turbineName, startTurbineTime, 2, assetId, "从中台没有提取到数据")#mysqlClient, 
+    #     #撤销重命名
+    #     if len(algorithm.ai_rename) != 0:
+    #         for key, evalue in algorithm.ai_rename.items():
+    #             if evalue in algorithm.ai_points:
+    #                 index_key = algorithm.ai_points.index(evalue)
+    #                 algorithm.ai_points[index_key] = key
+    #     return None# continue
     if algorithms_configs[name]['PrepareTurbines'] == False:
         #更新algorithm_model表,部分字段
         mainLog.info(f'模型{name}需要全场风机数据来分析，当前风机数据融合进度字段{turbineIndex}')
         algorithmLogs[name].info(f'模型{name}需要全场风机数据来分析，当前风机数据融合进度字段{turbineIndex}')
+        
         return None# continue
     # if (algorithms_configs[name]['PrepareTurbines'] == True and days==1 and name == 'Efficiency_ana_V3') or (algorithms_configs[name]['PrepareTurbines'] == True and not os.path.exists('Efficiency_ana_V3.pkl.gz') and name == 'Efficiency_ana_V3'):
         # data_df.to_pickle('Efficiency_ana_V3.pkl.gz', compression='gzip')
@@ -659,17 +668,16 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
                 private_points += pointValue
         else:
             private_points = []
-        
-        # 清洗数据
-        get_data_async.wash_data(data_df['data_df'], algorithms_configs, name)
+        #参数确定
+        get_data_async.define_parameters(algorithms_configs, name)
         # 跑模型
         if name == "Efficiency_ana_V3":
             timeOut = 7200
-            judge_model_task = [algorithm.judge_model(data_df['data_df'], df_wind_turbine, algorithms_configs[name]["threshold"], idMaps, algorithms_configs[name])]
+            judge_model_task = [algorithm.judge_model(algorithms_configs)]
             done, pending = await asyncio.wait(judge_model_task, timeout=timeOut) 
         else:
-            timeOut = 600
-            judge_model_task = [algorithm.judge_model(data_df['data_df'], row, algorithms_configs[name]["threshold"], idMaps, algorithms_configs[name])]
+            timeOut = 7200
+            judge_model_task = [algorithm.judge_model(algorithms_configs)]
             done, pending = await asyncio.wait(judge_model_task, timeout=timeOut)  
         if len(done) > 0:
             judge_model_result = [task.result() for task in done]
@@ -708,13 +716,13 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
         #     InsertAlgorithmDetail(idMaps[name], turbineName, startTurbineTime, 2, assetId, f'可能风机停机时造成数据异常，清洗后不满足算法计算条件。')#mysqlClient, 
         # else:
         #     InsertAlgorithmDetail(idMaps[name], turbineName, startTurbineTime, 2, assetId, f'{e}；详细情况：\n {str_e}')#mysqlClient, 
-    #撤销重命名
-    if len(algorithm.ai_rename) != 0:
-        for key, evalue in algorithm.ai_rename.items():
-            if evalue in data_df['data_df'].columns.tolist():
-                if evalue in algorithm.ai_points:
-                    index_key = algorithm.ai_points.index(evalue)
-                    algorithm.ai_points[index_key] = key
+    # #撤销重命名
+    # if len(algorithm.ai_rename) != 0:
+    #     for key, evalue in algorithm.ai_rename.items():
+    #         if evalue in data_df['data_df'].columns.tolist():
+    #             if evalue in algorithm.ai_points:
+    #                 index_key = algorithm.ai_points.index(evalue)
+    #                 algorithm.ai_points[index_key] = key
     # endTurbineTime = datetime.now()
     total_data_empty_models += data_empty_models
     total_alarm_models += alarm_models
