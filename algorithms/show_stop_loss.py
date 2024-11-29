@@ -49,6 +49,6 @@ def analyse(farmName, typeName:list, startTime, endTime):
             elem['平均风速(m/s)'] = stop_loss_show_temp.iloc[num]['wspd']
             result['table'].append(elem)
         # stop_loss_show_temp.insert(0, 'wtid', turbine_list[num])
-        stop_loss_show = stop_loss_show.append(stop_loss_show_temp)
+        stop_loss_show = pd.concat([stop_loss_show,stop_loss_show_temp])#.append(stop_loss_show_temp)
 
     return result

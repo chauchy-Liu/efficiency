@@ -39,7 +39,7 @@ def thresholdfun_orig(data,threshold):
         pwrat_mean = np.mean(temp['pwrat'])
         pwrat_std = np.std(temp['pwrat'])
         temp_new = temp[((temp['pwrat']-pwrat_mean)/pwrat_std < threshold) & ((temp['pwrat']-pwrat_mean)/pwrat_std > -threshold)]
-        temp_all = temp_all.append(temp_new)
+        temp_all = pd.concat([temp_all,temp_new])#.append(temp_new)
     return temp_all
 
 def thresholdfun_orig1(data,neighbors_num=50):
@@ -206,7 +206,7 @@ def winddir_err_before_new(data,dirbin,windbin2,dirbin1,windbin1,path,turbine_na
             with plt.style.context('ggplot'):            
                 plt.scatter(yaw_err_temp['wdir0cut1'],yaw_err_temp['pwrat_scaler'],c=yaw_err_temp['y_pred'],cmap='jet',s=20) 
             '''
-            yaw_err_minmax = yaw_err_minmax.append(yaw_err_temp)
+            yaw_err_minmax = pd.concat([yaw_err_minmax,yaw_err_temp])#.append(yaw_err_temp)
             
     yaw_err_minmax = yaw_err_minmax[yaw_err_minmax['y_pred']==1]
     yaw_err_minmax = yaw_err_minmax.reset_index(drop=True)
@@ -309,7 +309,7 @@ def thresholdfun_pwrat(raw_df,threshold,clear):
         pwrat_mean = np.nanmean(temp['pwrat','nanmean'])
         pwrat_std = np.nanstd(temp['pwrat','nanmean'])
         temp.loc[((temp['pwrat','nanmean']-pwrat_mean)/pwrat_std < threshold) & ((temp['pwrat','nanmean']-pwrat_mean)/pwrat_std > -threshold),'clear'] = clear-1
-        temp_all = temp_all.append(temp)
+        temp_all = pd.concat([temp_all,temp])#.append(temp)
     return temp_all
 
 
@@ -321,7 +321,7 @@ def thresholdfun_wspd(raw_df,power_rate,threshold,clear):
         wspd_mean = np.mean(temp['wspd','nanmean'])
         wspd_std = np.std(temp['wspd','nanmean'])
         temp.loc[((temp['wspd','nanmean']-wspd_mean)/wspd_std < threshold) & ((temp['wspd','nanmean']-wspd_mean)/wspd_std > -threshold),'clear'] = clear-1
-        temp_all = temp_all.append(temp)
+        temp_all = pd.concat([temp_all,temp])#.append(temp)
     return temp_all
 
 
@@ -333,7 +333,7 @@ def thresholdfun_pitch(raw_df,threshold,clear):
         pitch_mean = np.mean(temp['pitch1','nanmean'])
         pitch_std = np.std(temp['pitch1','nanmean'])
         temp.loc[((temp['pitch1','nanmean']-pitch_mean)/pitch_std < threshold) & ((temp['pitch1','nanmean']-pitch_mean)/pitch_std > -threshold),'clear'] = clear-1
-        temp_all = temp_all.append(temp)
+        temp_all = pd.concat([temp_all,temp])
     return temp_all
 
 def thresholdfun_rotspd(raw_df,neighbors_num,clear):
@@ -349,7 +349,7 @@ def thresholdfun_rotspd(raw_df,neighbors_num,clear):
     y_pred = clf.fit_predict(X_train)
     temp_clear['y_pred'] = y_pred
     temp_clear.loc[temp_clear['y_pred']==1,'clear'] = clear-1
-    temp_all = temp_all.append(temp_clear)
+    temp_all = pd.concat([temp_all,temp_clear])
     return temp_all
 
 def thresholdfun_pwrat_out(raw_df,neighbors_num,clear):
@@ -363,7 +363,7 @@ def thresholdfun_pwrat_out(raw_df,neighbors_num,clear):
     y_pred = clf.fit_predict(X_train)
     temp_clear['y_pred'] = y_pred
     temp_clear.loc[temp_clear['y_pred']==1,'clear'] = clear-1
-    temp_all = temp_all.append(temp_clear)
+    temp_all = pd.concat([temp_all,temp_clear])
     return temp_all
 
     #风频计算(所有机组)
@@ -536,9 +536,9 @@ def Torque_Rotspd_Rate_loss(data,Pwrat_Rate,Rotspd_Rate,Rotspd_Connect):
             rotspd_power_nihe['rotspd'] = np.arange(Rotspd_Connect,Rotspd_Rate+(Rotspd_Rate-Rotspd_Connect)*0.0001,(Rotspd_Rate-Rotspd_Connect)*0.0001)
             rotspd_power_nihe['pwrat'] = kopt_temp*rotspd_power_nihe['rotspd']**3
             new_row = {'rotspd':Rotspd_Connect,'pwrat':0}
-            rotspd_power_nihe = rotspd_power_nihe.append(new_row,ignore_index=True)
+            rotspd_power_nihe = pd.concat([rotspd_power_nihe,new_row],ignore_index=True)#.append(new_row,ignore_index=True)
             new_row = {'rotspd':Rotspd_Rate,'pwrat':Pwrat_Rate}
-            rotspd_power_nihe = rotspd_power_nihe.append(new_row,ignore_index=True)
+            rotspd_power_nihe = pd.concat([rotspd_power_nihe,new_row],ignore_index=True)
             rotspd_power_nihe = rotspd_power_nihe.sort_values(by='pwrat',ascending=True)
             return rate_kopt_err,rotspd_power_nihe
         else:
@@ -1202,7 +1202,7 @@ def MTBT_Calculate(start_time,end_time,fault_loss):
 #无故障时间计算
 def NotFault_Time(start_time,end_time,fault_loss,faultgrid_loss):
     notfault_time = 0
-    temp = fault_loss.append(faultgrid_loss)
+    temp = pd.concat([fault_loss,faultgrid_loss])#.append(faultgrid_loss)
     day_range = pd.date_range(start_time,end_time,freq="24H",normalize=True).strftime('%Y-%m-%d %H:%M:%S').to_list()
     
     notfault_time = len(day_range) - len(np.unique(temp.index))
@@ -1249,7 +1249,7 @@ def abnormal_detect(data,turbine_camp,altitude,hub_high,rotor_radius,turbine_par
         #data['cp'] =  2000.0*data['pwrat_nanmean'] / data['rho'] / (np.pi*rotor_radius*rotor_radius) / data['wspd_nanmean']**3
         data_temp['kopt'] = 1000.0*data_temp['pwrat_nanmean'] / (data_temp['rotspd_nanmean']*0.10471)**3
         
-        data_all = data_all.append(data_temp)
+        data_all = np.concat([data_all,data_temp])#.append(data_temp)
     
     labelfen = np.unique(data_all['labelfen_'])
     abnormal_detect = pd.DataFrame()
@@ -1385,7 +1385,7 @@ def abnormal_detect(data,turbine_camp,altitude,hub_high,rotor_radius,turbine_par
                 plt.legend(loc=0,fontsize=14) 
             plt.savefig(path + '/' +str(str(wtids_ses)+'_分段'+str(num+1)+'_'+str(columns_temp[ice])+'.png'), bbox_inches='tight', dpi=100)
             
-        abnormal_detect = abnormal_detect.append(abnormal_detect_label)
+        abnormal_detect = pd.concat([abnormal_detect,abnormal_detect_label])#.append(abnormal_detect_label)
     return abnormal_detect
 
 def abnormal_detect_low(data,turbine_camp,altitude,hub_high,rotor_radius,turbine_param_all,state,Pwrat_Rate,path,wtids_ses):
@@ -1428,7 +1428,7 @@ def abnormal_detect_low(data,turbine_camp,altitude,hub_high,rotor_radius,turbine
         #data['cp'] =  2000.0*data['pwrat_nanmean'] / data['rho'] / (np.pi*rotor_radius*rotor_radius) / data['wspd_nanmean']**3
         data_temp['kopt'] = 1000.0*data_temp['pwrat_nanmean'] / (data_temp['rotspd_nanmean']*0.10471)**3
         
-        data_all = data_all.append(data_temp)
+        data_all = pd.concat([data_all,data_temp])#.append(data_temp)
     data_all.loc[data_all['labelfen_']==2,'labelfen_'] = 1
     data_all.loc[data_all['labelfen_']==4,'labelfen_'] = 3
     labelfen = np.unique(data_all['labelfen_'])

@@ -49,7 +49,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
                 faultgrid_loss_show_temp.loc[i,'wspd'] = np.nanmean(temp['wspd'])
                 faultgrid_loss_show_temp.loc[i,'fault_describe'] = temp[temp['fault']==fnum_list[i]]['fault_describe'].values[0]
         faultgrid_loss_show_temp.insert(0, 'wtid', turbine_list[num])
-        faultgrid_loss_show = faultgrid_loss_show.append(faultgrid_loss_show_temp)
+        faultgrid_loss_show = pd.concat([faultgrid_loss_show,faultgrid_loss_show_temp])#.append(faultgrid_loss_show_temp)
     if len(faultgrid_loss_show)>0:
         faultgrid_loss_show.loc[(faultgrid_loss_show['count']==0),'count'] = 1
         for i in range(len(faultgrid_loss_show)):

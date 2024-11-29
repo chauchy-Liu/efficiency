@@ -80,7 +80,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
                 fault_loss_show_temp.loc[i,'fault_describe'] = temp[temp['fault']==fnum_list[i]]['fault_describe'].values[0]
                 fault_loss_show_temp.loc[i,'fsyst'] = temp[temp['fault']==fnum_list[i]]['fsyst'].values[0]
         fault_loss_show_temp.insert(0, 'wtid', turbine_FaultLoss_list[num])
-        fault_loss_show = fault_loss_show.append(fault_loss_show_temp)
+        fault_loss_show = pd.concat([fault_loss_show,fault_loss_show_temp])#.append(fault_loss_show_temp)
     if len(fault_loss_show)>0:
         fault_loss_show.loc[(fault_loss_show['count']==0),'count'] = 1
     #################################
@@ -100,7 +100,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
             limturbine_loss_show_temp.loc[num,'wtid'] = turbine_LimturbineLoss_list[num]
             #stop_loss_show_temp.loc[i,'exltmp'] = np.nanmean(temp_turbine['exltmp'])
         # limturbine_loss_show_temp.insert(0, 'wtid', turbine_list[num])
-        limturbine_loss_show = limturbine_loss_show.append(limturbine_loss_show_temp)
+        limturbine_loss_show = pd.concat([limturbine_loss_show,limturbine_loss_show_temp])#.append(limturbine_loss_show_temp)
     #################################
     #技术待命展示
     Technology_loss_show = pd.DataFrame()
@@ -122,7 +122,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
                 Technology_loss_show_temp.loc[i,'wspd'] = np.nanmean(temp['wspd'])
                 Technology_loss_show_temp.loc[i,'fault_describe'] = temp[temp['fault']==fnum_list[i]]['fault_describe'].values[0]
         Technology_loss_show_temp.insert(0, 'wtid', turbine_TechnologyLoss_list[num])
-        Technology_loss_show = Technology_loss_show.append(Technology_loss_show_temp)
+        Technology_loss_show = np.concat([Technology_loss_show,Technology_loss_show_temp])#.append(Technology_loss_show_temp)
     if len(Technology_loss_show)>0:
         Technology_loss_show.loc[(Technology_loss_show['count']==0),'count'] = 1
    #################################
@@ -142,7 +142,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
             stop_loss_show_temp.loc[num,'exltmp'] = np.nanmean(temp_turbine['exltmp'])
             stop_loss_show_temp.loc[num,'wtid'] = turbine_StopLoss_list[num]
         # stop_loss_show_temp.insert(0, 'wtid', turbine_list[num])
-        stop_loss_show = stop_loss_show.append(stop_loss_show_temp) 
+        stop_loss_show = pd.concat([stop_loss_show,stop_loss_show_temp])#.append(stop_loss_show_temp) 
     #################################
     #电网限电展示
     limgrid_loss_show = pd.DataFrame()
@@ -160,7 +160,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
             limgrid_loss_show_temp.loc('wtid', turbine_LimgridLoss_list[num])
             #stop_loss_show_temp.loc[i,'exltmp'] = np.nanmean(temp_turbine['exltmp'])
         # limgrid_loss_show_temp.insert(0, 'wtid', turbine_list[num])
-        limgrid_loss_show = limgrid_loss_show.append(limgrid_loss_show_temp)
+        limgrid_loss_show = pd.concat([limgrid_loss_show,limgrid_loss_show_temp])#.append(limgrid_loss_show_temp)
     #################################
     #电网故障展示
     faultgrid_loss_show = pd.DataFrame()
@@ -182,7 +182,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
                 faultgrid_loss_show_temp.loc[i,'wspd'] = np.nanmean(temp['wspd'])
                 faultgrid_loss_show_temp.loc[i,'fault_describe'] = temp[temp['fault']==fnum_list[i]]['fault_describe'].values[0]
         faultgrid_loss_show_temp.insert(0, 'wtid', turbine_FaultgridLoss_list[num])
-        faultgrid_loss_show = faultgrid_loss_show.append(faultgrid_loss_show_temp)
+        faultgrid_loss_show = pd.concat([faultgrid_loss_show,faultgrid_loss_show_temp])#.append(faultgrid_loss_show_temp)
     if len(faultgrid_loss_show)>0:
         faultgrid_loss_show.loc[(faultgrid_loss_show['count']==0),'count'] = 1
     ##################################

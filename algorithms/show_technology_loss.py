@@ -49,7 +49,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
                 Technology_loss_show_temp.loc[i,'wspd'] = np.nanmean(temp['wspd'])
                 Technology_loss_show_temp.loc[i,'fault_describe'] = temp[temp['fault']==fnum_list[i]]['fault_describe'].values[0]
         Technology_loss_show_temp.insert(0, 'wtid', turbine_list[num])
-        Technology_loss_show = Technology_loss_show.append(Technology_loss_show_temp)
+        Technology_loss_show = pd.concat([Technology_loss_show,Technology_loss_show_temp])#.append(Technology_loss_show_temp)
     if len(Technology_loss_show)>0:
         Technology_loss_show.loc[(Technology_loss_show['count']==0),'count'] = 1
         for i in range(len(Technology_loss_show)):

@@ -49,7 +49,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
                 fault_loss_show_temp.loc[i,'fault_describe'] = temp[temp['fault']==fnum_list[i]]['fault_describe'].values[0]
                 fault_loss_show_temp.loc[i,'fsyst'] = temp[temp['fault']==fnum_list[i]]['fsyst'].values[0]
         fault_loss_show_temp.insert(0, 'wtid', turbine_list[num])
-        fault_loss_show = fault_loss_show.append(fault_loss_show_temp)
+        fault_loss_show = pd.concat([fault_loss_show,fault_loss_show_temp])#.append(fault_loss_show_temp)
     if len(fault_loss_show)>0:
         fault_loss_show.loc[(fault_loss_show['count']==0),'count'] = 1
         for i in range(len(fault_loss_show)):
