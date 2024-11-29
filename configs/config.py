@@ -136,7 +136,7 @@ scheduleConfig = {
 
 # turbine number setup
 turbineConfig = {
-    'turbineNameList' : ['#07', '#06']#None #["#01","#10"]
+    'turbineNameList' : None#['#07', '#06']#None #["#01","#10"]
 }
 
 #各算法测点配置
@@ -193,7 +193,7 @@ algConfig = {
         'general_points' : ["WTUR.AIStatusCode", "WTUR.AIStatusCode_Map"],
         'general_rename' : {'WTUR.AIStatusCode':'fault','WTUR.AIStatusCode_Map':'fault'},
         'private_points' : {},
-        'time_duration' : '20D',
+        'time_duration' : '90D',
         'resample_interval' : '1m', # 原始数据采样间隔
         'error_data_time_duration' : '60m', #'500m',
         'need_all_turbines' : True,
@@ -252,7 +252,7 @@ algConfig = {
         'general_points' : ["WTUR.AIStatusCode", "WTUR.AIStatusCode_Map"],
         'general_rename' : {'WTUR.AIStatusCode':'fault','WTUR.AIStatusCode_Map':'fault'},
         'private_points' : {},
-        'time_duration' : '2D',
+        'time_duration' : '1D',
         'resample_interval' : '1m', # 原始数据采样间隔
         'error_data_time_duration' : '60m', #'500m',
         'need_all_turbines' : True,

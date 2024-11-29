@@ -478,6 +478,16 @@ def selectTechnologyLossAll(data, farmName, typeName, start_time=datetime.now()-
     cursor = conn.cursor()
     log.info(f"###########################提取technology_loss_all数据###############")
     wtids = {}
+    #查询表名
+    check_table_query = f"show tables like 'technology_loss_all';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        return data, wtids
     typeNameStr = ""
     for name in typeName:
         typeNameStr += str(name) + ','
@@ -554,6 +564,16 @@ def selectLimturbineLossAll(data, farmName, typeName, start_time=datetime.now()-
     cursor = conn.cursor()
     log.info(f"############################提取limturbine_loss_all数据###########################")
     wtids = {}
+    #查询表名
+    check_table_query = f"show tables like 'limturbine_loss_all';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        return data, wtids
     typeNameStr = ""
     for name in typeName:
         typeNameStr += str(name) + ','
@@ -622,6 +642,16 @@ def selectFaultgridLossAll(data, farmName, typeName, start_time=datetime.now()-t
     cursor = conn.cursor()
     wtids = {}
     log.info(f"############################提取faultgrid_loss_all数据#####################")
+    #查询表名
+    check_table_query = f"show tables like 'faultgrid_loss_all';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        return data, wtids
     typeNameStr = ""
     for name in typeName:
         typeNameStr += str(name) + ','
@@ -698,6 +728,16 @@ def selectStopLossAll(data, farmName, typeName, start_time=datetime.now()-timede
     cursor = conn.cursor()
     log.info(f"##############################提取stop_loss_all数据######################")
     wtids = {}
+    #查询表名
+    check_table_query = f"show tables like 'stop_loss_all';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        return data, wtids
     typeNameStr = ""
     for name in typeName:
         typeNameStr += str(name) + ','
@@ -770,6 +810,16 @@ def selectFaultLossAll(data, farmName, typeName, start_time=datetime.now()-timed
     cursor = conn.cursor()
     log.info(f"########################提取fault_loss_all数据########################")
     wtids = {}
+    #查询表名
+    check_table_query = f"show tables like 'fault_loss_all';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        return data, wtids
     typeNameStr = ""
     for name in typeName:
         typeNameStr += str(name) + ','
@@ -848,6 +898,16 @@ def selectLimgridLossAll(data, farmName, typeName, start_time=datetime.now()-tim
     cursor = conn.cursor()
     log.info(f"##########################提取limgrid_loss_all数据#################")
     wtids = {}
+    #查询表名
+    check_table_query = f"show tables like 'limgrid_loss_all';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        return data, wtids
     typeNameStr = ""
     for name in typeName:
         typeNameStr += str(name) + ','
@@ -917,6 +977,16 @@ def selectEnyWspdAll(data, farmName, typeName, start_time=datetime.now()-timedel
     cursor = conn.cursor()
     log.info(f"###################提取eny_wspd_all数据#######################")
     wtids = {}
+    #查询表名
+    check_table_query = f"show tables like 'eny_wspd_all';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        return data, wtids
     typeNameStr = ""
     for name in typeName:
         typeNameStr += str(name) + ','
@@ -975,8 +1045,6 @@ def selectEnyWspdAll(data, farmName, typeName, start_time=datetime.now()-timedel
 ###################################################
 
 ########################存功率##################################
-
-
 def insertPwTimeAll(data, algorithms_configs):
     conn = get_connection()
     cursor = conn.cursor()

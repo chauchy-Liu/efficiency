@@ -85,12 +85,12 @@ def index():
 def indicate():
     params = request.json
     farmName = params['farm'][-1]['mdmId']
-    turbineName = []
+    typeName = []
     for name_dict in params['farm'][-1]['turbineType']:
-        turbineName.append(name_dict['name'])
+        typeName.append(name_dict['name'])
     startTime = params['target']['startDate']
     endTime = params['target']['endDate']
-    result = show_loss_reason_indicator.analyse(farmName, turbineName, startTime, endTime)
+    result = show_loss_reason_indicator.analyse(farmName, typeName, startTime, endTime)
     logger.info(f"返回结果：")
     logger.info(f"{result}")
     return result
@@ -111,10 +111,10 @@ def indicate():
 def power_consistence():
     params = request.json
     farmName = params['farm'][-1]['mdmId']
-    turbineName = params['farm'][-1]['turbineType'][-1]['name']
+    typeName = params['farm'][-1]['turbineType'][-1]['name']
     startTime = params['target']['startDate']
     endTime = params['target']['endDate']
-    result = show_power_consistence.analyse(farmName, turbineName, startTime, endTime)
+    result = show_power_consistence.analyse(farmName, typeName, startTime, endTime)
     logger.info(f"返回结果：")
     logger.info(f"{result}")
     return result
@@ -124,10 +124,10 @@ def power_consistence():
 def power_curve():
     params = request.json
     farmName = params['farm'][-1]['mdmId']
-    turbineName = params['farm'][-1]['turbineType'][-1]['name']
+    typeName = params['farm'][-1]['turbineType'][-1]['name']
     startTime = params['target']['startDate']
     endTime = params['target']['endDate']
-    result = show_power_curve.analyse(farmName, turbineName, startTime, endTime)
+    result = show_power_curve.analyse(farmName, typeName, startTime, endTime)
     logger.info(f"返回结果：")
     logger.info(f"{result}")
     return result
@@ -137,10 +137,10 @@ def power_curve():
 def power_data():
     params = request.json
     farmName = params['farm'][-1]['mdmId']
-    turbineName = params['farm'][-1]['turbineType'][-1]['name']
+    typeName = params['farm'][-1]['turbineType'][-1]['name']
     startTime = params['target']['startDate']
     endTime = params['target']['endDate']
-    result = show_power_data.analyse(farmName, turbineName, startTime, endTime)
+    result = show_power_data.analyse(farmName, typeName, startTime, endTime)
     logger.info(f"返回结果：")
     logger.info(f"{result}")
     return result
@@ -167,12 +167,12 @@ def power_data():
 def fault_distribute():
     params = request.json
     farmName = params['farm'][-1]['mdmId']
-    turbineName = []
+    typeName = []
     for name_dict in params['farm'][-1]['turbineType']:
-        turbineName.append(name_dict['name'])
+        typeName.append(name_dict['name'])
     startTime = params['target']['startDate']
     endTime = params['target']['endDate']
-    result = show_fault_distribute.analyse(farmName, turbineName, startTime, endTime)
+    result = show_fault_distribute.analyse(farmName, typeName, startTime, endTime)
     logger.info(f"返回结果：")
     logger.info(f"{result}")
     return result
@@ -181,12 +181,12 @@ def fault_distribute():
 def turbine_fault_loss():
     params = request.json
     farmName = params['farm'][-1]['mdmId']
-    turbineName = []
+    typeName = []
     for name_dict in params['farm'][-1]['turbineType']:
-        turbineName.append(name_dict['name'])
+        typeName.append(name_dict['name'])
     startTime = params['target']['startDate']
     endTime = params['target']['endDate']
-    result = show_turbine_fault_loss.analyse(farmName, turbineName, startTime, endTime)
+    result = show_turbine_fault_loss.analyse(farmName, typeName, startTime, endTime)
     logger.info(f"返回结果：")
     logger.info(f"{result}")
     return result
@@ -195,12 +195,12 @@ def turbine_fault_loss():
 def stop_loss():
     params = request.json
     farmName = params['farm'][-1]['mdmId']
-    turbineName = []
+    typeName = []
     for name_dict in params['farm'][-1]['turbineType']:
-        turbineName.append(name_dict['name'])
+        typeName.append(name_dict['name'])
     startTime = params['target']['startDate']
     endTime = params['target']['endDate']
-    result = show_stop_loss.analyse(farmName, turbineName, startTime, endTime)
+    result = show_stop_loss.analyse(farmName, typeName, startTime, endTime)
     logger.info(f"返回结果：")
     logger.info(f"{result}")
     return result
@@ -209,12 +209,12 @@ def stop_loss():
 def grid_fault_loss():
     params = request.json
     farmName = params['farm'][-1]['mdmId']
-    turbineName = []
+    typeName = []
     for name_dict in params['farm'][-1]['turbineType']:
-        turbineName.append(name_dict['name'])
+        typeName.append(name_dict['name'])
     startTime = params['target']['startDate']
     endTime = params['target']['endDate']
-    result = show_grid_fault_loss.analyse(farmName, turbineName, startTime, endTime)
+    result = show_grid_fault_loss.analyse(farmName, typeName, startTime, endTime)
     logger.info(f"返回结果：")
     logger.info(f"{result}")
     return result
@@ -223,12 +223,12 @@ def grid_fault_loss():
 def grid_limit_loss():
     params = request.json
     farmName = params['farm'][-1]['mdmId']
-    turbineName = []
+    typeName = []
     for name_dict in params['farm'][-1]['turbineType']:
-        turbineName.append(name_dict['name'])
+        typeName.append(name_dict['name'])
     startTime = params['target']['startDate']
     endTime = params['target']['endDate']
-    result = show_grid_limit_loss.analyse(farmName, turbineName, startTime, endTime)
+    result = show_grid_limit_loss.analyse(farmName, typeName, startTime, endTime)
     logger.info(f"返回结果：")
     logger.info(f"{result}")
     return result
@@ -237,12 +237,12 @@ def grid_limit_loss():
 def turbine_limit_loss():
     params = request.json
     farmName = params['farm'][-1]['mdmId']
-    turbineName = []
+    typeName = []
     for name_dict in params['farm'][-1]['turbineType']:
-        turbineName.append(name_dict['name'])
+        typeName.append(name_dict['name'])
     startTime = params['target']['startDate']
     endTime = params['target']['endDate']
-    result = show_turbine_limit_loss.analyse(farmName, turbineName, startTime, endTime)
+    result = show_turbine_limit_loss.analyse(farmName, typeName, startTime, endTime)
     logger.info(f"返回结果：")
     logger.info(f"{result}")
     return result
@@ -251,24 +251,73 @@ def turbine_limit_loss():
 def technology_loss():
     params = request.json
     farmName = params['farm'][-1]['mdmId']
-    turbineName = []
+    typeName = []
     for name_dict in params['farm'][-1]['turbineType']:
-        turbineName.append(name_dict['name'])
+        typeName.append(name_dict['name'])
     startTime = params['target']['startDate']
     endTime = params['target']['endDate']
-    result = show_technology_loss.analyse(farmName, turbineName, startTime, endTime)
+    result = show_technology_loss.analyse(farmName, typeName, startTime, endTime)
     logger.info(f"返回结果：")
     logger.info(f"{result}")
     return result
-# #场站对比
-# @api.route('/compare_analysis/farm_compare', methods=['POST'])
-# def farm_compare():
-# #时间对比
-# @api.route('/compare_analysis/time_compare', methods=['POST'])
-# def time_compare():
-# #机型对比
-# @api.route('/compare_analysis/turbine_type_compare', methods=['POST'])
-# def turbine_type_compare():
+#场站对比
+@api.route('/compare_analysis/farm_compare', methods=['POST'])
+def farm_compare():
+    params = request.json
+    # farmName = params['farm'][-1]['mdmId']
+    result_dict = {}
+    for name_dict in params['farm']:
+        farmName = name_dict['mdmId']
+        typeName = []
+        # typeName.append(name_dict['name'])
+        startTime = params['target']['startDate']
+        endTime = params['target']['endDate']
+        result = show_loss_reason_indicator.analyse(farmName, typeName, startTime, endTime)
+        result_dict[farmName] = result
+    logger.info(f"返回结果：")
+    logger.info(f"{result_dict}")
+    return result_dict
+#时间对比
+@api.route('/compare_analysis/time_compare', methods=['POST'])
+def time_compare():
+    params = request.json
+    # farmName = params['farm'][-1]['mdmId']
+    result_dict = {}
+    farmName = params['farm'][-1]['mdmId']
+    typeName = []
+    startTime = params['target']['startDate']
+    endTime = params['target']['endDate']
+    result = show_loss_reason_indicator.analyse(farmName, typeName, startTime, endTime)
+    result_dict["target"] = result
+    # typeName.append(name_dict['name'])
+    startTime = params['compare']['startDate']
+    endTime = params['compare']['endDate']
+    result = show_loss_reason_indicator.analyse(farmName, typeName, startTime, endTime)
+    result_dict["compare"] = result
+    logger.info(f"返回结果：")
+    logger.info(f"{result_dict}")
+    return result_dict
+#机型对比
+@api.route('/compare_analysis/turbine_type_compare', methods=['POST'])
+def turbine_type_compare():
+    params = request.json
+    result_dict = {'farm':[]}
+    for farm in params['farm']:
+        farm_temp = {'farmName':None, 'turbineType':[]}
+        farmName = farm['mdmId']
+        farm_temp['farmName'] = farmName
+        # typeName = []
+        for name_dict in farm['turbineType']:
+            typeName = [name_dict['name']]
+            startTime = params['target']['startDate']
+            endTime = params['target']['endDate']
+            result = show_loss_reason_indicator.analyse(farmName, typeName, startTime, endTime)
+            turbine_type_temp = {name_dict['name']:result }
+            farm_temp['turbineType'].append(turbine_type_temp)
+        result_dict['farm'].append(farm_temp)
+    logger.info(f"返回结果：")
+    logger.info(f"{result}")
+    return result
 
 
 
@@ -292,59 +341,59 @@ def execute():
     return response
 
     
-@api.route('/model/checkout', methods=['POST'])
-def checkout():
+# @api.route('/model/checkout', methods=['POST'])
+# def checkout():
     
-    # response = make_response('ok2')
-    # modelCode = request.args.getlist('modelCode')#.decode('utf-8')
-    param = request.json
-    detailId = param['detailId']
-    modelCode = [param['modelCode']]
-    startTime = param['dataStartTime']
-    endTime = param['dataEndTime']
-    turbineId = param['enosId']
-    # 0. 排除不执行的模型
-    final_names = list(set(modelCode) - set(EXCEPT_MODLES))
-    # 1. 获取算法信息
-    algorithm = importlib.import_module('.' + modelCode[-1], package='algorithms')
-    if algorithm.store_file == True:
-        filename = os.path.join(Path, modelCode[-1], turbineId, str(detailId)+'.pklz')
-        try:
-            result = display_util.ReadFile(filename)
-            return success(result)
-        except Exception as e:
-            return error()
-    else:
-        try:
-            asyncio.run(execute_multi_algorithms(modelCode, startTime, endTime, turbineId))
-            filename = os.path.join(Path, modelCode[-1], turbineId, 'run'+'.pklz')
-            if os.path.exists(filename):
-                try:
-                    result = display_util.ReadFile(filename)
-                    os.remove(filename)
-                    return success(result)
-                except Exception as e:
-                    os.remove(filename)
-                    return error()
-            else:
-                return error()
-        except Exception as e:
-            return error()
+#     # response = make_response('ok2')
+#     # modelCode = request.args.getlist('modelCode')#.decode('utf-8')
+#     param = request.json
+#     detailId = param['detailId']
+#     modelCode = [param['modelCode']]
+#     startTime = param['dataStartTime']
+#     endTime = param['dataEndTime']
+#     turbineId = param['enosId']
+#     # 0. 排除不执行的模型
+#     final_names = list(set(modelCode) - set(EXCEPT_MODLES))
+#     # 1. 获取算法信息
+#     algorithm = importlib.import_module('.' + modelCode[-1], package='algorithms')
+#     if algorithm.store_file == True:
+#         filename = os.path.join(Path, modelCode[-1], turbineId, str(detailId)+'.pklz')
+#         try:
+#             result = display_util.ReadFile(filename)
+#             return success(result)
+#         except Exception as e:
+#             return error()
+#     else:
+#         try:
+#             asyncio.run(execute_multi_algorithms(modelCode, startTime, endTime, turbineId))
+#             filename = os.path.join(Path, modelCode[-1], turbineId, 'run'+'.pklz')
+#             if os.path.exists(filename):
+#                 try:
+#                     result = display_util.ReadFile(filename)
+#                     os.remove(filename)
+#                     return success(result)
+#                 except Exception as e:
+#                     os.remove(filename)
+#                     return error()
+#             else:
+#                 return error()
+#         except Exception as e:
+#             return error()
 
 
   
 
 
-@api.get('/model/pushAlarm')
-def pushAlarm():
-    from alarms.alarm import push_alarm_v2
-    assetId = request.args.get('assetId')
-    alarmName = request.args.get('alarmName')
-    alarmTime = request.args.get('alarmTime')
-    error_start_time = request.args.get('error_start_time')
-    error_end_time = request.args.get('error_end_time')
+# @api.get('/model/pushAlarm')
+# def pushAlarm():
+#     from alarms.alarm import push_alarm_v2
+#     assetId = request.args.get('assetId')
+#     alarmName = request.args.get('alarmName')
+#     alarmTime = request.args.get('alarmTime')
+#     error_start_time = request.args.get('error_start_time')
+#     error_end_time = request.args.get('error_end_time')
 
-    push_alarm_v2(assetId, alarmName, alarmTime, error_start_time, error_end_time)
+#     push_alarm_v2(assetId, alarmName, alarmTime, error_start_time, error_end_time)
 
 
 @api.get("/analyse")

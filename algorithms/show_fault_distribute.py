@@ -29,6 +29,8 @@ def analyse(farmName, typeName:list, startTime, endTime):
         turbine_list += turbine_names
     result = {}
     #################################
+    if fault_loss_all.empty():
+        return result
     fault_loss_show = pd.DataFrame()
     fault_loss_all_temp = fault_loss_all[fault_loss_all['type'].isin(turbine_type)]
     fault_loss_all_temp = fault_loss_all_temp.loc[startTime:endTime,:]

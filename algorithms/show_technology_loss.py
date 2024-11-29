@@ -27,6 +27,8 @@ def analyse(farmName, typeName:list, startTime, endTime):
         turbine_list += turbine_names
     result = {'table':[]}
     #################################
+    if Technology_loss_all.empty():
+        return result
     #技术待命展示
     Technology_loss_show = pd.DataFrame()
     Technology_loss_all_temp = Technology_loss_all[Technology_loss_all['type'].isin(typeName)]
