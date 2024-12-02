@@ -121,7 +121,10 @@ def power_consistence():
         logger.info(f"#####################################功率一致性####################################")
         params = request.json
         farmName = params['farm'][-1]['mdmId']
-        typeName = params['farm'][-1]['turbineType'][-1]['name']
+        if len(params['farm'][-1]['turbineType']) > 0:
+            typeName = params['farm'][-1]['turbineType'][-1]['name']
+        else:
+            typeName = ''
         startTime = params['target']['startDate']
         endTime = params['target']['endDate']
         result = show_power_consistence.analyse(farmName, typeName, startTime, endTime)
@@ -363,7 +366,7 @@ def farm_compare():
         logger.info(f"#####################################场站对比####################################")
         params = request.json
         # farmName = params['farm'][-1]['mdmId']
-        result_dict = {}
+        result_dict = {"indicator":[], "reason":[]}
         for name_dict in params['farm']:
             farmName = name_dict['mdmId']
             typeName = []
@@ -371,7 +374,10 @@ def farm_compare():
             startTime = params['target']['startDate']
             endTime = params['target']['endDate']
             result = show_loss_reason_indicator.analyse(farmName, typeName, startTime, endTime)
-            result_dict[farmName] = result
+            # result_dict[farmName] = result
+            result_dict['indicator'].append({'farmName': farmName, **result['indicator']})
+            result_dict['reason'].append({'farmName': farmName, **result['reason']})
+
         logger.info(f"场站对比返回结果：")
         logger.info(f"{result_dict}")
         return result_dict
@@ -387,18 +393,23 @@ def time_compare():
         logger.info(f"#####################################时间对比####################################")
         params = request.json
         # farmName = params['farm'][-1]['mdmId']
-        result_dict = {}
+        result_dict = {"indicator":[], "reason":[]}
         farmName = params['farm'][-1]['mdmId']
         typeName = []
         startTime = params['target']['startDate']
         endTime = params['target']['endDate']
         result = show_loss_reason_indicator.analyse(farmName, typeName, startTime, endTime)
-        result_dict["target"] = result
+        # result_dict["target"] = result
+        result_dict["reason"].append({"farmName":farmName, **result["reason"], "dateRange": startTime+" 至 "+endTime})
+        result_dict["indicator"].append({"farmName":farmName, **result["indicator"], "dateRange": startTime+" 至 "+endTime})
+        #####################################################
         # typeName.append(name_dict['name'])
         startTime = params['compare']['startDate']
         endTime = params['compare']['endDate']
         result = show_loss_reason_indicator.analyse(farmName, typeName, startTime, endTime)
-        result_dict["compare"] = result
+        # result_dict["compare"] = result
+        result_dict["reason"].append({"farmName":farmName, **result["reason"], "dateRange": startTime+" 至 "+endTime})
+        result_dict["indicator"].append({"farmName":farmName, **result["indicator"], "dateRange": startTime+" 至 "+endTime})
         logger.info(f"时间对比返回结果：")
         logger.info(f"{result_dict}")
         return result_dict
@@ -413,20 +424,22 @@ def turbine_type_compare():
     try:
         logger.info(f"#####################################机型对比####################################")
         params = request.json
-        result_dict = {'farm':[]}
+        result_dict = {'indicator':[], 'reason':[]}
         for farm in params['farm']:
-            farm_temp = {'farmName':None, 'turbineType':[]}
+            # farm_temp = {'farmName':None, 'turbineType':[]}
             farmName = farm['mdmId']
-            farm_temp['farmName'] = farmName
+            # farm_temp['farmName'] = farmName
             # typeName = []
             for name_dict in farm['turbineType']:
                 typeName = [name_dict['name']]
                 startTime = params['target']['startDate']
                 endTime = params['target']['endDate']
                 result = show_loss_reason_indicator.analyse(farmName, typeName, startTime, endTime)
-                turbine_type_temp = {name_dict['name']:result }
-                farm_temp['turbineType'].append(turbine_type_temp)
-            result_dict['farm'].append(farm_temp)
+                result_dict["reason"].append({"farmName":farmName,"typeName":typeName, **result["reason"]})
+                result_dict["indicator"].append({"farmName":farmName,"typeName":typeName, **result["indicator"]})
+                # turbine_type_temp = {name_dict['name']:result }
+                # farm_temp['turbineType'].append(turbine_type_temp)
+            # result_dict['farm'].append(farm_temp)
         logger.info(f"机型对比返回结果：")
         logger.info(f"{result}")
         return result

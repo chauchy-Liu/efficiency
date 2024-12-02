@@ -27,7 +27,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
         turbine_list += turbine_names
     result = {'table':[]}
     #################################
-    if Technology_loss_all.empty():
+    if Technology_loss_all.empty:
         return result
     #技术待命展示
     Technology_loss_show = pd.DataFrame()
@@ -52,7 +52,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
         Technology_loss_show = pd.concat([Technology_loss_show,Technology_loss_show_temp])#.append(Technology_loss_show_temp)
     if len(Technology_loss_show)>0:
         Technology_loss_show.loc[(Technology_loss_show['count']==0),'count'] = 1
-        for i in range(len(Technology_loss_show)):
+        for i in range(len(Technology_loss_show)): #这里记录结果用iloc[i]['column']
             elem = {}
             #机位号
             elem['wtid'] = '%s'%(Technology_loss_show.iloc[i]['wtid'])

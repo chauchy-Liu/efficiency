@@ -36,7 +36,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
     for num in range(len(turbine_list)):
         stop_loss_show_temp = pd.DataFrame()
         temp_turbine = stop_loss_all_temp[stop_loss_all_temp['wtid']==turbine_list[num]]
-        if len(temp_turbine) > 0:
+        if len(temp_turbine) > 0: #记录结果用loc[num,'column']
             stop_loss_show_temp.loc[num,'time'] = np.nansum(temp_turbine['time'])
             stop_loss_show_temp.loc[num,'loss'] = np.nansum(temp_turbine['loss'])#kwh
             stop_loss_show_temp.loc[num,'wspd'] = np.nanmean(temp_turbine['wspd'])
@@ -44,13 +44,13 @@ def analyse(farmName, typeName:list, startTime, endTime):
             stop_loss_show_temp.loc[num,'wtid'] = turbine_list[num]
             elem = {}
             #机位号
-            elem['wtid'] = '%s'%(stop_loss_show_temp.iloc[num]['wtid'])
+            elem['wtid'] = '%s'%(stop_loss_show_temp.loc[num,'wtid'])
             #故障时长(h)
-            elem['faultTime'] = '%.4f'%(stop_loss_show_temp.iloc[num]['time'])
+            elem['faultTime'] = '%.4f'%(stop_loss_show_temp.loc[num,'time'])
             #故障损失电量(kwh)
-            elem['faultLoss'] = '%.4f'%(stop_loss_show_temp.iloc[num]['loss'])
+            elem['faultLoss'] = '%.4f'%(stop_loss_show_temp.loc[num,'loss'])
             #平均风速(m/s)
-            elem['meanWindSpeed'] = '%.4f'%(stop_loss_show_temp.iloc[num]['wspd'])
+            elem['meanWindSpeed'] = '%.4f'%(stop_loss_show_temp.loc[num,'wspd'])
             result['table'].append(elem)
         # stop_loss_show_temp.insert(0, 'wtid', turbine_list[num])
         stop_loss_show = pd.concat([stop_loss_show,stop_loss_show_temp])#.append(stop_loss_show_temp)

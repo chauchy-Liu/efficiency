@@ -25,13 +25,14 @@ def analyse(farmName, typeName:str, startTime, endTime):
     pw_endTime = endTime
     turbine_type = typeName#np.unique(Turbine_attr['turbineTypeID'])[i_type]
     pw_turbine_all, turbine_list = selectPwTurbineAll(pd.DataFrame(), farmName, typeName, datetime.strptime(startTime, "%Y-%m-%d"), datetime.strptime(endTime, "%Y-%m-%d"))
+    
     # turbine_list = #Turbine_attr_type.loc[0:5,'name']
     # turbine_list = turbine_list.reset_index(drop = True)
     pw_df_all = pd.DataFrame()
     pw_df_all['windbin'] = windbin
     
     pwrat_standard = pd.DataFrame({'windbin':wspd,'pwrat':pwrat})
-    result = {}
+    result = {'table':[]}
     #######机组功率曲线计算
     for num in range(len(turbine_list)):
         turbine_name = turbine_list[num]
@@ -60,10 +61,16 @@ def analyse(farmName, typeName:str, startTime, endTime):
         # turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'k_order'] = pw_df_order.loc[pw_df_order['wtid']==turbine_name,'k_order'].values
 
     pw_df_order.sort_values('k_order',inplace=True)
-    #风机编号
-    result['wtid'] = pw_df_order['wtid'].to_list()
-    #一致性系数
-    result['consistence'] = pw_df_order['k_order'].to_list()
+    for i in range(len(pw_df_order)):
+        elem = {}
+        elem["wtid"] = "%s"%(pw_df_order.iloc[i]['wtid'])
+        elem["consistence"] = "%.3f"%(pw_df_order.iloc[i]['k_order'])
+        elem["order"] = str(i+1)
+        result['table'].append(elem)
+    # #风机编号
+    # result['wtid'] = pw_df_order['wtid'].to_list()
+    # #一致性系数
+    # result['consistence'] = pw_df_order['k_order'].to_list()
     if len(pw_df_order[((pw_df_order['k_order']>1.05*1.05)|(pw_df_order['k_order']<0.95*0.95))])>0:
         print('##########功率曲线一致性较差###########')
     return result

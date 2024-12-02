@@ -27,7 +27,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
         turbine_list += turbine_names
     result = {'table':[]}
     #################################
-    if limgrid_loss_all.empty():
+    if limgrid_loss_all.empty:
         return result
     #电网限电展示
     limgrid_loss_show = pd.DataFrame()
@@ -42,16 +42,16 @@ def analyse(farmName, typeName:list, startTime, endTime):
             limgrid_loss_show_temp.loc[num,'time'] = np.nansum(temp_turbine['time'])
             limgrid_loss_show_temp.loc[num,'loss'] = np.nansum(temp_turbine['loss'])#kwh
             limgrid_loss_show_temp.loc[num,'wspd'] = np.nanmean(temp_turbine['wspd'])
-            limgrid_loss_show_temp.loc('wtid', turbine_list[num])
+            limgrid_loss_show_temp.loc[num,'wtid'] =  turbine_list[num]
             elem = {}
             #机位号
-            elem['wtid'] = '%s'%(limgrid_loss_show_temp.iloc[num]['wtid'])
+            elem['wtid'] = '%s'%(limgrid_loss_show_temp.loc[num]['wtid'])
             #故障时长(h)
-            elem['faultTime'] = '%.4f'%(limgrid_loss_show_temp.iloc[num]['time'])
+            elem['faultTime'] = '%.4f'%(limgrid_loss_show_temp.loc[num]['time'])
             #故障损失电量(kwh)
-            elem['faultLoss'] = '%.4f'%(limgrid_loss_show_temp.iloc[num]['loss'])
+            elem['faultLoss'] = '%.4f'%(limgrid_loss_show_temp.loc[num]['loss'])
             #平均风速(m/s)
-            elem['meanWindSpeed'] = '%.4f'%(limgrid_loss_show_temp.iloc[num]['wspd'])
+            elem['meanWindSpeed'] = '%.4f'%(limgrid_loss_show_temp.loc[num]['wspd'])
             result['table'].append(elem)
             #stop_loss_show_temp.loc[i,'exltmp'] = np.nanmean(temp_turbine['exltmp'])
         # limgrid_loss_show_temp.insert(0, 'wtid', turbine_list[num])

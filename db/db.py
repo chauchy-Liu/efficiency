@@ -460,7 +460,8 @@ def selectPwTurbineAll(data, farmName, typeName, start_time=datetime.now()-timed
                 lineValue[6] = np.nan
             data.loc[localtime, ['type',lineValue[4]+'_wspd',lineValue[4]]] = [lineValue[3], lineValue[5],lineValue[6]]
             if len(typeName) > 0:
-                wtids.append(lineValue[4])
+                if lineValue[4] not in wtids:
+                    wtids.append(lineValue[4])
             else:
                 if lineValue[3] in wtids:
                     wtids[lineValue[3]].append(lineValue[4])
@@ -538,23 +539,48 @@ def selectTechnologyLossAll(data, farmName, typeName, start_time=datetime.now()-
     if queryResult == None or len(queryResult) <= 0:
         pass #return pd.DataFrame()
     else:
-        for lineValue in queryResult:
-            localtime = pd.to_datetime(lineValue[0],errors='coerce')
-            #nan验证
-            lineValue = list(lineValue)
-            if lineValue[9] == nan:
-                lineValue[9] = np.nan
-            if lineValue[6] == nan:
-                lineValue[6] = np.nan
-            if lineValue[7] == nan:
-                lineValue[7] = np.nan
-            if lineValue[8] == nan:
-                lineValue[8] = np.nan
-            data.loc[localtime, ['type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10]]
-            if lineValue[3] in wtids:
-                wtids[lineValue[3]].append(lineValue[4])
-            else:
-                wtids[lineValue[3]] = [lineValue[4]]
+        if len(typeName) > 0:
+            for lineValue in queryResult:
+                localtime = pd.to_datetime(lineValue[0],errors='coerce')
+                #nan验证
+                lineValue = list(lineValue)
+                if lineValue[9] == nan:
+                    lineValue[9] = np.nan
+                if lineValue[6] == nan:
+                    lineValue[6] = np.nan
+                if lineValue[7] == nan:
+                    lineValue[7] = np.nan
+                if lineValue[8] == nan:
+                    lineValue[8] = np.nan
+                data.loc[localtime, ['type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10]]
+                if lineValue[3] in wtids:
+                    if lineValue[4] not in wtids[lineValue[3]]:
+                        wtids[lineValue[3]].append(lineValue[4])
+                else:
+                    wtids[lineValue[3]] = [lineValue[4]]
+        else:
+            for lineValue in queryResult:
+                localtime = pd.to_datetime(lineValue[0],errors='coerce')
+                #nan验证
+                lineValue = list(lineValue)
+                if lineValue[9] == nan:
+                    lineValue[9] = np.nan
+                if lineValue[6] == nan:
+                    lineValue[6] = np.nan
+                if lineValue[7] == nan:
+                    lineValue[7] = np.nan
+                if lineValue[8] == nan:
+                    lineValue[8] = np.nan
+                data.loc[localtime, ['type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10]]
+                if lineValue[3] in wtids:
+                    if lineValue[4] not in wtids[lineValue[3]]:
+                        wtids[lineValue[3]].append(lineValue[4])
+                else:
+                    wtids[lineValue[3]] = [lineValue[4]]
+                if lineValue[3] in typeName:
+                    pass
+                else:
+                    typeName.append(lineValue[3])
     data.replace(b'', 0, inplace=True)
     return data, wtids
 def selectLimturbineLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=1), end_time=datetime.now()-timedelta(days=91)):
@@ -620,21 +646,44 @@ def selectLimturbineLossAll(data, farmName, typeName, start_time=datetime.now()-
     if queryResult == None or len(queryResult) <= 0:
         pass #return pd.DataFrame()
     else:
-        for lineValue in queryResult:
-            localtime = pd.to_datetime(lineValue[0],errors='coerce')
-            #nan验证
-            lineValue = list(lineValue)
-            if lineValue[5] == nan:
-                lineValue[5] = np.nan
-            if lineValue[6] == nan:
-                lineValue[6] = np.nan
-            if lineValue[7] == nan:
-                lineValue[7] = np.nan
-            data.loc[localtime, ['type', 'wtid', 'time', 'loss', 'wspd']] = [lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5]]
-            if lineValue[3] in wtids:
-                wtids[lineValue[3]].append(lineValue[4])
-            else:
-                wtids[lineValue[3]] = [lineValue[4]]
+        if len(typeName) > 0:
+            for lineValue in queryResult:
+                localtime = pd.to_datetime(lineValue[0],errors='coerce')
+                #nan验证
+                lineValue = list(lineValue)
+                if lineValue[5] == nan:
+                    lineValue[5] = np.nan
+                if lineValue[6] == nan:
+                    lineValue[6] = np.nan
+                if lineValue[7] == nan:
+                    lineValue[7] = np.nan
+                data.loc[localtime, ['type', 'wtid', 'time', 'loss', 'wspd']] = [lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5]]
+                if lineValue[3] in wtids:
+                    if lineValue[4] not in wtids[lineValue[3]]:
+                        wtids[lineValue[3]].append(lineValue[4])
+                else:
+                    wtids[lineValue[3]] = [lineValue[4]]
+        else:
+            for lineValue in queryResult:
+                localtime = pd.to_datetime(lineValue[0],errors='coerce')
+                #nan验证
+                lineValue = list(lineValue)
+                if lineValue[5] == nan:
+                    lineValue[5] = np.nan
+                if lineValue[6] == nan:
+                    lineValue[6] = np.nan
+                if lineValue[7] == nan:
+                    lineValue[7] = np.nan
+                data.loc[localtime, ['type', 'wtid', 'time', 'loss', 'wspd']] = [lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5]]
+                if lineValue[3] in wtids:
+                    if lineValue[4] not in wtids[lineValue[3]]:
+                        wtids[lineValue[3]].append(lineValue[4])
+                else:
+                    wtids[lineValue[3]] = [lineValue[4]]
+                if lineValue[3] in typeName:
+                    pass
+                else:
+                    typeName.append(lineValue[3])
     data.replace(b'', 0, inplace=True)
     return data,wtids
 def selectFaultgridLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=1), end_time=datetime.now()-timedelta(days=91)):
@@ -706,23 +755,48 @@ def selectFaultgridLossAll(data, farmName, typeName, start_time=datetime.now()-t
     if queryResult == None or len(queryResult) <= 0:
         pass #return pd.DataFrame()
     else:
-        for lineValue in queryResult:
-            localtime = pd.to_datetime(lineValue[0],errors='coerce')
-            #nan验证
-            lineValue = list(lineValue)
-            if lineValue[9] == nan:
-                lineValue[9] = np.nan
-            if lineValue[6] == nan:
-                lineValue[6] = np.nan
-            if lineValue[7] == nan:
-                lineValue[7] = np.nan
-            if lineValue[8] == nan:
-                lineValue[8] = np.nan
-            data.loc[localtime, ['type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10]]
-            if lineValue[3] in wtids:
-                wtids[lineValue[3]].append(lineValue[4])
-            else:
-                wtids[lineValue[3]] = [lineValue[4]]
+        if len(typeName) > 0:
+            for lineValue in queryResult:
+                localtime = pd.to_datetime(lineValue[0],errors='coerce')
+                #nan验证
+                lineValue = list(lineValue)
+                if lineValue[9] == nan:
+                    lineValue[9] = np.nan
+                if lineValue[6] == nan:
+                    lineValue[6] = np.nan
+                if lineValue[7] == nan:
+                    lineValue[7] = np.nan
+                if lineValue[8] == nan:
+                    lineValue[8] = np.nan
+                data.loc[localtime, ['type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10]]
+                if lineValue[3] in wtids:
+                    if lineValue[4] not in wtids[lineValue[3]]:
+                        wtids[lineValue[3]].append(lineValue[4])
+                else:
+                    wtids[lineValue[3]] = [lineValue[4]]
+        else:
+            for lineValue in queryResult:
+                localtime = pd.to_datetime(lineValue[0],errors='coerce')
+                #nan验证
+                lineValue = list(lineValue)
+                if lineValue[9] == nan:
+                    lineValue[9] = np.nan
+                if lineValue[6] == nan:
+                    lineValue[6] = np.nan
+                if lineValue[7] == nan:
+                    lineValue[7] = np.nan
+                if lineValue[8] == nan:
+                    lineValue[8] = np.nan
+                data.loc[localtime, ['type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10]]
+                if lineValue[3] in wtids:
+                    if lineValue[4] not in wtids[lineValue[3]]:
+                        wtids[lineValue[3]].append(lineValue[4])
+                else:
+                    wtids[lineValue[3]] = [lineValue[4]]
+                if lineValue[3] in typeName:
+                    pass
+                else:
+                    typeName.append(lineValue[3])
     data.replace(b'', 0, inplace=True)
     return data, wtids
 def selectStopLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=1), end_time=datetime.now()-timedelta(days=91)):
@@ -790,23 +864,48 @@ def selectStopLossAll(data, farmName, typeName, start_time=datetime.now()-timede
     if queryResult == None or len(queryResult) <= 0:
         pass #return pd.DataFrame()
     else:
-        for lineValue in queryResult:
-            localtime = pd.to_datetime(lineValue[0],errors='coerce')
-            #nan验证
-            lineValue = list(lineValue)
-            if lineValue[5] == nan:
-                lineValue[5] = np.nan
-            if lineValue[6] == nan:
-                lineValue[6] = np.nan
-            if lineValue[7] == nan:
-                lineValue[7] = np.nan
-            if lineValue[8] == nan:
-                lineValue[8] = np.nan
-            data.loc[localtime, ['type', 'wtid', 'time', 'loss', 'wspd', 'exltmp']] = [lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5], lineValue[8]]
-            if lineValue[3] in wtids:
-                wtids[lineValue[3]].append(lineValue[4])
-            else:
-                wtids[lineValue[3]] = [lineValue[4]]
+        if len(typeName) > 0:
+            for lineValue in queryResult:
+                localtime = pd.to_datetime(lineValue[0],errors='coerce')
+                #nan验证
+                lineValue = list(lineValue)
+                if lineValue[5] == nan:
+                    lineValue[5] = np.nan
+                if lineValue[6] == nan:
+                    lineValue[6] = np.nan
+                if lineValue[7] == nan:
+                    lineValue[7] = np.nan
+                if lineValue[8] == nan:
+                    lineValue[8] = np.nan
+                data.loc[localtime, ['type', 'wtid', 'time', 'loss', 'wspd', 'exltmp']] = [lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5], lineValue[8]]
+                if lineValue[3] in wtids:
+                    if lineValue[4] not in wtids[lineValue[3]]:
+                        wtids[lineValue[3]].append(lineValue[4])
+                else:
+                    wtids[lineValue[3]] = [lineValue[4]]
+        else:
+            for lineValue in queryResult:
+                localtime = pd.to_datetime(lineValue[0],errors='coerce')
+                #nan验证
+                lineValue = list(lineValue)
+                if lineValue[5] == nan:
+                    lineValue[5] = np.nan
+                if lineValue[6] == nan:
+                    lineValue[6] = np.nan
+                if lineValue[7] == nan:
+                    lineValue[7] = np.nan
+                if lineValue[8] == nan:
+                    lineValue[8] = np.nan
+                data.loc[localtime, ['type', 'wtid', 'time', 'loss', 'wspd', 'exltmp']] = [lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5], lineValue[8]]
+                if lineValue[3] in wtids:
+                    if lineValue[4] not in wtids[lineValue[3]]:
+                        wtids[lineValue[3]].append(lineValue[4])
+                else:
+                    wtids[lineValue[3]] = [lineValue[4]]
+                if lineValue[3] in typeName:
+                    pass
+                else:
+                    typeName.append(lineValue[3])
     data.replace(b'', 0, inplace=True)
     return data, wtids
 def selectFaultLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=1), end_time=datetime.now()-timedelta(days=91)):
@@ -880,23 +979,48 @@ def selectFaultLossAll(data, farmName, typeName, start_time=datetime.now()-timed
     if queryResult == None or len(queryResult) <= 0:
         pass #return pd.DataFrame()
     else:
-        for lineValue in queryResult:
-            localtime = pd.to_datetime(lineValue[0],errors='coerce')
-            #nan验证
-            lineValue = list(lineValue)
-            if lineValue[9] == nan:
-                lineValue[9] = np.nan
-            if lineValue[6] == nan:
-                lineValue[6] = np.nan
-            if lineValue[7] == nan:
-                lineValue[7] = np.nan
-            if lineValue[8] == nan:
-                lineValue[8] = np.nan
-            data.loc[localtime, ['type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe', 'fsyst']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10], lineValue[11]]
-            if lineValue[3] in wtids:
-                wtids[lineValue[3]].append(lineValue[4])
-            else:
-                wtids[lineValue[3]] = [lineValue[4]]
+        if len(typeName) > 0:
+            for lineValue in queryResult:
+                localtime = pd.to_datetime(lineValue[0],errors='coerce')
+                #nan验证
+                lineValue = list(lineValue)
+                if lineValue[9] == nan:
+                    lineValue[9] = np.nan
+                if lineValue[6] == nan:
+                    lineValue[6] = np.nan
+                if lineValue[7] == nan:
+                    lineValue[7] = np.nan
+                if lineValue[8] == nan:
+                    lineValue[8] = np.nan
+                data.loc[localtime, ['type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe', 'fsyst']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10], lineValue[11]]
+                if lineValue[3] in wtids:
+                    if lineValue[4] not in wtids[lineValue[3]]:
+                        wtids[lineValue[3]].append(lineValue[4])
+                else:
+                    wtids[lineValue[3]] = [lineValue[4]]
+        else:
+            for lineValue in queryResult:
+                localtime = pd.to_datetime(lineValue[0],errors='coerce')
+                #nan验证
+                lineValue = list(lineValue)
+                if lineValue[9] == nan:
+                    lineValue[9] = np.nan
+                if lineValue[6] == nan:
+                    lineValue[6] = np.nan
+                if lineValue[7] == nan:
+                    lineValue[7] = np.nan
+                if lineValue[8] == nan:
+                    lineValue[8] = np.nan
+                data.loc[localtime, ['type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe', 'fsyst']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10], lineValue[11]]
+                if lineValue[3] in wtids:
+                    if lineValue[4] not in wtids[lineValue[3]]:
+                        wtids[lineValue[3]].append(lineValue[4])
+                else:
+                    wtids[lineValue[3]] = [lineValue[4]]
+                if lineValue[3] in typeName:
+                    pass
+                else:
+                    typeName.append(lineValue[3])
     data.replace(b'', 0, inplace=True)
     return data, wtids
 def selectLimgridLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=1), end_time=datetime.now()-timedelta(days=91)):
@@ -962,21 +1086,44 @@ def selectLimgridLossAll(data, farmName, typeName, start_time=datetime.now()-tim
     if queryResult == None or len(queryResult) <= 0:
         pass #return pd.DataFrame()
     else:
-        for lineValue in queryResult:
-            localtime = pd.to_datetime(lineValue[0],errors='coerce')
-            #nan验证
-            lineValue = list(lineValue)
-            if lineValue[5] == nan:
-                lineValue[5] = np.nan
-            if lineValue[6] == nan:
-                lineValue[6] = np.nan
-            if lineValue[7] == nan:
-                lineValue[7] = np.nan
-            data.loc[localtime, ['type', 'wtid', 'time', 'loss', 'wspd']] = [lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5]]
-            if lineValue[3] in wtids:
-                wtids[lineValue[3]].append(lineValue[4])
-            else:
-                wtids[lineValue[3]] = [lineValue[4]]
+        if len(typeName) > 0:
+            for lineValue in queryResult:
+                localtime = pd.to_datetime(lineValue[0],errors='coerce')
+                #nan验证
+                lineValue = list(lineValue)
+                if lineValue[5] == nan:
+                    lineValue[5] = np.nan
+                if lineValue[6] == nan:
+                    lineValue[6] = np.nan
+                if lineValue[7] == nan:
+                    lineValue[7] = np.nan
+                data.loc[localtime, ['type', 'wtid', 'time', 'loss', 'wspd']] = [lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5]]
+                if lineValue[3] in wtids:
+                    if lineValue[4] not in wtids[lineValue[3]]:
+                        wtids[lineValue[3]].append(lineValue[4])
+                else:
+                    wtids[lineValue[3]] = [lineValue[4]]
+        else:
+            for lineValue in queryResult:
+                localtime = pd.to_datetime(lineValue[0],errors='coerce')
+                #nan验证
+                lineValue = list(lineValue)
+                if lineValue[5] == nan:
+                    lineValue[5] = np.nan
+                if lineValue[6] == nan:
+                    lineValue[6] = np.nan
+                if lineValue[7] == nan:
+                    lineValue[7] = np.nan
+                data.loc[localtime, ['type', 'wtid', 'time', 'loss', 'wspd']] = [lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5]]
+                if lineValue[3] in wtids:
+                    if lineValue[4] not in wtids[lineValue[3]]:
+                        wtids[lineValue[3]].append(lineValue[4])
+                else:
+                    wtids[lineValue[3]] = [lineValue[4]]
+                if lineValue[3] in typeName:
+                    pass
+                else:
+                    typeName.append(lineValue[3])
     data.replace(b'', 0, inplace=True)
     return data, wtids
 
@@ -1045,13 +1192,28 @@ def selectEnyWspdAll(data, farmName, typeName, start_time=datetime.now()-timedel
     if queryResult == None or len(queryResult) <= 0:
         pass #return pd.DataFrame()
     else:
-        for lineValue in queryResult:
-            localtime = pd.to_datetime(lineValue[0],errors='coerce')
-            data.loc[localtime, ['type', 'wtid', 'eny', 'wspd', 'count', 'Rate_power']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[7], lineValue[8]]
-            if lineValue[3] in wtids:
-                wtids[lineValue[3]].append(lineValue[4])
-            else:
-                wtids[lineValue[3]] = [lineValue[4]]
+        if len(typeName) > 0:
+            for lineValue in queryResult:
+                localtime = pd.to_datetime(lineValue[0],errors='coerce')
+                data.loc[localtime, ['type', 'wtid', 'eny', 'wspd', 'count', 'Rate_power']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[7], lineValue[8]]
+                if lineValue[3] in wtids:
+                    if lineValue[4] not in wtids[lineValue[3]]:
+                        wtids[lineValue[3]].append(lineValue[4])
+                else:
+                    wtids[lineValue[3]] = [lineValue[4]]
+        else:
+            for lineValue in queryResult:
+                localtime = pd.to_datetime(lineValue[0],errors='coerce')
+                data.loc[localtime, ['type', 'wtid', 'eny', 'wspd', 'count', 'Rate_power']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[7], lineValue[8]]
+                if lineValue[3] in wtids:
+                    if lineValue[4] not in wtids[lineValue[3]]:
+                        wtids[lineValue[3]].append(lineValue[4])
+                else:
+                    wtids[lineValue[3]] = [lineValue[4]]
+                if lineValue[3] in typeName:
+                    pass
+                else:
+                    typeName.append(lineValue[3])
     data.replace(b'', 0, inplace=True)
     return data, wtids
 ###################################################

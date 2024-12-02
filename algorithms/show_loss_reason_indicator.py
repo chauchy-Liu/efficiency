@@ -198,7 +198,10 @@ def analyse(farmName, typeName:list, startTime, endTime):
     eny_wspd_temp = eny_wspd_temp.loc[startTime:endTime,:]
     eny_wspd_temp = eny_wspd_temp[eny_wspd_temp['wtid'].isin(turbine_EnyWspd_list)]
     #平均风速
-    result['indicator']['meanWindSpeed'] = '%.4f'%(np.nansum(eny_wspd_temp['wspd'].multiply(eny_wspd_temp['count']))/np.nansum(eny_wspd_temp['count']))
+    if np.nansum(eny_wspd_temp['count']) != 0:
+        result['indicator']['meanWindSpeed'] = '%.4f'%(np.nansum(eny_wspd_temp['wspd'].multiply(eny_wspd_temp['count']))/np.nansum(eny_wspd_temp['count']))
+    else:
+        result['indicator']['meanWindSpeed'] = '%.4f'%(np.nansum(eny_wspd_temp['wspd'])/len(eny_wspd_temp['wspd'].notnull()))
     #实发电量
     result['indicator']['actualPower'] = '%.4f'%(np.nansum(eny_wspd_temp['eny']) / 10000.)
     #等效小时

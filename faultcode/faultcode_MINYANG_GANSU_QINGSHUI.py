@@ -447,13 +447,13 @@ state = pd.DataFrame({'type_org':sname_org,'snum':snum.astype(int),'state_type':
 
 
 # 并网转速
-Rotspd_Connect = 1100.0 
+Rotspd_Connect = 1074.2 
 # 额定转速
-Rotspd_Rate = 1750.0 
+Rotspd_Rate = 1755.0 
 # 转矩控制系数
 
 # 最小桨距角
-Pitch_Min = 0.0
+Pitch_Min = -0.5
 
 # 并网状态
 # state = 3

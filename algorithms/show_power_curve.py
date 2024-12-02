@@ -60,6 +60,14 @@ def analyse(farmName, typeName:str, startTime, endTime):
     powerCurve['yAxis']['theoryPower'] = pw_df_all['pwrat'].to_list()
     for turbine_name in turbine_list:
         powerCurve['yAxis'][turbine_name] = pw_df_all[turbine_name].to_list()
+    for i in range(len(powerCurve['xAxis']['xData'])):
+        if powerCurve['xAxis']['xData'][i] == np.nan or str(powerCurve['xAxis']['xData'][i]) == 'nan':
+            powerCurve['xAxis']['xData'][i] = None
+        if powerCurve['yAxis']['theoryPower'][i] == np.nan or str(powerCurve['yAxis']['theoryPower'][i]) == 'nan':
+            powerCurve['yAxis']['theoryPower'][i] = None
+        for turbine_name in turbine_list:
+            if powerCurve['yAxis'][turbine_name][i] == np.nan or str(powerCurve['yAxis'][turbine_name][i]) == 'nan':
+                powerCurve['yAxis'][turbine_name][i] = None
     # turbine_num = 16
     # pnum = len(turbine_list)//turbine_num
     # rem = len(turbine_list)%turbine_num

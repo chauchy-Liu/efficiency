@@ -45,24 +45,33 @@ def analyse(farmName, typeName:str, startTime, endTime):
     pw_df_all = pw_df_all.dropna(axis=0,how='all',subset=pw_df_all.columns[1:],inplace=False)
     pw_df_all = pd.merge(pw_df_all,pwrat_standard,how='outer',on='windbin')
     for turbine_name in turbine_list:
-        elem = {
-            #机组
-            'wtid': turbine_name,
-            #风速
-            'windSpeed': None,
-            #理论值
-            'theory': None,
-            #实测值
-            'actual': None
-        }
         for i in range(len(pw_df_all['windbin'])):
+            elem = {
+                #机组
+                'wtid': turbine_name,
+                #风速
+                'windSpeed': None,
+                #理论值
+                'theory': None,
+                #实测值
+                'actual': None
+            }
             #风速
-            elem['windSpeed'] = str(pw_df_all.iloc[i]['windbin'])
+            if str(pw_df_all.iloc[i]['windbin']) == 'nan':
+                elem['windSpeed'] = None
+            else:
+                elem['windSpeed'] = str(pw_df_all.iloc[i]['windbin'])
             #理论值
-            elem['theory'] = str(pw_df_all.iloc[i]['pwrat'])
+            if str(pw_df_all.iloc[i]['pwrat']) == 'nan':
+                elem['theory'] = None
+            else:
+                elem['theory'] = str(pw_df_all.iloc[i]['pwrat'])
             #实测值
-            elem['actual'] = str(pw_df_all.iloc[i][turbine_name])
+            if str(pw_df_all.iloc[i][turbine_name]) == 'nan':
+                elem['actual'] = None
+            else:
+                elem['actual'] = str(pw_df_all.iloc[i][turbine_name])
 
-        result['table'].append(elem)
+            result['table'].append(elem)
     
     return result

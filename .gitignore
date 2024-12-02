@@ -2,3 +2,6 @@ logs/*
 .vscode/
 .DS_Store
 result/*
+*.pkl.gz
+*.pkl
+*.gz

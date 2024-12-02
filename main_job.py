@@ -670,6 +670,13 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
             private_points = []
         #参数确定
         get_data_async.define_parameters(algorithms_configs, name)
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        #调试专用语句，其他情况注释该语句为了调试记录和加载数据
+        if not os.path.exists('Efficiency_ana_V3.pkl.gz'):
+            algorithms_configs.to_pickle('algorithms_configs.pkl.gz', compression='gzip')
+        else:
+            algorithms_configs = pd.read_pickle('algorithms_configs.pkl.gz')
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # 跑模型
         if name == "Efficiency_ana_V3":
             timeOut = 7200
