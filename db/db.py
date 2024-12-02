@@ -421,10 +421,10 @@ def selectPwTurbineAll(data, farmName, typeName, start_time=datetime.now()-timed
             farm_id, \
             type_name, \
             wtid, \
-            wpsd, \
+            wspd, \
             pwrt \
             from pw_turbine_all \
-            where farm_name=%s AND type_name=%s AND data_time BETWEEN %s AND %s' \
+            where farm_name=%s AND type_name=%s AND data_time BETWEEN %s AND %s \
         "
         data_to_obtain = (farmName, typeName, start_time, end_time)
         log.info(f'sql语句：{obtain_query}')
@@ -437,10 +437,10 @@ def selectPwTurbineAll(data, farmName, typeName, start_time=datetime.now()-timed
                 farm_id, \
                 type_name, \
                 wtid, \
-                wpsd, \
+                wspd, \
                 pwrt \
                 from pw_turbine_all \
-                where farm_name=%s AND data_time BETWEEN %s AND %s' \
+                where farm_name=%s AND data_time BETWEEN %s AND %s \
             "
         data_to_obtain = (farmName, start_time, end_time)
         log.info(f'sql语句：{obtain_query}')
@@ -458,7 +458,7 @@ def selectPwTurbineAll(data, farmName, typeName, start_time=datetime.now()-timed
                 lineValue[5] = np.nan
             if lineValue[6] == nan:
                 lineValue[6] = np.nan
-            data.loc[localtime, ['type',lineValue[4]+'_wpsd',lineValue[4]]] = [lineValue[3], lineValue[5],lineValue[6]]
+            data.loc[localtime, ['type',lineValue[4]+'_wspd',lineValue[4]]] = [lineValue[3], lineValue[5],lineValue[6]]
             if len(typeName) > 0:
                 wtids.append(lineValue[4])
             else:
@@ -487,6 +487,8 @@ def selectTechnologyLossAll(data, farmName, typeName, start_time=datetime.now()-
     result = cursor.fetchone()
     #判断表是否存在
     if not result:
+        columns = ['type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe']
+        data = pd.DataFrame(columns=columns)
         return data, wtids
     typeNameStr = ""
     for name in typeName:
@@ -501,12 +503,12 @@ def selectTechnologyLossAll(data, farmName, typeName, start_time=datetime.now()-
             wtid, \
             fault, \
             count, \
-            wpsd, \
+            wspd, \
             time_rate, \
             loss, \
             fault_describe \
             from technology_loss_all \
-            where farm_name=%s AND type_name=%s  AND data_time BETWEEN %s AND %s' \
+            where farm_name=%s AND type_name=%s  AND data_time BETWEEN %s AND %s \
         "
         data_to_obtain = (farmName, typeNameStr, start_time, end_time)
         log.info(f'sql语句：{obtain_query}')
@@ -521,12 +523,12 @@ def selectTechnologyLossAll(data, farmName, typeName, start_time=datetime.now()-
             wtid, \
             fault, \
             count, \
-            wpsd, \
+            wspd, \
             time_rate, \
             loss, \
             fault_describe \
             from technology_loss_all \
-            where farm_name=%s AND data_time BETWEEN %s AND %s' \
+            where farm_name=%s AND data_time BETWEEN %s AND %s \
         "
         data_to_obtain = (farmName, start_time, end_time)
         log.info(f'sql语句：{obtain_query}')
@@ -573,6 +575,8 @@ def selectLimturbineLossAll(data, farmName, typeName, start_time=datetime.now()-
     result = cursor.fetchone()
     #判断表是否存在
     if not result:
+        columns = ['type', 'wtid', 'time', 'loss', 'wspd']
+        data = pd.DataFrame(columns=columns)
         return data, wtids
     typeNameStr = ""
     for name in typeName:
@@ -585,11 +589,11 @@ def selectLimturbineLossAll(data, farmName, typeName, start_time=datetime.now()-
             farm_id, \
             type_name, \
             wtid, \
-            wpsd, \
+            wspd, \
             time_rate, \
             loss \
             from limturbine_loss_all \
-            where farm_name=%s AND type_name=%s  AND data_time BETWEEN %s AND %s' \
+            where farm_name=%s AND type_name=%s  AND data_time BETWEEN %s AND %s \
         "
         data_to_obtain = (farmName, typeNameStr, start_time, end_time)
         log.info(f'sql语句：{obtain_query}')
@@ -602,11 +606,11 @@ def selectLimturbineLossAll(data, farmName, typeName, start_time=datetime.now()-
             farm_id, \
             type_name, \
             wtid, \
-            wpsd, \
+            wspd, \
             time_rate, \
             loss \
             from limturbine_loss_all \
-            where farm_name=%s AND data_time BETWEEN %s AND %s' \
+            where farm_name=%s AND data_time BETWEEN %s AND %s \
         "
         data_to_obtain = (farmName, start_time, end_time)
         log.info(f'sql语句：{obtain_query}')
@@ -651,6 +655,8 @@ def selectFaultgridLossAll(data, farmName, typeName, start_time=datetime.now()-t
     result = cursor.fetchone()
     #判断表是否存在
     if not result:
+        columns = ['type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe']
+        data = pd.DataFrame(columns=columns)
         return data, wtids
     typeNameStr = ""
     for name in typeName:
@@ -665,12 +671,12 @@ def selectFaultgridLossAll(data, farmName, typeName, start_time=datetime.now()-t
             wtid, \
             fault, \
             count, \
-            wpsd, \
+            wspd, \
             time_rate, \
             loss, \
             fault_describe \
             from faultgrid_loss_all \
-            where farm_name=%s AND type_name=%s  AND data_time BETWEEN %s AND %s' \
+            where farm_name=%s AND type_name=%s  AND data_time BETWEEN %s AND %s \
         "
         data_to_obtain = (farmName, typeNameStr, start_time, end_time)
         log.info(f'sql语句：{obtain_query}')
@@ -685,12 +691,12 @@ def selectFaultgridLossAll(data, farmName, typeName, start_time=datetime.now()-t
             wtid, \
             fault, \
             count, \
-            wpsd, \
+            wspd, \
             time_rate, \
             loss, \
             fault_describe \
             from faultgrid_loss_all \
-            where farm_name=%s AND data_time BETWEEN %s AND %s' \
+            where farm_name=%s AND data_time BETWEEN %s AND %s \
         "
         data_to_obtain = (farmName, start_time, end_time)
         log.info(f'sql语句：{obtain_query}')
@@ -737,6 +743,8 @@ def selectStopLossAll(data, farmName, typeName, start_time=datetime.now()-timede
     result = cursor.fetchone()
     #判断表是否存在
     if not result:
+        columns = ['type', 'wtid', 'time', 'loss', 'wspd', 'exltmp']
+        data = pd.DataFrame(columns=columns)
         return data, wtids
     typeNameStr = ""
     for name in typeName:
@@ -749,12 +757,12 @@ def selectStopLossAll(data, farmName, typeName, start_time=datetime.now()-timede
             farm_id, \
             type_name, \
             wtid, \
-            wpsd, \
+            wspd, \
             time_rate, \
             loss, \
             exltmp \
             from stop_loss_all \
-            where farm_name=%s AND type_name=%s  AND data_time BETWEEN %s AND %s' \
+            where farm_name=%s AND type_name=%s  AND data_time BETWEEN %s AND %s \
         "
         data_to_obtain = (farmName, typeNameStr, start_time, end_time)
         log.info(f'sql语句：{obtain_query}')
@@ -767,12 +775,12 @@ def selectStopLossAll(data, farmName, typeName, start_time=datetime.now()-timede
             farm_id, \
             type_name, \
             wtid, \
-            wpsd, \
+            wspd, \
             time_rate, \
             loss, \
             exltmp \
             from stop_loss_all \
-            where farm_name=%s AND data_time BETWEEN %s AND %s' \
+            where farm_name=%s AND data_time BETWEEN %s AND %s \
         "
         data_to_obtain = (farmName, start_time, end_time)
         log.info(f'sql语句：{obtain_query}')
@@ -819,6 +827,8 @@ def selectFaultLossAll(data, farmName, typeName, start_time=datetime.now()-timed
     result = cursor.fetchone()
     #判断表是否存在
     if not result:
+        columns = ['type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe', 'fsyst']
+        data = pd.DataFrame(columns=columns)
         return data, wtids
     typeNameStr = ""
     for name in typeName:
@@ -833,13 +843,13 @@ def selectFaultLossAll(data, farmName, typeName, start_time=datetime.now()-timed
             wtid, \
             fault, \
             count, \
-            wpsd, \
+            wspd, \
             time_rate, \
             loss, \
             fault_describe, \
             fsyst \
             from fault_loss_all \
-            where farm_name=%s AND type_name in (%s)  AND data_time BETWEEN %s AND %s' \
+            where farm_name=%s AND type_name in (%s)  AND data_time BETWEEN %s AND %s \
         "
         data_to_obtain = (farmName, typeNameStr, start_time, end_time)
         log.info(f'sql语句：{obtain_query}')
@@ -854,13 +864,13 @@ def selectFaultLossAll(data, farmName, typeName, start_time=datetime.now()-timed
             wtid, \
             fault, \
             count, \
-            wpsd, \
+            wspd, \
             time_rate, \
             loss, \
             fault_describe, \
             fsyst \
             from fault_loss_all \
-            where farm_name=%s AND data_time BETWEEN %s AND %s' \
+            where farm_name=%s AND data_time BETWEEN %s AND %s \
         "
         data_to_obtain = (farmName, start_time, end_time)
         log.info(f'sql语句：{obtain_query}')
@@ -907,6 +917,8 @@ def selectLimgridLossAll(data, farmName, typeName, start_time=datetime.now()-tim
     result = cursor.fetchone()
     #判断表是否存在
     if not result:
+        columns = ['type', 'wtid', 'time', 'loss', 'wspd']
+        data = pd.DataFrame(columns=columns)
         return data, wtids
     typeNameStr = ""
     for name in typeName:
@@ -919,11 +931,11 @@ def selectLimgridLossAll(data, farmName, typeName, start_time=datetime.now()-tim
             farm_id, \
             type_name, \
             wtid, \
-            wpsd, \
+            wspd, \
             time_rate, \
             loss \
             from limgrid_loss_all \
-            where farm_name=%s AND type_name=%s  AND data_time BETWEEN %s AND %s' \
+            where farm_name=%s AND type_name=%s  AND data_time BETWEEN %s AND %s \
         "
         data_to_obtain = (farmName, typeNameStr, start_time, end_time)
         log.info(f'sql语句：{obtain_query}')
@@ -936,11 +948,11 @@ def selectLimgridLossAll(data, farmName, typeName, start_time=datetime.now()-tim
             farm_id, \
             type_name, \
             wtid, \
-            wpsd, \
+            wspd, \
             time_rate, \
             loss \
             from limgrid_loss_all \
-            where farm_name=%s AND data_time BETWEEN %s AND %s' \
+            where farm_name=%s AND data_time BETWEEN %s AND %s \
         "
         data_to_obtain = (farmName, start_time, end_time)
         log.info(f'sql语句：{obtain_query}')
@@ -969,10 +981,10 @@ def selectLimgridLossAll(data, farmName, typeName, start_time=datetime.now()-tim
     return data, wtids
 
 def selectEnyWspdAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=1), end_time=datetime.now()-timedelta(days=91)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d")#stop_loss
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"###################提取eny_wspd_all数据#######################")
@@ -986,6 +998,8 @@ def selectEnyWspdAll(data, farmName, typeName, start_time=datetime.now()-timedel
     result = cursor.fetchone()
     #判断表是否存在
     if not result:
+        columns = ['type', 'wtid', 'eny', 'wspd', 'count', 'Rate_power']
+        data = pd.DataFrame(columns=columns)
         return data, wtids
     typeNameStr = ""
     for name in typeName:
@@ -1003,7 +1017,7 @@ def selectEnyWspdAll(data, farmName, typeName, start_time=datetime.now()-timedel
             count, \
             rate_power \
             from eny_wspd_all \
-            where farm_name=%s AND type_name=%s  AND data_time BETWEEN %s AND %s' \
+            where farm_name=%s AND type_name=%s  AND data_time BETWEEN %s AND %s \
         "
         data_to_obtain = (farmName, typeNameStr, start_time, end_time)
         log.info(f'sql语句：{obtain_query}')
@@ -1021,7 +1035,7 @@ def selectEnyWspdAll(data, farmName, typeName, start_time=datetime.now()-timedel
             count, \
             rate_power \
             from eny_wspd_all \
-            where farm_name=%s AND data_time BETWEEN %s AND %s' \
+            where farm_name=%s AND data_time BETWEEN %s AND %s \
         "
         data_to_obtain = (farmName, start_time, end_time)
         log.info(f'sql语句：{obtain_query}')

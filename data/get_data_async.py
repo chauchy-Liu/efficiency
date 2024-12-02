@@ -16,7 +16,7 @@ import utils.time_util as time_util
 from datetime import timedelta
 from configs import config
 import logging
-from configs.config import AccessKey, SecretKey, GW_Url, OrgId, algConfig
+from configs.config import AccessKey, SecretKey, GW_Url, OrgId, algConfig, Data_Url, token
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import time
@@ -27,6 +27,8 @@ import os
 from logging.handlers import RotatingFileHandler
 from data.efficiency_function import mymode
 import configs.config as config
+# from flask import request, jsonify, json, make_response
+import requests
 
 #能效分析中需要在算法中用到的输入变量量
 # Pwrat_Rate = None
@@ -99,8 +101,23 @@ Url_raw = GW_Url + '/tsdb-service/v2.1/raw?orgId=' + OrgId
 Url_di = GW_Url + '/tsdb-service/v2.1/di?orgId=' + OrgId
 Url_node = GW_Url + '/asset-tree-service/v2.1/asset-nodes?action=searchRelatedAsset&orgId=' + OrgId
 
+Url_farm = Data_Url + '/wind/farm/list'
+Url_turbine = Data_Url + '/wind/turbine/listByOrgId/{%s}'
+Url_point = Data_Url + '/iot/device/search/point/history'
+head = {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer '+ token
+}
+#######################################################################
+
 pd.options.mode.use_inf_as_na = True
 lock = asyncio.Lock()
+
+def urlRequest(url):
+    response = requests.post(url, headers=head)
+    return response
+
+
 
 async def run_in_threadpool(func, *args):
     loop = asyncio.get_running_loop()

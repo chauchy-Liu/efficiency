@@ -19,7 +19,7 @@ from datetime import datetime
 
 def analyse(farmName, typeName:list, startTime, endTime):
     #赋值
-    stop_loss_all, turbine_dict = selectStopLossAll(pd.DataFrame(), farmName, typeName, datetime.strptime(startTime), datetime.strptime(endTime))
+    stop_loss_all, turbine_dict = selectStopLossAll(pd.DataFrame(), farmName, typeName, datetime.strptime(startTime, "%Y-%m-%d"), datetime.strptime(endTime, "%Y-%m-%d"))
     turbine_type = typeName
     turbine_list = []
     for type_name, turbine_names in turbine_dict.items():
@@ -43,10 +43,14 @@ def analyse(farmName, typeName:list, startTime, endTime):
             stop_loss_show_temp.loc[num,'exltmp'] = np.nanmean(temp_turbine['exltmp'])
             stop_loss_show_temp.loc[num,'wtid'] = turbine_list[num]
             elem = {}
-            elem['机位号'] = stop_loss_show_temp.iloc[num]['wtid']
-            elem['故障时长(h)'] = stop_loss_show_temp.iloc[num]['time']
-            elem['故障损失电量(kwh)'] = stop_loss_show_temp.iloc[num]['loss']
-            elem['平均风速(m/s)'] = stop_loss_show_temp.iloc[num]['wspd']
+            #机位号
+            elem['wtid'] = '%s'%(stop_loss_show_temp.iloc[num]['wtid'])
+            #故障时长(h)
+            elem['faultTime'] = '%.4f'%(stop_loss_show_temp.iloc[num]['time'])
+            #故障损失电量(kwh)
+            elem['faultLoss'] = '%.4f'%(stop_loss_show_temp.iloc[num]['loss'])
+            #平均风速(m/s)
+            elem['meanWindSpeed'] = '%.4f'%(stop_loss_show_temp.iloc[num]['wspd'])
             result['table'].append(elem)
         # stop_loss_show_temp.insert(0, 'wtid', turbine_list[num])
         stop_loss_show = pd.concat([stop_loss_show,stop_loss_show_temp])#.append(stop_loss_show_temp)

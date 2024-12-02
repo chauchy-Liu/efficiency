@@ -3,6 +3,21 @@ head:{
     'Content-Type': 'application/json',
     'Authorization': 'Bearer '+ token(现场配v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW)
 }
+请求数据的url前缀：http://10.191.64.90:9100   不同网络需要配置不同IP
+#风场信息
+接口：/wind/farm/list
+#风机信息
+接口：/wind/turbine/listByOrgId/{orgId}   orgId：替换为风场提取的orgId
+#测点信息
+接口：/iot/device/search/point/history
+{
+    "assetIds": '风机ID', 
+    "pointIds": '测点1，测点2, ...',  //英文逗号分隔
+    "dataType": "avg" //avg：平均值，original：原始值
+    "Interval": "60" //间隔时间，单位：秒
+    "startTime": startTime,
+    "endTime": endTime
+}
 查询
 {
 	farm:[{
