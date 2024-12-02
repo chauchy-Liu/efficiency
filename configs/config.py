@@ -23,10 +23,12 @@ Alarm_Push_Url = 'http://10.67.68.188:9001/api-smartisolar/sub-warn/warn/receive
 # Alarm_Push_Url = 'http://10.67.68.188:9001/api/v1/standardAlarmGateway/attributes'
 
 
+#智慧场站数据提取配置url
+Data_Url = 'http://10.191.64.90:9100/'
+token = 'v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW'
 
 
-
-
+#产业数据中台
 AccessKey = '3f207c85-64b4-476c-a23d-64624bbc0669'
 SecretKey = 'f30502cc-2b51-41d0-a95b-6275d609e5bf'
 OrgId = "o16323808037221371"

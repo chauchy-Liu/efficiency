@@ -24,7 +24,7 @@ def analyse(farmName, typeName:str, startTime, endTime):
     pw_startTime = startTime
     pw_endTime = endTime
     turbine_type = typeName#np.unique(Turbine_attr['turbineTypeID'])[i_type]
-    pw_turbine_all, turbine_list = selectPwTurbineAll(pd.DataFrame(), farmName, typeName, datetime.strptime(startTime), datetime.strptime(endTime))
+    pw_turbine_all, turbine_list = selectPwTurbineAll(pd.DataFrame(), farmName, typeName, datetime.strptime(startTime, "%Y-%m-%d"), datetime.strptime(endTime, "%Y-%m-%d"))
     # turbine_list = #Turbine_attr_type.loc[0:5,'name']
     # turbine_list = turbine_list.reset_index(drop = True)
     pw_df_all = pd.DataFrame()
@@ -57,7 +57,7 @@ def analyse(farmName, typeName:str, startTime, endTime):
     pw_df_all = pd.merge(pw_df_all,pwrat_standard,how='outer',on='windbin')
     #########绘制功率曲线 ,输出内容：功率一致性分析：功率曲线
     powerCurve['xAxis']['xData'] = pw_df_all['windbin'].to_list()
-    powerCurve['yAxis']['理论功率'] = pw_df_all['pwrat'].to_list()
+    powerCurve['yAxis']['theoryPower'] = pw_df_all['pwrat'].to_list()
     for turbine_name in turbine_list:
         powerCurve['yAxis'][turbine_name] = pw_df_all[turbine_name].to_list()
     # turbine_num = 16

@@ -19,7 +19,7 @@ from datetime import datetime
 
 def analyse(farmName, typeName:list, startTime, endTime):
     #赋值
-    fault_loss_all, turbine_dict = selectFaultLossAll(pd.DataFrame(), farmName, typeName, datetime.strptime(startTime), datetime.strptime(endTime))
+    fault_loss_all, turbine_dict = selectFaultLossAll(pd.DataFrame(), farmName, typeName, datetime.strptime(startTime, "%Y-%m-%d"), datetime.strptime(endTime, "%Y-%m-%d"))
     turbine_type = typeName
     turbine_list = []
     for type_name, turbine_names in turbine_dict.items():
@@ -54,14 +54,22 @@ def analyse(farmName, typeName:list, startTime, endTime):
         fault_loss_show.loc[(fault_loss_show['count']==0),'count'] = 1
         for i in range(len(fault_loss_show)):
             elem = {}
-            elem['机位号'] = fault_loss_show.iloc[i]['wtid']
-            elem['故障编码'] = fault_loss_show.iloc[i]['fault']
-            elem['故障频次'] = fault_loss_show.iloc[i]['count']
-            elem['故障时长(h)'] = fault_loss_show.iloc[i]['time']
-            elem['故障损失电量(kwh)'] = fault_loss_show.iloc[i]['loss']
-            elem['平均风速(m/s)'] = fault_loss_show.iloc[i]['wspd']
-            elem['故障描述'] = fault_loss_show.iloc[i]['fault_describe']
-            elem['系统故障描述'] = fault_loss_show.iloc[i]['fsyst']
+            #机位号
+            elem['wtid'] = '%s'%(fault_loss_show.iloc[i]['wtid'])
+            #故障编码
+            elem['faultCode'] = '%s'%(fault_loss_show.iloc[i]['fault'])
+            #故障频次
+            elem['faultCount'] = '%.4f'%(fault_loss_show.iloc[i]['count'])
+            #故障时长(h)
+            elem['faultTime'] = '%.4f'%(fault_loss_show.iloc[i]['time'])
+            #故障损失电量(kwh)
+            elem['faultLoss'] = '%.4f'%(fault_loss_show.iloc[i]['loss'])
+            #平均风速(m/s)
+            elem['meanWindSpeed'] = '%.4f'%(fault_loss_show.iloc[i]['wspd'])
+            #故障描述
+            elem['faultDescribe'] = '%s'%(fault_loss_show.iloc[i]['fault_describe'])
+            #系统故障描述
+            elem['sysDescribe'] = '%s'%(fault_loss_show.iloc[i]['fsyst'])
             result['table'].append(elem)
 
     return result

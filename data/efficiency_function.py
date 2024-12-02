@@ -675,7 +675,7 @@ def FenDuan(data,Pwrat_Rate,Rotspd_Connect,Rotspd_Rate,turbine_name):
 def WindRose(data,path):
     windrose = pd.DataFrame()
     turbine_name = np.unique(data['wtid'])[0]
-    if(['yaw','nanmean'] in data.columns.values)==True:
+    if(('yaw','nanmean') in data.columns)==True:
         windrose['wdir'] = data['yaw','nanmean']
     else:
         windrose['wdir'] = data['wdir','nanmean']

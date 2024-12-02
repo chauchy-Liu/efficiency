@@ -18,6 +18,7 @@ import os
 # from checkout import execute_multi_algorithms
 from algorithms import show_fault_distribute, show_grid_fault_loss, show_grid_limit_loss, show_loss_reason_indicator, show_power_consistence, show_power_curve, show_power_data, show_station_compare, show_stop_loss, show_technology_loss, show_time_compare, show_turbine_fault_loss, show_turbine_limit_loss, show_turbine_type_compare
 import logging
+import traceback
 
 logger = logging.getLogger('http-request')
 if not logger.handlers:
@@ -83,17 +84,24 @@ def index():
 #绩效指标和故障原因查询
 @api.route('/efficiency/indicate', methods=['POST'])
 def indicate():
-    params = request.json
-    farmName = params['farm'][-1]['mdmId']
-    typeName = []
-    for name_dict in params['farm'][-1]['turbineType']:
-        typeName.append(name_dict['name'])
-    startTime = params['target']['startDate']
-    endTime = params['target']['endDate']
-    result = show_loss_reason_indicator.analyse(farmName, typeName, startTime, endTime)
-    logger.info(f"返回结果：")
-    logger.info(f"{result}")
-    return result
+    try:
+        logger.info(f"#####################################指标####################################")
+        params = request.json
+        farmName = params['farm'][-1]['mdmId']
+        typeName = []
+        for name_dict in params['farm'][-1]['turbineType']:
+            typeName.append(name_dict['name'])
+        startTime = params['target']['startDate']
+        endTime = params['target']['endDate']
+        result = show_loss_reason_indicator.analyse(farmName, typeName, startTime, endTime)
+        logger.info(f"指标返回结果：")
+        logger.info(f"{result['indicator']}")
+        return result['indicator']
+    except Exception as e:
+        errorInfomation = traceback.format_exc()
+        logger.info(f'\033[31m{errorInfomation}\033[0m')
+        logger.info(f'\033[33m指标报错：{e}\033[0m')
+        return {}
 #风频频查询
 # @api.route('/wind_resource/wind_frequency', methods=['POST'])
 # def wind_frequency():
@@ -109,41 +117,62 @@ def indicate():
 #功率一致性
 @api.route('/power_analysis/power_consistence', methods=['POST'])
 def power_consistence():
-    params = request.json
-    farmName = params['farm'][-1]['mdmId']
-    typeName = params['farm'][-1]['turbineType'][-1]['name']
-    startTime = params['target']['startDate']
-    endTime = params['target']['endDate']
-    result = show_power_consistence.analyse(farmName, typeName, startTime, endTime)
-    logger.info(f"返回结果：")
-    logger.info(f"{result}")
-    return result
+    try:
+        logger.info(f"#####################################功率一致性####################################")
+        params = request.json
+        farmName = params['farm'][-1]['mdmId']
+        typeName = params['farm'][-1]['turbineType'][-1]['name']
+        startTime = params['target']['startDate']
+        endTime = params['target']['endDate']
+        result = show_power_consistence.analyse(farmName, typeName, startTime, endTime)
+        logger.info(f"功率一致性返回结果：")
+        logger.info(f"{result}")
+        return result
+    except Exception as e:
+        errorInfomation = traceback.format_exc()
+        logger.info(f'\033[31m{errorInfomation}\033[0m')
+        logger.info(f'\033[33m功率一致性报错：{e}\033[0m')
+        return {}
 
 #功率曲线
 @api.route('/power_analysis/power_curve', methods=['POST'])
 def power_curve():
-    params = request.json
-    farmName = params['farm'][-1]['mdmId']
-    typeName = params['farm'][-1]['turbineType'][-1]['name']
-    startTime = params['target']['startDate']
-    endTime = params['target']['endDate']
-    result = show_power_curve.analyse(farmName, typeName, startTime, endTime)
-    logger.info(f"返回结果：")
-    logger.info(f"{result}")
-    return result
+    try:
+        logger.info(f"#####################################功率曲线做图####################################")
+        params = request.json
+        farmName = params['farm'][-1]['mdmId']
+        typeName = params['farm'][-1]['turbineType'][-1]['name']
+        startTime = params['target']['startDate']
+        endTime = params['target']['endDate']
+        result = show_power_curve.analyse(farmName, typeName, startTime, endTime)
+        logger.info(f"功率曲线做图返回结果：")
+        logger.info(f"{result}")
+        return result
+    except Exception as e:
+        errorInfomation = traceback.format_exc()
+        logger.info(f'\033[31m{errorInfomation}\033[0m')
+        logger.info(f'\033[33m功率曲线做图报错：{e}\033[0m')
+        return {}
 
 #功率数据
 @api.route('/power_analysis/power_data', methods=['POST'])
 def power_data():
-    params = request.json
-    farmName = params['farm'][-1]['mdmId']
-    typeName = params['farm'][-1]['turbineType'][-1]['name']
-    startTime = params['target']['startDate']
-    endTime = params['target']['endDate']
-    result = show_power_data.analyse(farmName, typeName, startTime, endTime)
-    logger.info(f"返回结果：")
-    logger.info(f"{result}")
-    return result
+    try:
+        logger.info(f"#####################################功率数据表####################################")
+        params = request.json
+        farmName = params['farm'][-1]['mdmId']
+        typeName = params['farm'][-1]['turbineType'][-1]['name']
+        startTime = params['target']['startDate']
+        endTime = params['target']['endDate']
+        result = show_power_data.analyse(farmName, typeName, startTime, endTime)
+        logger.info(f"功率数据表返回结果：")
+        logger.info(f"{result}")
+        return result
+    except Exception as e:
+        errorInfomation = traceback.format_exc()
+        logger.info(f'\033[31m{errorInfomation}\033[0m')
+        logger.info(f'\033[33m功率数据表报错：{e}\033[0m')
+        return {}
 # #偏航对风偏差
 # @api.route('/control_analysis/navigation_bias', methods=['POST'])
 # def navigation_bias():
@@ -159,165 +188,253 @@ def power_data():
 # #转矩控制
 # @api.route('/control_analysis/torque_control', methods=['POST'])
 # def torque_control():
-# #损失原因
-# @api.route('/loss_analysis/loss_reason', methods=['POST'])
-# def loss_reason():
-#故障分布
-@api.route('/loss_analysis/fault_distribute', methods=['POST'])
-def fault_distribute():
-    params = request.json
-    farmName = params['farm'][-1]['mdmId']
-    typeName = []
-    for name_dict in params['farm'][-1]['turbineType']:
-        typeName.append(name_dict['name'])
-    startTime = params['target']['startDate']
-    endTime = params['target']['endDate']
-    result = show_fault_distribute.analyse(farmName, typeName, startTime, endTime)
-    logger.info(f"返回结果：")
-    logger.info(f"{result}")
-    return result
-#机组故障损失统计
-@api.route('/loss_analysis/turbine_fault_loss', methods=['POST'])
-def turbine_fault_loss():
-    params = request.json
-    farmName = params['farm'][-1]['mdmId']
-    typeName = []
-    for name_dict in params['farm'][-1]['turbineType']:
-        typeName.append(name_dict['name'])
-    startTime = params['target']['startDate']
-    endTime = params['target']['endDate']
-    result = show_turbine_fault_loss.analyse(farmName, typeName, startTime, endTime)
-    logger.info(f"返回结果：")
-    logger.info(f"{result}")
-    return result
-#计划停机损失统计
-@api.route('/loss_analysis/stop_loss', methods=['POST'])
-def stop_loss():
-    params = request.json
-    farmName = params['farm'][-1]['mdmId']
-    typeName = []
-    for name_dict in params['farm'][-1]['turbineType']:
-        typeName.append(name_dict['name'])
-    startTime = params['target']['startDate']
-    endTime = params['target']['endDate']
-    result = show_stop_loss.analyse(farmName, typeName, startTime, endTime)
-    logger.info(f"返回结果：")
-    logger.info(f"{result}")
-    return result
-#电网故障损失统计
-@api.route('/loss_analysis/grid_fault_loss', methods=['POST'])
-def grid_fault_loss():
-    params = request.json
-    farmName = params['farm'][-1]['mdmId']
-    typeName = []
-    for name_dict in params['farm'][-1]['turbineType']:
-        typeName.append(name_dict['name'])
-    startTime = params['target']['startDate']
-    endTime = params['target']['endDate']
-    result = show_grid_fault_loss.analyse(farmName, typeName, startTime, endTime)
-    logger.info(f"返回结果：")
-    logger.info(f"{result}")
-    return result
-#电网限电损失统计
-@api.route('/loss_analysis/grid_limit_loss', methods=['POST'])
-def grid_limit_loss():
-    params = request.json
-    farmName = params['farm'][-1]['mdmId']
-    typeName = []
-    for name_dict in params['farm'][-1]['turbineType']:
-        typeName.append(name_dict['name'])
-    startTime = params['target']['startDate']
-    endTime = params['target']['endDate']
-    result = show_grid_limit_loss.analyse(farmName, typeName, startTime, endTime)
-    logger.info(f"返回结果：")
-    logger.info(f"{result}")
-    return result
-#机组自限电损失统计
-@api.route('/loss_analysis/turbine_limit_loss', methods=['POST'])
-def turbine_limit_loss():
-    params = request.json
-    farmName = params['farm'][-1]['mdmId']
-    typeName = []
-    for name_dict in params['farm'][-1]['turbineType']:
-        typeName.append(name_dict['name'])
-    startTime = params['target']['startDate']
-    endTime = params['target']['endDate']
-    result = show_turbine_limit_loss.analyse(farmName, typeName, startTime, endTime)
-    logger.info(f"返回结果：")
-    logger.info(f"{result}")
-    return result
-#技术待机损失统计
-@api.route('/loss_analysis/technology_loss', methods=['POST'])
-def technology_loss():
-    params = request.json
-    farmName = params['farm'][-1]['mdmId']
-    typeName = []
-    for name_dict in params['farm'][-1]['turbineType']:
-        typeName.append(name_dict['name'])
-    startTime = params['target']['startDate']
-    endTime = params['target']['endDate']
-    result = show_technology_loss.analyse(farmName, typeName, startTime, endTime)
-    logger.info(f"返回结果：")
-    logger.info(f"{result}")
-    return result
-#场站对比
-@api.route('/compare_analysis/farm_compare', methods=['POST'])
-def farm_compare():
-    params = request.json
-    # farmName = params['farm'][-1]['mdmId']
-    result_dict = {}
-    for name_dict in params['farm']:
-        farmName = name_dict['mdmId']
+#损失原因
+@api.route('/loss_analysis/loss_reason', methods=['POST'])
+def loss_reason():
+    try:
+        logger.info(f"#####################################损失原因####################################")
+        params = request.json
+        farmName = params['farm'][-1]['mdmId']
         typeName = []
-        # typeName.append(name_dict['name'])
+        for name_dict in params['farm'][-1]['turbineType']:
+            typeName.append(name_dict['name'])
         startTime = params['target']['startDate']
         endTime = params['target']['endDate']
         result = show_loss_reason_indicator.analyse(farmName, typeName, startTime, endTime)
-        result_dict[farmName] = result
-    logger.info(f"返回结果：")
-    logger.info(f"{result_dict}")
-    return result_dict
-#时间对比
-@api.route('/compare_analysis/time_compare', methods=['POST'])
-def time_compare():
-    params = request.json
-    # farmName = params['farm'][-1]['mdmId']
-    result_dict = {}
-    farmName = params['farm'][-1]['mdmId']
-    typeName = []
-    startTime = params['target']['startDate']
-    endTime = params['target']['endDate']
-    result = show_loss_reason_indicator.analyse(farmName, typeName, startTime, endTime)
-    result_dict["target"] = result
-    # typeName.append(name_dict['name'])
-    startTime = params['compare']['startDate']
-    endTime = params['compare']['endDate']
-    result = show_loss_reason_indicator.analyse(farmName, typeName, startTime, endTime)
-    result_dict["compare"] = result
-    logger.info(f"返回结果：")
-    logger.info(f"{result_dict}")
-    return result_dict
-#机型对比
-@api.route('/compare_analysis/turbine_type_compare', methods=['POST'])
-def turbine_type_compare():
-    params = request.json
-    result_dict = {'farm':[]}
-    for farm in params['farm']:
-        farm_temp = {'farmName':None, 'turbineType':[]}
-        farmName = farm['mdmId']
-        farm_temp['farmName'] = farmName
-        # typeName = []
-        for name_dict in farm['turbineType']:
-            typeName = [name_dict['name']]
+        logger.info(f"损失原因返回结果：")
+        logger.info(f"{result['reason']}")
+        return result['reason']
+    except Exception as e:
+        errorInfomation = traceback.format_exc()
+        logger.info(f'\033[31m{errorInfomation}\033[0m')
+        logger.info(f'\033[33m损失原因报错：{e}\033[0m')
+        return {}
+#故障分布
+@api.route('/loss_analysis/fault_distribute', methods=['POST'])
+def fault_distribute():
+    try:
+        logger.info(f"#####################################故障分布####################################")
+        params = request.json
+        farmName = params['farm'][-1]['mdmId']
+        typeName = []
+        for name_dict in params['farm'][-1]['turbineType']:
+            typeName.append(name_dict['name'])
+        startTime = params['target']['startDate']
+        endTime = params['target']['endDate']
+        result = show_fault_distribute.analyse(farmName, typeName, startTime, endTime)
+        logger.info(f"故障分布返回结果：")
+        logger.info(f"{result}")
+        return result
+    except Exception as e:
+        errorInfomation = traceback.format_exc()
+        logger.info(f'\033[31m{errorInfomation}\033[0m')
+        logger.info(f'\033[33m故障分布报错：{e}\033[0m')
+        return {}
+#机组故障损失统计
+@api.route('/loss_analysis/turbine_fault_loss', methods=['POST'])
+def turbine_fault_loss():
+    try:
+        logger.info(f"#####################################机组故障####################################")
+        params = request.json
+        farmName = params['farm'][-1]['mdmId']
+        typeName = []
+        for name_dict in params['farm'][-1]['turbineType']:
+            typeName.append(name_dict['name'])
+        startTime = params['target']['startDate']
+        endTime = params['target']['endDate']
+        result = show_turbine_fault_loss.analyse(farmName, typeName, startTime, endTime)
+        logger.info(f"机组故障返回结果：")
+        logger.info(f"{result}")
+        return result
+    except Exception as e:
+        errorInfomation = traceback.format_exc()
+        logger.info(f'\033[31m{errorInfomation}\033[0m')
+        logger.info(f'\033[33m机组故障报错：{e}\033[0m')
+        return {}
+#计划停机损失统计
+@api.route('/loss_analysis/stop_loss', methods=['POST'])
+def stop_loss():
+    try:
+        logger.info(f"#####################################计划停机####################################")
+        params = request.json
+        farmName = params['farm'][-1]['mdmId']
+        typeName = []
+        for name_dict in params['farm'][-1]['turbineType']:
+            typeName.append(name_dict['name'])
+        startTime = params['target']['startDate']
+        endTime = params['target']['endDate']
+        result = show_stop_loss.analyse(farmName, typeName, startTime, endTime)
+        logger.info(f"计划停机返回结果：")
+        logger.info(f"{result}")
+        return result
+    except Exception as e:
+        errorInfomation = traceback.format_exc()
+        logger.info(f'\033[31m{errorInfomation}\033[0m')
+        logger.info(f'\033[33m计划停机报错：{e}\033[0m')
+        return {}
+#电网故障损失统计
+@api.route('/loss_analysis/grid_fault_loss', methods=['POST'])
+def grid_fault_loss():
+    try:
+        logger.info(f"#####################################电网故障####################################")
+        params = request.json
+        farmName = params['farm'][-1]['mdmId']
+        typeName = []
+        for name_dict in params['farm'][-1]['turbineType']:
+            typeName.append(name_dict['name'])
+        startTime = params['target']['startDate']
+        endTime = params['target']['endDate']
+        result = show_grid_fault_loss.analyse(farmName, typeName, startTime, endTime)
+        logger.info(f"电网故障返回结果：")
+        logger.info(f"{result}")
+        return result
+    except Exception as e:
+        errorInfomation = traceback.format_exc()
+        logger.info(f'\033[31m{errorInfomation}\033[0m')
+        logger.info(f'\033[33m电网故障报错：{e}\033[0m')
+        return {}
+#电网限电损失统计
+@api.route('/loss_analysis/grid_limit_loss', methods=['POST'])
+def grid_limit_loss():
+    try:
+        logger.info(f"#####################################电网限电####################################")
+        params = request.json
+        farmName = params['farm'][-1]['mdmId']
+        typeName = []
+        for name_dict in params['farm'][-1]['turbineType']:
+            typeName.append(name_dict['name'])
+        startTime = params['target']['startDate']
+        endTime = params['target']['endDate']
+        result = show_grid_limit_loss.analyse(farmName, typeName, startTime, endTime)
+        logger.info(f"电网限电返回结果：")
+        logger.info(f"{result}")
+        return result
+    except Exception as e:
+        errorInfomation = traceback.format_exc()
+        logger.info(f'\033[31m{errorInfomation}\033[0m')
+        logger.info(f'\033[33m电网限电报错：{e}\033[0m')
+        return {}
+#机组自限电损失统计
+@api.route('/loss_analysis/turbine_limit_loss', methods=['POST'])
+def turbine_limit_loss():
+    try:
+        logger.info(f"#####################################机组自限电####################################")
+        params = request.json
+        farmName = params['farm'][-1]['mdmId']
+        typeName = []
+        for name_dict in params['farm'][-1]['turbineType']:
+            typeName.append(name_dict['name'])
+        startTime = params['target']['startDate']
+        endTime = params['target']['endDate']
+        result = show_turbine_limit_loss.analyse(farmName, typeName, startTime, endTime)
+        logger.info(f"机组自限电返回结果：")
+        logger.info(f"{result}")
+        return result
+    except Exception as e:
+        errorInfomation = traceback.format_exc()
+        logger.info(f'\033[31m{errorInfomation}\033[0m')
+        logger.info(f'\033[33m机组自限电报错：{e}\033[0m')
+        return {}
+#技术待机损失统计
+@api.route('/loss_analysis/technology_loss', methods=['POST'])
+def technology_loss():
+    try:
+        logger.info(f"#####################################技术待机####################################")
+        params = request.json
+        farmName = params['farm'][-1]['mdmId']
+        typeName = []
+        for name_dict in params['farm'][-1]['turbineType']:
+            typeName.append(name_dict['name'])
+        startTime = params['target']['startDate']
+        endTime = params['target']['endDate']
+        result = show_technology_loss.analyse(farmName, typeName, startTime, endTime)
+        logger.info(f"技术待机返回结果：")
+        logger.info(f"{result}")
+        return result
+    except Exception as e:
+        errorInfomation = traceback.format_exc()
+        logger.info(f'\033[31m{errorInfomation}\033[0m')
+        logger.info(f'\033[33m技术待机报错：{e}\033[0m')
+        return {}
+#场站对比
+@api.route('/compare_analysis/farm_compare', methods=['POST'])
+def farm_compare():
+    try:
+        logger.info(f"#####################################场站对比####################################")
+        params = request.json
+        # farmName = params['farm'][-1]['mdmId']
+        result_dict = {}
+        for name_dict in params['farm']:
+            farmName = name_dict['mdmId']
+            typeName = []
+            # typeName.append(name_dict['name'])
             startTime = params['target']['startDate']
             endTime = params['target']['endDate']
             result = show_loss_reason_indicator.analyse(farmName, typeName, startTime, endTime)
-            turbine_type_temp = {name_dict['name']:result }
-            farm_temp['turbineType'].append(turbine_type_temp)
-        result_dict['farm'].append(farm_temp)
-    logger.info(f"返回结果：")
-    logger.info(f"{result}")
-    return result
+            result_dict[farmName] = result
+        logger.info(f"场站对比返回结果：")
+        logger.info(f"{result_dict}")
+        return result_dict
+    except Exception as e:
+        errorInfomation = traceback.format_exc()
+        logger.info(f'\033[31m{errorInfomation}\033[0m')
+        logger.info(f'\033[33m场站对比报错：{e}\033[0m')
+        return {}
+#时间对比
+@api.route('/compare_analysis/time_compare', methods=['POST'])
+def time_compare():
+    try:
+        logger.info(f"#####################################时间对比####################################")
+        params = request.json
+        # farmName = params['farm'][-1]['mdmId']
+        result_dict = {}
+        farmName = params['farm'][-1]['mdmId']
+        typeName = []
+        startTime = params['target']['startDate']
+        endTime = params['target']['endDate']
+        result = show_loss_reason_indicator.analyse(farmName, typeName, startTime, endTime)
+        result_dict["target"] = result
+        # typeName.append(name_dict['name'])
+        startTime = params['compare']['startDate']
+        endTime = params['compare']['endDate']
+        result = show_loss_reason_indicator.analyse(farmName, typeName, startTime, endTime)
+        result_dict["compare"] = result
+        logger.info(f"时间对比返回结果：")
+        logger.info(f"{result_dict}")
+        return result_dict
+    except Exception as e:
+        errorInfomation = traceback.format_exc()
+        logger.info(f'\033[31m{errorInfomation}\033[0m')
+        logger.info(f'\033[33m时间对比报错：{e}\033[0m')
+        return {}
+#机型对比
+@api.route('/compare_analysis/turbine_type_compare', methods=['POST'])
+def turbine_type_compare():
+    try:
+        logger.info(f"#####################################机型对比####################################")
+        params = request.json
+        result_dict = {'farm':[]}
+        for farm in params['farm']:
+            farm_temp = {'farmName':None, 'turbineType':[]}
+            farmName = farm['mdmId']
+            farm_temp['farmName'] = farmName
+            # typeName = []
+            for name_dict in farm['turbineType']:
+                typeName = [name_dict['name']]
+                startTime = params['target']['startDate']
+                endTime = params['target']['endDate']
+                result = show_loss_reason_indicator.analyse(farmName, typeName, startTime, endTime)
+                turbine_type_temp = {name_dict['name']:result }
+                farm_temp['turbineType'].append(turbine_type_temp)
+            result_dict['farm'].append(farm_temp)
+        logger.info(f"机型对比返回结果：")
+        logger.info(f"{result}")
+        return result
+    except Exception as e:
+        errorInfomation = traceback.format_exc()
+        logger.info(f'\033[31m{errorInfomation}\033[0m')
+        logger.info(f'\033[33m机型对比报错：{e}\033[0m')
+        return {}
 
 
 

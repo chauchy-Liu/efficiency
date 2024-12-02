@@ -21,7 +21,7 @@ from datetime import datetime
 def analyse(farmName, typeName:list, startTime, endTime):
 
     #赋值
-    fault_loss_all, turbine_dict = selectFaultLossAll(pd.DataFrame(), farmName, typeName, datetime.strptime(startTime), datetime.strptime(endTime))
+    fault_loss_all, turbine_dict = selectFaultLossAll(pd.DataFrame(), farmName, typeName, datetime.strptime(startTime, "%Y-%m-%d"), datetime.strptime(endTime, "%Y-%m-%d"))
     turbine_type = typeName
     turbine_list = []
     for type_name, turbine_names in turbine_dict.items():
