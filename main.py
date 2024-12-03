@@ -102,7 +102,7 @@ if __name__ == '__main__':
     # app.register_blueprint(api)
     # app.run(host='172.17.11.119', port=8888, debug=True)
     # app.app.run(host='172.17.11.50', port=8889, debug=True) #172.17.11.119  127.0.0.1
-    # app.app.run(host='127.0.0.1', port=8889, debug=True) #172.17.11.119  127.0.0.
-    app.app.run(host='10.191.65.77', port=8889, debug=True) #172.17.11.119  127.0.0.
+    app.app.run(host='127.0.0.1', port=8889, debug=True) #172.17.11.119  127.0.0.
+    # app.app.run(host='10.191.65.77', port=8889, debug=True) #172.17.11.119  127.0.0.
     # loop = asyncio.get_event_loop()
     # loop.run_until_complete(run(app.app, host='172.17.11.119', port=8888))

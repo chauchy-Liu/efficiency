@@ -41,6 +41,7 @@ import faultcode.faultcode_XUJI as faultcode_XUJI
 import time
 import data.efficiency_function as turbine_efficiency_function
 import data.get_data_async as get_data_async
+import pickle, gzip
 
 
 warnings.simplefilter(action='ignore')
@@ -673,9 +674,14 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         #调试专用语句，其他情况注释该语句为了调试记录和加载数据
         if not os.path.exists('Efficiency_ana_V3.pkl.gz'):
-            algorithms_configs.to_pickle('algorithms_configs.pkl.gz', compression='gzip')
+            # algorithms_configs.to_pickle('algorithms_configs.pkl.gz', compression='gzip')
+            with open('Efficiency_ana_V3.pkl.gz', 'wb') as f:
+                f.write(gzip.compress(pickle.dumps(algorithms_configs)))
+                # pickle.dump(algorithms_configs, f)
         else:
-            algorithms_configs = pd.read_pickle('algorithms_configs.pkl.gz')
+            with open('Efficiency_ana_V3.pkl.gz', 'rb') as f:
+                algorithms_configs = pickle.loads(gzip.decompress(f.read()))
+            # algorithms_configs = pd.read_pickle('algorithms_configs.pkl.gz')
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # 跑模型
         if name == "Efficiency_ana_V3":
