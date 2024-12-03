@@ -28,7 +28,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
     result = {'table':[]}
     #################################
     if limgrid_loss_all.empty:
-        return result
+        return {}#result
     #电网限电展示
     limgrid_loss_show = pd.DataFrame()
     limgrid_loss_all_temp = limgrid_loss_all[limgrid_loss_all['type'].isin(turbine_type)]

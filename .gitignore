@@ -5,3 +5,7 @@ result/*
 *.pkl.gz
 *.pkl
 *.gz
+/build
+*.pyc
+*.pyx
+

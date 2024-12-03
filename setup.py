@@ -10,7 +10,7 @@ setupfile = os.path.join(os.path.abspath('.'), __file__)
 build_dir = "build"
 build_tmp_dir = build_dir + "/temp"
 
-filter_dir_set = {'dist', 'build', 'data', 'configs', 'app', 'train', 'model', 'poseidon', 'utils'}
+filter_dir_set = {'dist', 'build', 'configs', 'app', 'poseidon', 'utils', 'faultcode'}
 
 except_files = {
     __file__,
@@ -22,7 +22,7 @@ except_files = {
     'enos_get_data.py',
     'test.py',
     '.gitignore',
-    '__init__.py'
+    '__init__.py',
 }
 
 

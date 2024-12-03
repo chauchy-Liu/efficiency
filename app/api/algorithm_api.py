@@ -435,14 +435,14 @@ def turbine_type_compare():
                 startTime = params['target']['startDate']
                 endTime = params['target']['endDate']
                 result = show_loss_reason_indicator.analyse(farmName, typeName, startTime, endTime)
-                result_dict["reason"].append({"farmName":farmName,"typeName":typeName, **result["reason"]})
-                result_dict["indicator"].append({"farmName":farmName,"typeName":typeName, **result["indicator"]})
+                result_dict["reason"].append({"farmName":farmName,"typeName":typeName[-1], **result["reason"]})
+                result_dict["indicator"].append({"farmName":farmName,"typeName":typeName[-1], **result["indicator"]})
                 # turbine_type_temp = {name_dict['name']:result }
                 # farm_temp['turbineType'].append(turbine_type_temp)
             # result_dict['farm'].append(farm_temp)
         logger.info(f"机型对比返回结果：")
-        logger.info(f"{result}")
-        return result
+        logger.info(f"{result_dict}")
+        return result_dict
     except Exception as e:
         errorInfomation = traceback.format_exc()
         logger.info(f'\033[31m{errorInfomation}\033[0m')

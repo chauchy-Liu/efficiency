@@ -28,7 +28,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
     result = {'table':[]}
     #################################
     if Technology_loss_all.empty:
-        return result
+        return {}#rresult
     #技术待命展示
     Technology_loss_show = pd.DataFrame()
     Technology_loss_all_temp = Technology_loss_all[Technology_loss_all['type'].isin(typeName)]

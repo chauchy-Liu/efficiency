@@ -28,7 +28,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
     result = {'table':[]}
     #################################
     if faultgrid_loss_all.empty:
-        return result
+        return {}#result
     #电网故障展示
     faultgrid_loss_show = pd.DataFrame()
     faultgrid_loss_all_temp = faultgrid_loss_all[faultgrid_loss_all['type'].isin(turbine_type)]

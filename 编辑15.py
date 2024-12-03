@@ -220,3 +220,16 @@ df.columns = pd.MultiIndex.from_tuples([
 
 print("\n修改后的DataFrame:")
 print(df)
+
+
+
+机组故障
+{
+	"table":[
+		{
+			"wtid":"#06",
+			"faultCode": "",
+			
+		}
+	]
+}
