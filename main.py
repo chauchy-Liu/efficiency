@@ -11,6 +11,7 @@ import importlib
 from utils import time_util
 from logging_config import init_loggers
 # from app.utils import globalVariable
+from configs.config import MainIP, MainPort
 
 windFarm = 'xrHXLWFF' # 四期三一双馈
 # windFarm = 'Mr78LFhE' # 二期联合动力 有发电机三相绕组   
@@ -102,7 +103,8 @@ if __name__ == '__main__':
     # app.register_blueprint(api)
     # app.run(host='172.17.11.119', port=8888, debug=True)
     # app.app.run(host='172.17.11.50', port=8889, debug=True) #172.17.11.119  127.0.0.1
-    app.app.run(host='127.0.0.1', port=8889, debug=True) #172.17.11.119  127.0.0.
+    app.app.run(host=MainIP, port=MainPort, debug=True) #172.17.11.119  127.0.0.
+    # app.app.run(host='127.0.0.1', port=8889, debug=True) #172.17.11.119  127.0.0.
     # app.app.run(host='10.191.65.77', port=8889, debug=True) #172.17.11.119  127.0.0.
     # loop = asyncio.get_event_loop()
     # loop.run_until_complete(run(app.app, host='172.17.11.119', port=8888))

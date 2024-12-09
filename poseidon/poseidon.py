@@ -17,9 +17,9 @@ K =base64 .b64encode
 U =base64 .b64decode
 import time
 B =time .time
-from Crypto .PublicKey import RSA
+from Crypto.PublicKey import RSA
 L =RSA .importKey
-from Crypto .Cipher import PKCS1_OAEP
+from Crypto.Cipher import PKCS1_OAEP
 t =PKCS1_OAEP .new
 from urllib import request ,parse ,error
 n =error .URLError

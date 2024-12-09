@@ -12,7 +12,7 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 3B4FE6ACC0B21F32
 
 RUN echo "==> Install..."  && \
     apt-get update && \
-    apt-get install -y python3-pip libgomp1 gcc && \
+    apt-get install -y python3-pip libgomp1 gcc vim && \
     pip3 install -i https://mirrors.aliyun.com/pypi/simple --no-cache-dir --upgrade pip && \
     pip3 install -i https://mirrors.aliyun.com/pypi/simple gunicorn gevent && \
     pip3 install xgboost==2.0.3 && \ 

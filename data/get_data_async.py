@@ -804,7 +804,7 @@ async def TimeDeviceSlice(algorithms_configs): #, ai_points, resample_interval, 
     return ai_df, di_df, cj_di_df, ty_di_df, general_df, private_df
 
 
-async def getDataForMultiAlgorithms(algorithms_configs): #assetIds：风机id ,mainLog, algorithmLogs, 
+async def getDataForMultiAlgorithms(algorithms_configs, state): #assetIds：风机id ,mainLog, algorithmLogs, algorithms_configs是一个算法命中的配置，不是全局配置algorithms_configs, 注意和main_job中的algorithms_configs做区别
 
     df_ai, df_di, df_di_cj, df_di_ty, df_general, df_private = await TimeDeviceSlice(algorithms_configs)
 
@@ -911,7 +911,7 @@ async def getDataForMultiAlgorithms(algorithms_configs): #assetIds：风机id ,m
                 # df_current_assetId[allow_points] = df_current_assetId[allow_points].bfill()#用后面行/列的值填充空值
                 final_df[key] = pd.concat([final_df[key], df_current_assetId])
         else:
-            final_df[key]['state'] = algorithms_configs['state']
+            final_df[key]['state'] = state #algorithms_configs['state']
 
         #ty_di数据
         if df_di_ty[key].empty == False:

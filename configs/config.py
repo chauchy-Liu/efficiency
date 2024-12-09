@@ -9,6 +9,8 @@ from faultcode.faultcode_MINYANG_GANSU_QINGSHUI import wspd as wspd_
 # 应用风场的assetId
 Wind_Farm = 'rWlbaEnM' #甘肃清水
 Wind_Farm_Name = '甘肃清水' #甘肃清水
+# Wind_Farm = 't1Z1JkuJ' #甘肃清水
+# Wind_Farm_Name = '甘肃通渭' #甘肃清水
 
 
 wspd = wspd_
@@ -47,7 +49,13 @@ ALARM_PUSH_MODE = 'http'
 # Path = '/opt/app/wind-algorithm-model/fileData/'#'/opt/app/wind-algorithm-model/fileData/'#'./result/Display/'#/opt/app/wind-algorithm-model/fileData
 # Path = './result/Display/'#'/opt/app/wind-algorithm-model/fileData/'#'./result/Display/'#/opt/app/wind-algorithm-model/fileData
 
-# mysql数据库配置
+
+########################################## 项目服务IP配置#######################################################################
+MainIP = "127.0.0.1"
+MainPort = 8889
+
+
+######################################### mysql数据库配置#######################################################################
 
 # DB_HOST = '10.191.2.240'#'172.17.11.95' #'127.0.0.1'
 # DB_USERNAME = 'root'#'iwind2'
@@ -195,7 +203,7 @@ algConfig = {
         'general_points' : ["WTUR.AIStatusCode", "WTUR.AIStatusCode_Map"],
         'general_rename' : {'WTUR.AIStatusCode':'fault','WTUR.AIStatusCode_Map':'fault'},
         'private_points' : {},
-        'time_duration' : '90D',
+        'time_duration' : '2m',
         'resample_interval' : '1m', # 原始数据采样间隔
         'error_data_time_duration' : '60m', #'500m',
         'need_all_turbines' : True,

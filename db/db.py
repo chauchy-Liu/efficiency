@@ -1838,7 +1838,7 @@ def insertStopLossAll(data, algorithms_configs):
                     exltmp \
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
             #nan验证
-            if tmp.iloc[j]['exltmp'] == np.nan or str(tmp.iloc[j]['wexltmpindbin']) == 'nan':
+            if tmp.iloc[j]['exltmp'] == np.nan or str(tmp.iloc[j]['exltmp']) == 'nan':
                 exltmp = nan
             else:
                 exltmp = tmp.iloc[j]['exltmp']

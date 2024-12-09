@@ -589,12 +589,13 @@ def Yaw_Control_loss(data):
 #最小桨距角异常data=all
 def Pitch_Min_loss(data,Pitch_Min,Pwrat_Rate,Rotspd_Connect):
     Pitch_Min_loss = 0
-    day = pd.date_range(np.min(data.index),np.max(data.index),freq="7d").strftime('%Y-%m-%d %H:%M:%S').to_list()#7天为一周期判断
+    day = pd.date_range(np.min(data.index),np.max(data.index),freq="7d").to_list()#.strftime('%Y-%m-%d %H:%M:%S').to_list()#7天为一周期判断
     temp_all = data[(data['rotspd','nanmean']>Rotspd_Connect)&(data['pwrat','nanmean']<Pwrat_Rate*0.35)]
     #temp_err = data[(data['rotspd','nanmean']>Rotspd_Connect*1.1)&(data['pwrat','nanmean']<Pwrat_Rate*0.3)&(np.abs(data['pitch1','nanmean'])>2.5)&(np.abs(data['pitch1','nanmin'])>2.5)]
     
     for i in range(len(day)-1):
-        temp = temp_all.loc[day[i]:day[i+1],:] 
+        # temp = temp_all.loc[day[i]:day[i+1],:] 
+        temp = temp_all[(temp_all.index >= day[i]) & (temp_all.index < day[i+1])]
         if len(temp) > 20:               
             if(np.abs(np.nanmean(temp['pitch1','nanmean'].nsmallest(10)))>2.0)|(np.abs(np.nanmean(temp['pitch2','nanmean'].nsmallest(10)))>2.0)|(np.abs(np.nanmean(temp['pitch3','nanmean'].nsmallest(10)))>2.0):
                 Pitch_Min_loss = Pitch_Min_loss + 1

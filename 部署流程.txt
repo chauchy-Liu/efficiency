@@ -1,0 +1,52 @@
+1、启动能效项目docker
+（1）把efficiency.tar.gz文件考到自己的目录下
+（2）docker load -i efficiency.tar.gz
+（3）docker run -d -p 0.0.0.0:8889:8889 --name eff  -v /自己的目录/log:/app/logs -v /自己目录/result:/app/result  -v /自己目录/configs:/app/configs  -v /自己目录/faultcode:/app/faultcode efficiency 
+ (4)每次修改(/自己目录/configs/config.py)文件、(/自己的目录/log里的文件)后需要重启docker(docker restart eff)
+
+2、启动docker的myslq
+	(1)docker拉镜像
+		docker pull mysql:8.4.3
+	(2)启动
+		docker run -d --name mysql -p 13306:3306 -e MYSQL_ROOT_PASSWORD=Zhang123. -v  自己的目录/docker/mysql/data:/var/lib/mysql --restart=always -d mysql --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
+
+3、启动 docker的minio
+	(1)docker拉镜像
+		docker pull quay.io/minio/minio
+		或
+		docker pull minio/minio
+	(2)启动
+		docker run -d -p 19000:9000 -p 19090:9090 --name minio  -e "MINIO_ROOT_USER=minioadmin" -e "MINIO_ROOT_PASSWORD=Zhang123." -v 自己的目录/docker/minio:/data minio/minio server /data --console-address ":9090"
+
+
+配置
+1、项目IP
+项目工作目录/configs/config.py
+
+########################################## 项目服务IP配置#######################################################################
+MainIP = "127.0.0.1"
+MainPort = 8889
+
+
+
+2、mysql IP
+项目工作目录/configs/config.py
+
+######################################### mysql数据库配置#######################################################################
+DB_HOST = '127.0.0.1'#'172.17.11.95'
+DB_USERNAME = 'root'
+DB_PORT = 13306
+DB_PASSWORD = 'Zhang123.'
+DB_DATABASE = 'cloud_core'
+
+
+
+3、 Minio IP
+项目工作目录/configs/config.yaml
+
+url: 127.0.0.1:19000 
+domainName: 
+accesskey: minioadmin
+secretkey: Zhang123.
+bucketName: wind-efficiency-pictures
+

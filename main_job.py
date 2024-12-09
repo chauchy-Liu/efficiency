@@ -588,7 +588,7 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
         if days[0] == '0':
             days = days[1]
         # if name != 'Efficiency_ana_V3' or (name == 'Efficiency_ana_V3' and days == '1') or (name == 'Efficiency_ana_V3' and not os.path.exists('Efficiency_ana_V3.pkl.gz')):
-        algorithmData = await getDataForMultiAlgorithms({name:algorithms_configs[name]}) #mainLog, algorithmLogs, 
+        algorithmData = await getDataForMultiAlgorithms({name:algorithms_configs[name]}, algorithms_configs['state']) #mainLog, algorithmLogs, 
         # else:
         #     if algorithms_configs[name]['PrepareTurbines'] == True:
         #         algorithmData = {name: pd.read_pickle('Efficiency_ana_V3.pkl.gz')}
@@ -672,13 +672,13 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
         #参数确定
         get_data_async.define_parameters(algorithms_configs, name)
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-        #调试专用语句，其他情况注释该语句为了调试记录和加载数据
-        if not os.path.exists('Efficiency_ana_V3.pkl.gz'):
+        #调试record_pwrt_picture专用语句，其他情况注释该语句为了调试记录和加载数据
+        if not os.path.exists('Efficiency_ana_V3.pkl.gz') and name == 'record_pwrt_picture':
             # algorithms_configs.to_pickle('algorithms_configs.pkl.gz', compression='gzip')
             with open('Efficiency_ana_V3.pkl.gz', 'wb') as f:
                 f.write(gzip.compress(pickle.dumps(algorithms_configs)))
                 # pickle.dump(algorithms_configs, f)
-        else:
+        elif os.path.exists('Efficiency_ana_V3.pkl.gz') and name == 'record_pwrt_picture':
             with open('Efficiency_ana_V3.pkl.gz', 'rb') as f:
                 algorithms_configs = pickle.loads(gzip.decompress(f.read()))
             # algorithms_configs = pd.read_pickle('algorithms_configs.pkl.gz')
