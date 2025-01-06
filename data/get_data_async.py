@@ -9,14 +9,15 @@ from poseidon import poseidon  # 打包时注意
 import pandas as pd
 from functools import partial  # 偏函数，用于map传递多个参数
 from multiprocessing import Pool  # 计算密集型采用该并行
+import multiprocessing as mp
 import numpy as np
 from sklearn.neighbors import LocalOutlierFactor
 from itertools import product
 import utils.time_util as time_util
+from utils.time_util import timestamp_to_localtime
 from datetime import timedelta
-from configs import config
 import logging
-from configs.config import AccessKey, SecretKey, GW_Url, OrgId, algConfig, Data_Url, token
+from configs.config import AccessKey, SecretKey, GW_Url, OrgId, algConfig, Data_Url, token, MainIP, MainPort, Platform, farmOrIds
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import time
@@ -29,6 +30,7 @@ from data.efficiency_function import mymode
 import configs.config as config
 # from flask import request, jsonify, json, make_response
 import requests
+import json
 
 #能效分析中需要在算法中用到的输入变量量
 # Pwrat_Rate = None
@@ -93,22 +95,353 @@ if not data_logger.handlers:
     data_logger.addHandler(data_file_handler)
 
 #################################################################
-
+#中台
 Url_asset = GW_Url + '/cds-asset-service/v1.0/hierarchy?orgId=' + OrgId  # 这个api哪里来的？
 Url_ai_normalized = GW_Url + '/tsdb-service/v2.1/ai-normalized?orgId=' + OrgId
 Url_ai = GW_Url + '/tsdb-service/v2.1/ai?orgId=' + OrgId
 Url_raw = GW_Url + '/tsdb-service/v2.1/raw?orgId=' + OrgId
 Url_di = GW_Url + '/tsdb-service/v2.1/di?orgId=' + OrgId
 Url_node = GW_Url + '/asset-tree-service/v2.1/asset-nodes?action=searchRelatedAsset&orgId=' + OrgId
-
-Url_farm = Data_Url + '/wind/farm/list'
-Url_turbine = Data_Url + '/wind/turbine/listByOrgId/{%s}'
+#######################################################################
+#智慧场站
+# Url_prefix = str(MainIP)+':'+str(MainPort)
+Url_farm = Data_Url + '/wind/farm/list' #Data_Url "http://173.17.4.11:9100"
+Url_turbine = Data_Url + '/wind/turbine/listByOrgId/%s'
 Url_point = Data_Url + '/iot/device/search/point/history'
 head = {
     'Content-Type': 'application/json',
     'Authorization': 'Bearer '+ token
 }
 #######################################################################
+#智慧场站
+#发送数据请求请求
+#超时
+requestTime = 5
+#风场信息
+async def getWindFarmIntel():
+    global Url_farm
+    WindFarm_attr = pd.DataFrame()
+    data_logger.info(f"#############################获取风场信息############################")
+    data_logger.info(f"数据接口url：{Url_farm}")
+    data_logger.info(f"数据接口head：{head}")
+    data_logger.info(f"数据接口参数：无")
+    try:
+        ResponsePoint = await asyncio.to_thread(requests.post, Url_farm, headers=head, timeout=requestTime)
+        data_logger.info(f"接口响应：{ResponsePoint}")
+        ResponsePoint = json.loads(ResponsePoint.text)
+        #print(ResponsePoint)
+        if ResponsePoint and len(ResponsePoint['data']) > 0:
+            for i, wind_farm in enumerate(ResponsePoint['data']):
+                # WindFarm_attr = pd.DataFrame(wind_farm['mdmObjects']['EnOS_Wind_Farm'][:])
+                if wind_farm["orgId"]:
+                    if farmOrIds:
+                        if wind_farm["orgId"] in farmOrIds:
+                            orgId = wind_farm["orgId"]
+                        else:
+                            continue
+                    else:
+                        orgId = wind_farm["orgId"]
+                else:
+                    continue
+                if wind_farm["orgName"]:
+                    orgName = wind_farm["orgName"]#list(map(lambda x: x['name'], WindFarm_attr['attributes']))
+                else:
+                    continue
+                # WindFarm_attr.loc[i, 'mdmId'] = list(map(lambda x: x['mdmId'], WindFarm_attr['attributes']))
+                # WindFarm_attr['二级公司'] = list(map(lambda x: x['companyID'], WindFarm_attr['attributes']))
+                if wind_farm['capacity']:
+                    capacity = wind_farm['capacity']#list(map(lambda x: x['operativeCapacity'], WindFarm_attr['attributes']))
+                else:
+                    continue
+                if wind_farm['machineType'] and "," in wind_farm['machineType']:
+                    machineType = wind_farm['machineType'].split(",")
+                elif wind_farm['machineType'] and "," not in wind_farm['machineType']:
+                    machineType = [wind_farm['machineType']]
+                else:
+                    continue
+                # WindFarm_attr['风资源'] = list(map(lambda x: x['resourceType'], WindFarm_attr['attributes']))
+                if wind_farm["turbineNum"]:
+                    turbineNum = wind_farm["turbineNum"]#list(map(lambda x: x['equipmentAmount'], WindFarm_attr['attributes']))
+                else:
+                    continue
+                if wind_farm["createTime"]:
+                    createTime = wind_farm["createTime"]#list(map(lambda x: x['operativeDate'], WindFarm_attr['attributes']))
+                else:
+                    continue
+                if wind_farm["address"]:
+                    address = wind_farm["address"]#list(map(lambda x: x['address'], WindFarm_attr['attributes']))
+                else:
+                    continue
+                # if 'address' in WindFarm_attr['attributes'].keys():
+                #     WindFarm_attr['地址'] = list(map(lambda x: x['address'], WindFarm_attr['attributes']))
+                # elif 'county' in WindFarm_attr['attributes'].keys():
+                #     WindFarm_attr['地址'] = list(map(lambda x: x['county'], WindFarm_attr['attributes']))
+                WindFarm_attr.loc[i, 'orgId'] = orgId
+                WindFarm_attr.loc[i,'风电场名'] = orgName
+                WindFarm_attr.loc[i, '容量'] = capacity
+                WindFarm_attr.loc[i,'机型'] = machineType
+                WindFarm_attr.loc[i,'风机台数'] = turbineNum
+                WindFarm_attr.loc[i,'并网日期'] = createTime
+                WindFarm_attr.loc[i, '地址'] = address
+    except Exception as e:
+        # 处理异常
+        errorInfomation = traceback.format_exc()
+        data_logger.info(f'###############################风场请求抛错######################')
+        data_logger.info(f'\033[31m{errorInfomation}\033[0m')
+        data_logger.info(f'\033[33m发生异常：{e}\033[0m')
+        WindFarm_attr = pd.DataFrame()
+    return WindFarm_attr
+#风机信息
+def selectCoreDeviceAttributes(coreDeviceAttributesList, attribute):
+    attributeList = []
+    for turbine in coreDeviceAttributesList:
+        for item in turbine:
+            if item['key'] == attribute:
+                if attribute == 'WeiDu' or attribute == 'JingDu':
+                    value = float(item['value'].split("°")[0])
+                    value += float(item['value'].split("°")[-1].split("'")[0])
+                    value += float(item['value'].split("°")[-1].split("'")[-1].split("\"")[0])
+                elif attribute == "HaiBa" or attribute == "QieRuFengSu" or attribute == "QieChuFengSu" or attribute == "LunGuGaoDu" or attribute == "YeLunZhiJing" or attribute == "EDingRongLiang":
+                    value = float(item['value'])
+                else:
+                    value = item['value']
+                attributeList.append(value)
+    return attributeList
+
+async def getWindTurbinesIntel(wind_farm):
+    '''
+    获取风场下的风机
+    '''
+    global Url_turbine
+    if "%s" in Url_turbine:
+        Url_turbine = Url_turbine%wind_farm
+    data_logger.info(f"#############################获取风机信息############################")
+    data_logger.info(f"数据接口url：{Url_turbine}")
+    data_logger.info(f"数据接口head：{head}")
+    data_logger.info(f"数据接口参数：无")
+    try:
+        ResponsePoint = await asyncio.to_thread(requests.post, Url_turbine, headers=head, timeout=requestTime)
+        data_logger.info(f"接口响应：{ResponsePoint}")
+        ResponsePoint = json.loads(ResponsePoint.text)
+        if ResponsePoint and len(ResponsePoint['data']) > 0:
+            # wind_turbine_df = pd.DataFrame(
+                # ResponsePoint['data'][wind_farm]['mdmObjects']['EnOS_Wind_Turbine'][:])
+            wind_turbine_df = pd.DataFrame()
+            wind_turbine_df['name'] = list(
+                map(lambda x: x['deviceName'],  ResponsePoint['data']))
+            wind_turbine_df['assetId'] = list(
+                map(lambda x: x['deviceCode'],  ResponsePoint['data']))
+            coreDeviceAttributesList =  list(
+                map(lambda x: x['coreDeviceAttributes'],  ResponsePoint['data']))
+            wind_turbine_df['ratedPower'] = selectCoreDeviceAttributes(coreDeviceAttributesList, "EDingRongLiang")
+            wind_turbine_df['rotorDiameter'] = selectCoreDeviceAttributes(coreDeviceAttributesList, "YeLunZhiJing")
+            wind_turbine_df['altitude'] = selectCoreDeviceAttributes(coreDeviceAttributesList, "HaiBa")
+            wind_turbine_df['hubHeight'] = selectCoreDeviceAttributes(coreDeviceAttributesList, "LunGuGaoDu")
+            wind_turbine_df['turbineTypeID'] = selectCoreDeviceAttributes(coreDeviceAttributesList, "JiXing")
+            wind_turbine_df['cutInwindSpeed'] = selectCoreDeviceAttributes(coreDeviceAttributesList, "QieRuFengSu")
+            wind_turbine_df['cutOutwindSpeed'] = selectCoreDeviceAttributes(coreDeviceAttributesList, "QieChuFengSu")
+            wind_turbine_df['longitude'] = selectCoreDeviceAttributes(coreDeviceAttributesList, "JingDu")
+            wind_turbine_df['latitude'] = selectCoreDeviceAttributes(coreDeviceAttributesList, "WeiDu")
+            # wind_turbine_df.drop('attributes', axis=1, inplace=True)
+            return wind_turbine_df 
+        else:
+            return pd.DataFrame()
+    except Exception as e:
+        # 处理异常
+        errorInfomation = traceback.format_exc()
+        data_logger.info(f'###############################风机信息请求抛错######################')
+        data_logger.info(f'\033[31m{errorInfomation}\033[0m')
+        data_logger.info(f'\033[33m发生异常：{e}\033[0m')
+        return pd.DataFrame()
+#测点信息
+
+#格式转化
+def FormatConvert(oldFormat:list):
+    try:
+        newFormat = pd.DataFrame()
+        for obj1 in oldFormat:
+            pointName = [point for point in obj1.keys()][0]
+            if len(obj1[pointName]) == 0:
+                newFormat[pointName] = pd.Series(dtype='float32')
+            elif isinstance(obj1[pointName], str) and "不存在" in obj1[pointName]:
+                continue
+            elif isinstance(obj1[pointName], str) and "[]" in obj1[pointName]:
+                continue
+            for obj2 in obj1[pointName]:
+                newFormat.loc[obj2["localtime"], pointName] = obj2["value"]
+                newFormat.loc[obj2["localtime"], "timestamp"] = obj2["localtime"] #timestamp_to_localtime(obj2["localtime"])
+        if "timestamp" not in newFormat.columns.to_list():
+            newFormat = pd.DataFrame()
+    except Exception as e:
+        errorInfomation = traceback.format_exc()
+        data_logger.info(f'\033[31m{errorInfomation}\033[0m')
+        data_logger.info(f'\033[33m发生异常：{e}\033[0m')
+        data_logger.info(f'###############################formatConvert######################')
+        data_logger.info(f'{pointName}:{obj2}, localtime type:{type(obj2["localtime"])}')
+    return newFormat
+
+
+async def getGeneralDataIntel(algorithmName: str, startTime, endTime, assetId: str, points, resample_interval, algorithms_configs):
+
+    data_logger.info(f"#############################获取通用故障测点信息############################")
+    global Url_point
+    turbinenames = dict(zip(algorithms_configs[algorithmName]['param_assetIds'],algorithms_configs[algorithmName]['param_turbine_num']))
+    ResponsePoint = None
+    pointIds = ','.join(points)
+    params = {
+        "assetIds": assetId,
+        "pointIds": pointIds,
+        "startTime": startTime,
+        "endTime": endTime,
+        "interval": "60",
+        "type": 1
+    }
+    params = json.dumps(params)
+    data_logger.info(f"#####################当前算法：{algorithmName}=>风机ID/机号:{algorithms_configs[algorithmName]['param_assetIds']}/{algorithms_configs[algorithmName]['param_turbine_num']}=>设备ID:{assetId}=>数据时间范围{startTime}到{endTime}#############################")
+    data_logger.info(f"数据接口url：{Url_point}")
+    data_logger.info(f"数据接口head：{head}")
+    data_logger.info(f"数据接口参数：{params}")
+    try:
+        ResponsePoint = await asyncio.to_thread(requests.post, Url_point, headers=head, data=params, timeout=requestTime)
+        # ResponsePoint = await asyncio.to_thread(requests.post, Url_point, headers=head, data=params)
+        # data_logger.info(f"接口响应：{ResponsePoint.text}")
+        ResponsePoint = json.loads(ResponsePoint.text)
+        DfTemp = pd.DataFrame()
+        if ResponsePoint and ResponsePoint['data'] and ResponsePoint['data'][0]['data'] and len(ResponsePoint['data'][0]['data']) > 0:
+            temp = ResponsePoint['data'][0]['data']
+            temp = json.loads(temp) #字符串转json
+            DfTemp = FormatConvert(temp)
+            if DfTemp.empty == False:
+                DfTemp['localtime'] = pd.to_datetime(DfTemp['timestamp'],unit = "ms",errors='coerce',origin = "1970-01-01 08:00:00")
+    
+                DfTemp.set_index('localtime', inplace=True)
+                #重命名
+                #算法名
+                DfTemp['algorithm'] = algorithmName
+                DfTemp['assetId'] = assetId
+                DfTemp['wtid'] = turbinenames[assetId]
+                data_logger.info(f"提取的测点有：{list(DfTemp.columns)}")
+                data_logger.info(f"前10行数据：{DfTemp.iloc[:10]}")
+            else:
+                data_logger.info(f"没有提取到测点")
+        else:
+            data_logger.info(f"没有提取到测点")
+    except Exception as e:
+        # 处理异常
+        errorInfomation = traceback.format_exc()
+        data_logger.info(f'###############################测点信息请求抛错######################')
+        data_logger.info(f'\033[31m{errorInfomation}\033[0m')
+        data_logger.info(f'\033[33m发生异常：{e}\033[0m')
+        DfTemp = pd.DataFrame()
+    return DfTemp
+
+async def getDiDataIntel(algorithmName: str, startTime, endTime, assetId: str, points, resample_interval, algorithms_configs):
+
+    data_logger.info(f"#############################获取状态测点信息############################")
+    global Url_point
+    turbinenames = dict(zip(algorithms_configs[algorithmName]['param_assetIds'],algorithms_configs[algorithmName]['param_turbine_num']))
+    ResponsePoint = None
+    pointIds = ','.join(points)
+    params = {
+        "assetIds": assetId,
+        "pointIds": pointIds,
+        "startTime": startTime,
+        "endTime": endTime,
+        "interval": "60",
+        "type": 1
+    }
+    params = json.dumps(params)
+    data_logger.info(f"#####################当前算法：{algorithmName}=>风机ID/机号:{algorithms_configs[algorithmName]['param_assetIds']}/{algorithms_configs[algorithmName]['param_turbine_num']}=>设备ID:{assetId}=>数据时间范围{startTime}到{endTime}#############################")
+    data_logger.info(f"数据接口url：{Url_point}")
+    data_logger.info(f"数据接口head：{head}")
+    data_logger.info(f"数据接口参数：{params}")
+    try:
+        ResponsePoint = await asyncio.to_thread(requests.post, Url_point, headers=head, data=params, timeout=requestTime)
+        # data_logger.info(f"接口响应：{ResponsePoint.text}")
+        ResponsePoint = json.loads(ResponsePoint.text)
+        DfTemp = pd.DataFrame()
+        if ResponsePoint and ResponsePoint['data'] and ResponsePoint['data'][0]['data'] and  len(ResponsePoint['data'][0]['data']) > 0:
+            temp = ResponsePoint['data'][0]['data']
+            temp = json.loads(temp)
+            DfTemp = FormatConvert(temp)
+            if DfTemp.empty == False:
+                DfTemp['localtime'] = pd.to_datetime(DfTemp['timestamp'],unit = "ms",errors='coerce',origin = "1970-01-01 08:00:00")
+                DfTemp.set_index('localtime', inplace=True)
+                #算法名
+                DfTemp['algorithm'] = algorithmName
+                DfTemp['assetId'] = assetId
+                DfTemp['wtid'] = turbinenames[assetId]
+                data_logger.info(f"提取的测点有：{list(DfTemp.columns)}")
+                data_logger.info(f"前10行数据：{DfTemp.iloc[:10]}")
+            else:
+                data_logger.info(f"没有提取到测点")
+        else:
+            data_logger.info(f"没有提取到测点")
+    except Exception as e:
+        # 处理异常
+        errorInfomation = traceback.format_exc()
+        data_logger.info(f'###############################测点信息请求抛错######################')
+        data_logger.info(f'\033[31m{errorInfomation}\033[0m')
+        data_logger.info(f'\033[33m发生异常：{e}\033[0m')
+        DfTemp = pd.DataFrame()
+    return DfTemp
+
+
+async def getAiDataIntel(algorithmName: str, startTime, endTime, assetId: str, points, resample_interval, algorithms_configs):
+
+    data_logger.info(f"#############################获取数据测点信息############################")
+    global Url_point
+    turbinenames = dict(zip(algorithms_configs[algorithmName]['param_assetIds'],algorithms_configs[algorithmName]['param_turbine_num']))
+    # print(startTime, endTime, assetId, points, resample_interval)
+    ResponsePoint = None
+    # time.sleep(5)
+    pointsIds = ','.join(points)
+    params = {
+        "assetIds": assetId,
+        "pointIds": pointsIds,
+        "startTime": startTime,
+        "endTime": endTime,
+        "interval": "60",
+        "type": 1
+    }
+    params = json.dumps(params)
+    data_logger.info(f"#####################当前算法：{algorithmName}=>风机ID/机号:{algorithms_configs[algorithmName]['param_assetIds']}/{algorithms_configs[algorithmName]['param_turbine_num']}=>设备ID:{assetId}=>数据时间范围{startTime}到{endTime}#############################")
+    data_logger.info(f"数据接口url：{Url_point}")
+    data_logger.info(f"数据接口head：{head}")
+    data_logger.info(f"数据接口参数：{params}")
+    try:
+        ResponsePoint = await asyncio.to_thread(requests.post, Url_point, headers=head, data=params, timeout=requestTime)
+        # ResponsePoint = requests.post(Url_point, headers=head, data=params)
+        # data_logger.info(f"接口响应：{ResponsePoint.text}")
+        ResponsePoint = json.loads(ResponsePoint.text)
+        DfTemp = pd.DataFrame()
+        if ResponsePoint and ResponsePoint['data'] and ResponsePoint['data'][0]['data'] and len(ResponsePoint['data'][0]['data']) > 0:
+            temp = ResponsePoint['data'][0]['data']
+            temp = json.loads(temp)
+            DfTemp = FormatConvert(temp)
+            if DfTemp.empty == False:
+                DfTemp['localtime'] = pd.to_datetime(DfTemp['timestamp'],unit = "ms",errors='coerce',origin = "1970-01-01 08:00:00")
+                DfTemp.set_index('localtime', inplace=True)
+                #算法名
+                DfTemp['algorithm'] = algorithmName
+                DfTemp['assetId'] = assetId
+                DfTemp['wtid'] = turbinenames[algorithms_configs[algorithmName]['param_assetIds'][-1]]
+                data_logger.info(f"提取的测点有：{list(DfTemp.columns)}")
+                data_logger.info(f"前10行数据：{DfTemp.iloc[:10]}")
+            else:
+                data_logger.info(f"没有提取到测点")
+        else:
+            data_logger.info(f"没有提取到测点")
+    except Exception as e:
+        # 处理异常
+        errorInfomation = traceback.format_exc()
+        data_logger.info(f'###############################测点信息请求抛错######################')
+        data_logger.info(f'\033[31m{errorInfomation}\033[0m')
+        data_logger.info(f'\033[33m发生异常：{e}\033[0m')
+        DfTemp = pd.DataFrame()
+    return DfTemp
+#智慧场站
+############################
 
 pd.options.mode.use_inf_as_na = True
 lock = asyncio.Lock()
@@ -413,6 +746,35 @@ async def getAiData(algorithmName: str, startTime, endTime, assetId: str, points
         data_logger.info(f"没有提取到测点")
     return DfTemp
 
+def process_dataframe(df, result):
+    # 创建一个结果的副本，以避免并发写入问题
+    local_result = result.copy()
+    
+    # 使用 pandas 的向量化操作来更新非空值
+    mask = df.notna()
+    local_result.update(df.where(mask))
+    
+    return local_result
+
+def parallel_fill_data(df_list, result, num_processes=None):
+    if num_processes is None:
+        num_processes = mp.cpu_count()
+
+    # 创建一个进程池
+    with mp.Pool(processes=num_processes) as pool:
+        # 使用偏函数来固定 result 参数
+        process_func = partial(process_dataframe, result=result)
+        
+        # 使用 map 来并行处理每个数据框
+        results = pool.map_async(process_func, df_list)
+        pool.close()
+        pool.join()
+
+    # 合并所有结果
+    for res in results.get():
+        result.update(res)
+
+    return result
 
 def custom_merge(df_list):
     # 获取所有DataFrame的行索引和列名
@@ -425,12 +787,22 @@ def custom_merge(df_list):
     # 创建一个空的DataFrame，包含所有可能的行和列
     result = pd.DataFrame(index=sorted(all_index), columns=sorted(all_columns))
     
-    # 填充数据
+    # # 填充数据
+    # for df in df_list:
+    #     for idx in df.index:
+    #         for col in df.columns:
+    #             if pd.notna(df.loc[idx, col]):  # 只更新非空值
+    #                 result.loc[idx, col] = df.loc[idx, col]
+
+    # #多线程处理
+    # result = parallel_fill_data(df_list, result, 3)
+
     for df in df_list:
-        for idx in df.index:
-            for col in df.columns:
-                if pd.notna(df.loc[idx, col]):  # 只更新非空值
-                    result.loc[idx, col] = df.loc[idx, col]
+        local_result = pd.DataFrame(index=sorted(all_index), columns=sorted(all_columns))
+        mask = df.notna()
+        local_result.update(df.where(mask))
+        result.update(local_result)
+
     
     return result
 
@@ -458,18 +830,18 @@ async def TimeDeviceSlice(algorithms_configs): #, ai_points, resample_interval, 
         #     di_startTime = di_endTime - timedelta(days=7)
         #时间分片
         date_range = []
-        if endTime - startTime > timedelta(hours=12):
-            date_range = pd.date_range(startTime, endTime, freq="12h").strftime(
-                '%Y-%m-%d %H:%M:%S').to_list()
+        if endTime - startTime > timedelta(hours=4): #hours=12,hours=4, minutes=10
+            date_range = pd.date_range(startTime, endTime, freq="4h").strftime(
+                '%Y-%m-%d %H:%M:%S').to_list() #12h, 4h, 10min
         else:
             date_range = [startTime.strftime('%Y-%m-%d %H:%M:%S'), endTime.strftime('%Y-%m-%d %H:%M:%S')]
         time_param = [(key, date_range[i], date_range[i + 1])
                     for i in range(len(date_range) - 1)]
         #针对di时间
         di_date_range = []
-        if di_endTime - di_startTime > timedelta(hours=12):
-            di_date_range = pd.date_range(di_startTime, di_endTime, freq="12h").strftime(
-                '%Y-%m-%d %H:%M:%S').to_list()
+        if di_endTime - di_startTime > timedelta(hours=4): #hours=12, hours=4, minutes=10
+            di_date_range = pd.date_range(di_startTime, di_endTime, freq="4h").strftime(
+                '%Y-%m-%d %H:%M:%S').to_list() #12h, 4h, 10min
         else:
             di_date_range = [di_startTime.strftime('%Y-%m-%d %H:%M:%S'), di_endTime.strftime('%Y-%m-%d %H:%M:%S')]
         di_time_param = [(key, di_date_range[i], di_date_range[i + 1])
@@ -490,42 +862,52 @@ async def TimeDeviceSlice(algorithms_configs): #, ai_points, resample_interval, 
                               for item in di_time_asset_param]  #(algorithm, startTime,startTime+12,turbineId)
     # getAiDataWithTimeFunc = partial(getAiData, points=ai_points, resample_interval=resample_interval)
     # 获取ai数据
-    timeout = 1300 #180 #秒
+    timeout = 120 #180 #秒
     # aiTasks = [getAiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["aiPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in final_time_asset_param if len(algorithms_configs[time_tuple[0]]["aiPoints"])>0]
     aiTasks = []
+    numPoints = 2
     for time_tuple in final_time_asset_param:
         if len(algorithms_configs[time_tuple[0]]["aiPoints"])>0:
-            if len(algorithms_configs[time_tuple[0]]["aiPoints"]) > 5:
+            if len(algorithms_configs[time_tuple[0]]["aiPoints"]) > numPoints:
                 accumCount = 0
-                while len(algorithms_configs[time_tuple[0]]["aiPoints"][accumCount:]) >= 5:
-                    aiTasks.append(getAiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["aiPoints"][accumCount:accumCount+5], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs))
-                    accumCount += 5
+                while len(algorithms_configs[time_tuple[0]]["aiPoints"][accumCount:]) >= numPoints:
+                    if Platform == "ZhongTai":
+                        aiTasks.append(getAiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["aiPoints"][accumCount:accumCount+numPoints], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs))
+                    elif Platform == "WuLianWang":
+                        aiTasks.append(getAiDataIntel(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["aiPoints"][accumCount:accumCount+numPoints], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs))
+                    accumCount += numPoints
                 if len(algorithms_configs[time_tuple[0]]["aiPoints"][accumCount:]) > 0:
-                    aiTasks.append(getAiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["aiPoints"][accumCount:], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs))
+                    if Platform == "ZhongTai":
+                        aiTasks.append(getAiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["aiPoints"][accumCount:], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs))
+                    elif Platform == "WuLianWang":
+                        aiTasks.append(getAiDataIntel(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["aiPoints"][accumCount:], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs))
             else:
-                aiTasks.append(getAiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["aiPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs))
+                if Platform == "ZhongTai":
+                    aiTasks.append(getAiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["aiPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs))
+                elif Platform == "WuLianWang":
+                    aiTasks.append(getAiDataIntel(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["aiPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs))
     if len(aiTasks) > 0:
-        # aiResults = await asyncio.gather(*aiTasks)#, return_exceptions=True
-        # aiResults = [asyncio.ensure_future(task) for task in aiTasks]
-        # done, pending = await asyncio.wait(aiResults, timeout=timeout)   
         done, pending = await asyncio.wait(aiTasks, timeout=timeout)   
         aiResults = [task.result() for task in done]
         tmp = [task.cancel() for task in pending]
     else:
         aiResults = []
     # 获取di数据
-    diTasks = [getDiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["diPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in di_final_time_asset_param if len(algorithms_configs[time_tuple[0]]["diPoints"])>0]
+    if Platform == "ZhongTai":
+        diTasks = [getDiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["diPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in di_final_time_asset_param if len(algorithms_configs[time_tuple[0]]["diPoints"])>0]
+    elif Platform == "WuLianWang":
+        diTasks = [getDiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["diPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in di_final_time_asset_param if len(algorithms_configs[time_tuple[0]]["diPoints"])>0]
     if len(diTasks) > 0:
-        # diResults = await asyncio.gather(*diTasks)#, return_exceptions=True
-        # diResults = [asyncio.ensure_future(task) for task in diTasks]
-        # done, pending = await asyncio.wait(diResults, timeout=timeout)   
         done, pending = await asyncio.wait(diTasks, timeout=timeout)   
         diResults = [task.result() for task in done]
         tmp = [task.cancel() for task in pending]
     else:
         diResults = []
     # 获取cj_di数据
-    cjDiTasks = [getDiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["cjDiPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in di_final_time_asset_param if len(algorithms_configs[time_tuple[0]]["cjDiPoints"])>0]
+    if Platform == "ZhongTai":
+        cjDiTasks = [getDiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["cjDiPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in di_final_time_asset_param if len(algorithms_configs[time_tuple[0]]["cjDiPoints"])>0]
+    elif Platform == "WuLianWang":
+        cjDiTasks = [getDiDataIntel(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["cjDiPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in di_final_time_asset_param if len(algorithms_configs[time_tuple[0]]["cjDiPoints"])>0]
     if len(cjDiTasks) > 0:
           
         done, pending = await asyncio.wait(cjDiTasks, timeout=timeout)   
@@ -534,7 +916,10 @@ async def TimeDeviceSlice(algorithms_configs): #, ai_points, resample_interval, 
     else:
         cjDiResults = []
     # 获取ty_di数据
-    tyDiTasks = [getDiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["tyDiPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in di_final_time_asset_param if len(algorithms_configs[time_tuple[0]]["tyDiPoints"])>0]
+    if Platform == "ZhongTai":
+        tyDiTasks = [getDiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["tyDiPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in di_final_time_asset_param if len(algorithms_configs[time_tuple[0]]["tyDiPoints"])>0]
+    elif Platform == "WuLianWang":
+        tyDiTasks = [getDiDataIntel(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["tyDiPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in di_final_time_asset_param if len(algorithms_configs[time_tuple[0]]["tyDiPoints"])>0]
     if len(tyDiTasks) > 0:
           
         done, pending = await asyncio.wait(tyDiTasks, timeout=timeout)   
@@ -543,40 +928,17 @@ async def TimeDeviceSlice(algorithms_configs): #, ai_points, resample_interval, 
     else:
         tyDiResults = []
     # 获取general数据
-    generalTasks = [getGeneralData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["generalPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in final_time_asset_param if len(algorithms_configs[time_tuple[0]]["generalPoints"])>0]
+    if Platform == "ZhongTai":
+        generalTasks = [getGeneralData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["generalPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in final_time_asset_param if len(algorithms_configs[time_tuple[0]]["generalPoints"])>0]
+    elif Platform == "WuLianWang":
+        generalTasks = [getGeneralDataIntel(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["generalPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in final_time_asset_param if len(algorithms_configs[time_tuple[0]]["generalPoints"])>0]
     if len(generalTasks) > 0:
-        # generalResults = await asyncio.gather(*generalTasks)#, return_exceptions=True
-        # generalResults = [asyncio.ensure_future(task) for task in generalTasks]
-        # done, pending = await asyncio.wait(generalResults, timeout=timeout)   
         done, pending = await asyncio.wait(generalTasks, timeout=timeout)   
         generalResults = [task.result() for task in done]
         tmp = [task.cancel() for task in pending]
     else:
         generalResults = []
-    # 获取private数据
-    # privateTasks = []#[getAiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["privatePoints"], algorithms_configs[time_tuple[0]]["resampleTime"]) for time_tuple in final_time_asset_param if len(algorithms_configs[time_tuple[0]]["privatePoints"])>0]
-    # for time_tuple in final_time_asset_param:
-    #     if len(algorithms_configs[time_tuple[0]]["privatePoints"])>0:
-    #         for modelKey, pointValue in algorithms_configs[time_tuple[0]]["privatePoints"].items():
-    #             if len(pointValue) > 5:
-    #                 accumCount = 0
-    #                 while len(pointValue[accumCount:]) >= 5:
-    #                     privateTasks.append(getAiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], pointValue[accumCount:accumCount+5], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs))
-    #                     accumCount += 5
-    #                 if len(pointValue[accumCount:]) > 0:
-    #                     privateTasks.append(getAiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], pointValue[accumCount:], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs))
-    #             else:
-    #                 privateTasks.append(getAiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], pointValue, algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs))
-    # if len(privateTasks) > 0:
-    #     # privateResults = await asyncio.gather(*privateTasks)#, return_exceptions=True
-    #     # privateResults = [asyncio.ensure_future(task) for task in privateTasks]
-    #     # done, pending = await asyncio.wait(privateResults, timeout=timeout)   
-    #     done, pending = await asyncio.wait(privateTasks, timeout=timeout)   
-    #     privateResults = [task.result() for task in done]
-    #     tmp = [task.cancel() for task in pending]
-    # else:
-    #     privateResults = []
-
+    
     #存储数据结果
     ai_df = {}
     di_df = {}
@@ -996,15 +1358,19 @@ async def getDataForMultiAlgorithms(algorithms_configs, state): #assetIds：风�
 
 
 def wash_data(Df_all, algorithms_configs):
-    turbine_name = Df_all.iloc[0]['wtid']
-    Df_all.drop('assetId',axis=1,inplace=True)
-    Df_all.drop('wtid',axis=1,inplace=True)
-    Df_all.drop('algorithm',axis=1,inplace=True)
-    Df_all_m = Df_all.resample('10min',closed='left').apply({mymode,np.nanmean,np.nanmax,np.nanmin,np.nanstd})
-    Df_all_m.insert(0,'wtid',turbine_name)  
-    Df_all.insert(0,'wtid',turbine_name)  
-    Df_all_m.loc[:,'localtime'] = Df_all_m.index
-    Df_all.loc[:,'localtime'] = Df_all.index
+    if Df_all.empty == False:
+        turbine_name = Df_all.iloc[0]['wtid']
+        Df_all.drop('assetId',axis=1,inplace=True)
+        Df_all.drop('wtid',axis=1,inplace=True)
+        Df_all.drop('algorithm',axis=1,inplace=True)
+        Df_all_m = Df_all.resample('10min',closed='left').apply({mymode,np.nanmean,np.nanmax,np.nanmin,np.nanstd}) #应填10min
+        Df_all_m.insert(0,'wtid',turbine_name)  
+        Df_all.insert(0,'wtid',turbine_name)  
+        Df_all_m.loc[:,'localtime'] = Df_all_m.index
+        Df_all.loc[:,'localtime'] = Df_all.index
+    else:
+        Df_all = pd.DataFrame()
+        Df_all_m = pd.DataFrame()
     algorithms_configs['Df_all_all'] = pd.concat([algorithms_configs['Df_all_all'],Df_all])#.append(Df_all)#全场1min数据
     algorithms_configs['Df_all_m_all'] = pd.concat([algorithms_configs['Df_all_m_all'],Df_all_m])#.append(Df_all_m)#全10min场数据  
 
@@ -1070,7 +1436,7 @@ def define_parameters(algorithms_configs, algorithm_name):
             if len(temp)>0:
                 Pitch_Min = round((np.mean(temp['pitch1','nanmean'].nsmallest(20)) + np.mean(temp['pitch1','nanmax'].nsmallest(20))) * 0.5,1)
             else:
-                Pitch_Min = 0.0
+                Pitch_Min = algorithms_configs['Pitch_Min']#0.0
             algorithms_configs['turbine_param_all'].loc[i,'Pitch_Min'] = Pitch_Min
         else:
             algorithms_configs['turbine_param_all'].loc[i,'Pitch_Min'] = algorithms_configs['Pitch_Min']
@@ -1080,7 +1446,7 @@ def define_parameters(algorithms_configs, algorithm_name):
             if len(temp)>0:
                 Rotspd_Rate = round(np.nanmean(temp['rotspd','nanmean']),1)
             else:
-                Rotspd_Rate = np.nan
+                Rotspd_Rate = algorithms_configs['Rotspd_Rate']#np.nan
             algorithms_configs['turbine_param_all'].loc[i,'Rotspd_Rate'] = Rotspd_Rate
         else:
             algorithms_configs['turbine_param_all'].loc[i,'Rotspd_Rate'] = algorithms_configs['Rotspd_Rate']
@@ -1093,7 +1459,7 @@ def define_parameters(algorithms_configs, algorithm_name):
                 rotspd_q2 = temp['rotspd','nanmean'].quantile(0.9)
                 Rotspd_Connect = round(np.nanmean(temp[(temp['rotspd','nanmean']>=rotspd_q1)&(temp['rotspd','nanmean']<=rotspd_q2)]['rotspd','nanmean']),1)
             else:
-                Rotspd_Connect = np.nan
+                Rotspd_Connect = algorithms_configs['Rotspd_Connect']
             algorithms_configs['turbine_param_all'].loc[i,'Rotspd_Connect'] = Rotspd_Connect
         else:
             algorithms_configs['turbine_param_all'].loc[i,'Rotspd_Connect'] = algorithms_configs['Rotspd_Connect']

@@ -1,0 +1,14 @@
+{
+    "code": 200,
+    "msg": null,
+    "data": [
+        {
+            "code": 200,
+            "data": "[{\"WNACTemOut\":[{\"localtime\":1733677200000,\"value\":-2.3},{\"localtime\":1733680800000,\"value\":-3.1},{\"localtime\":1733684400000,\"value\":-2.5},{\"localtime\":1733688000000,\"value\":-2.2},{\"localtime\":1733691600000,\"value\":-2.2},{\"localtime\":1733695200000,\"value\":-2.2}]},{\"WNACWindSpeed\":[{\"localtime\":1733677200000,\"value\":1.4},{\"localtime\":1733680800000,\"value\":1.7},{\"localtime\":1733684400000,\"value\":2.2},{\"localtime\":1733688000000,\"value\":2.8},{\"localtime\":1733691600000,\"value\":2.8},{\"localtime\":1733695200000,\"value\":2.8}]}]"
+        }
+    ]
+}
+
+
+
+

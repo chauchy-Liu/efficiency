@@ -1,0 +1,51 @@
+spring:
+    datasource:
+        druid:
+            url: jdbc:mysql://173.17.4.15:3307/cloud_dev?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&allowMultiQueries=true&rewriteBatchedStatements=true
+            username: root
+            password: smartisolar@123,.
+    data:
+        redis:
+            host: 173.17.4.18
+            port: 8379
+            database: 0
+            # password: wbWuibMcmWTpHB6JuufA3WztRwpdGLMQ
+            password: RD2022*V3D
+
+tianyi:
+    # client-id: 505777733511417856
+    security:
+        oauth2:
+            client:
+                # # 客户端唯一标识
+                client-id: 505777733511417856
+                # # 客户端密钥
+                client-secret: system
+                # # 用户统一授权路径
+                user-authorization-url: http://173.17.4.18:9210/auth/oauth/iam/login
+                # # 用户统一退出路径
+                logout-authorization-url: http://173.17.4.18:9210/auth/oauth/iam/logout
+                # # 业务系统登录成功回调路径
+                backend-redirect-url: http://173.17.4.18:9210/system/oauth/login
+                # # 业务系统前端路径
+                front-redirect-url: http://173.17.4.18:9221
+                # user-authorization-url: http://173.17.4.18:9210/auth/oauth/server/authorize
+                # logout-authorization-url: http://173.17.4.18:9210/auth/oauth/server/logout
+                # backend-redirect-url: http://173.17.4.18:9210/system/oauth/login
+                # front-redirect-url: http://173.17.4.18:9221
+    jwt:
+        sign-key: abcdefghijklmnopqrstuvwxyz
+        token_expire: 100000
+    snpit-base:
+        file-system:
+            file-module:
+                minio:
+                    url: http://173.17.4.20:9000
+                    accessKey: minioadmin
+                    secretKey: nt-Y9@xAfyyMoHBc
+
+enosapi-config:
+    accessKey: 58eb0799-b4b2-4f5f-b4ab-27278f3d825e
+    secretKey: f2880fbd-9783-4c83-aacc-f45dfb87707e
+    orgId: o16323808037221371
+    baseUrlAg: http://ag-spic1.eniot.io

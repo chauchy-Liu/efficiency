@@ -4,8 +4,8 @@ from apscheduler.schedulers.background import BackgroundScheduler,BlockingSchedu
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import algorithms
 # from data.get_data import getData, getWindTurbines, getDataForMultiAlgorithms
-from data.get_data_async import getWindTurbines, getDataForMultiAlgorithms, getWindTurbinesNode, getWindFarm
-from configs.config import Wind_Farm, EXCEPT_MODLES, extraModelName, scheduleConfig, turbineConfig, algConfig, Wind_Farm_Name
+from data.get_data_async import getWindTurbinesNode, getWindTurbines, getDataForMultiAlgorithms, getWindFarm, getWindTurbinesIntel, getWindFarmIntel
+from configs.config import Wind_Farm, EXCEPT_MODLES, extraModelName, scheduleConfig, turbineConfig, algConfig, Wind_Farm_Name, Platform
 from utils import time_util, display_util
 import datetime
 import importlib
@@ -14,7 +14,7 @@ import logging
 from logging_config import init_loggers
 import asyncio
 from datetime import datetime
-from db.db import UpdateTubineNum, UpdateAlgorithmInfo, UpdateResult, get_connection, InsertAlgorithmHead, InsertAlgorithmDetail, UpdateAlgorithmHead, ResetTubineNum, ReviewTubineNum, CheckThreshold
+from db.db import insertTheoryWindPower #UpdateTubineNum, UpdateAlgorithmInfo, UpdateResult, get_connection, InsertAlgorithmHead, InsertAlgorithmDetail, UpdateAlgorithmHead, ResetTubineNum, ReviewTubineNum, CheckThreshold
 import os
 import traceback
 from collections import ChainMap
@@ -139,7 +139,7 @@ async def execute_multi_algorithms(names: list, execute_time=''):
                 endTime = datetime.strptime(datetime.now().strftime('%Y-%m-%d 00:00:00'), '%Y-%m-%d %H:%M:%S')
             else:
                 endTime = datetime.now()#datetime.strptime(datetime.now().strftime('%Y-%m-%d 00:00:00'), '%Y-%m-%d %H:%M:%S')
-            # endTime = datetime.strptime('2024-6-24 03:31:48', '%Y-%m-%d %H:%M:%S')#datetime.now()#.strftime('%Y-%m-%d %H:%M:%S')
+                # endTime = datetime.strptime('2024-12-22 11:14:13', '%Y-%m-%d %H:%M:%S')#datetime.now()#.strftime('%Y-%m-%d %H:%M:%S')
             startTime = endTime - pd.to_timedelta(multi_algorithms[-1].time_duration)
             multi_algorithms_config[name_convice] = {
                 'startTime':startTime, 
@@ -226,141 +226,158 @@ async def _do_execute(multi_algorithms, algorithms_configs, mainLog): #startTime
         algorithmLogs[name].info("+++++++++++++++++++++++++++++++++++++++++++新任务++++++++++++++++++++++++++++++++++++++++++")
         algorithmLogs[name].info("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
     # 获取风场
-    algorithms_configs['farmId'] = Wind_Farm
-    algorithms_configs['farmName'] = Wind_Farm_Name
-    WindFarm_attr = await getWindFarm(Wind_Farm)
-    path_farm = str('result/')+str(WindFarm_attr.loc[0,'二级公司'])+'/'+str(WindFarm_attr.loc[0,'风电场名'])
-    if os.path.exists(path_farm)==False:
-        os.makedirs(path_farm)
-    WindFarm_attr.to_csv(str(path_farm+'/WindFarm.csv'),index=True, encoding='utf-8') 
-    algorithms_configs['farmName'] = WindFarm_attr.loc[0,'风电场名']
-    #  获取所有风机
-    Turbine_attr = await getWindTurbines(Wind_Farm)
-    algorithms_configs['Turbine_attr'] = Turbine_attr
-    algorithms_configs['Df_all_all_alltype'] = pd.DataFrame()
-    algorithms_configs['Df_all_m_all_alltype'] = pd.DataFrame()
-    algorithms_configs['zuobiao_all'] = pd.DataFrame()
-    for i_type in range(len(np.unique(Turbine_attr['turbineTypeID']))):
-        algorithms_configs['Turbine_attr_type'] = Turbine_attr[Turbine_attr['turbineTypeID'] == np.unique(Turbine_attr['turbineTypeID'])[i_type]]
-        algorithms_configs['typeProcess'] = i_type
-        algorithms_configs['Turbine_attr_type'] = algorithms_configs['Turbine_attr_type'].reset_index()
-        algorithms_configs['path'] = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[i_type]))
-        if os.path.exists(algorithms_configs['path'])==False:
-            os.makedirs(algorithms_configs['path'])
-        algorithms_configs['Pwrat_Rate'] = algorithms_configs['Turbine_attr_type'].loc[0,'ratedPower']#['ratedPower']
-        if('rotorDiameter' in algorithms_configs['Turbine_attr_type']): #.loc[0,'attributes']
-            algorithms_configs['rotor_radius'] = algorithms_configs['Turbine_attr_type'].loc[0,'rotorDiameter']*0.5#['rotorDiameter']*0.5
-        else:
-            algorithms_configs['rotor_radius'] = 131*0.5
-        algorithms_configs['hub_high'] = algorithms_configs['Turbine_attr_type'].loc[0,'hubHeight']#['hubHeight']
+    if Platform == "ZhongTai":
+        WindFarm_attr = await getWindFarm(Wind_Farm)
+    elif Platform == "WuLianWang":
+        WindFarm_attr = await getWindFarmIntel()
+    for farm_index, farm_item in WindFarm_attr.iterrows():
+        if Platform == "ZhongTai":
+            algorithms_configs['farmId'] = Wind_Farm
+            # algorithms_configs['farmName'] = Wind_Farm_Name
+            algorithms_configs['farmName'] = WindFarm_attr.loc[0,'风电场名']
+            path_farm = str('result/')+str(WindFarm_attr.loc[0,'二级公司'])+'/'+str(WindFarm_attr.loc[0,'风电场名'])
+            if os.path.exists(path_farm)==False:
+                os.makedirs(path_farm)
+            WindFarm_attr.to_csv(str(path_farm+'/WindFarm.csv'),index=True, encoding='utf-8') 
+        elif Platform == "WuLianWang":
+            algorithms_configs['farmId'] = farm_item['orgId']
+            algorithms_configs['farmName'] = farm_item['风电场名']
+            path_farm = str('result/')+str(farm_item['风电场名'])
+            if os.path.exists(path_farm)==False:
+                os.makedirs(path_farm)
+            farm_item.to_csv(str(path_farm+'/WindFarm.csv'),index=True, encoding='utf-8') 
+        #  获取所有风机
+        if Platform == "ZhongTai":
+            Turbine_attr = await getWindTurbines(Wind_Farm)
+        elif Platform == "WuLianWang":
+            Turbine_attr = await getWindTurbinesIntel(farm_item['orgId'])
 
-        
-        algorithms_configs['ManufacturerID'] = str(np.unique(Turbine_attr['turbineTypeID'])[i_type])[:2]
-        algorithms_configs['typeName'] = str(np.unique(Turbine_attr['turbineTypeID'])[i_type])
-        if algorithms_configs['ManufacturerID']=='GW':#金风5，哈电6，三一64，远景5，明阳3,海装32,运达6,中车0
-            algorithms_configs['state'] = 5 
-            algorithms_configs['fault_code'] = faultcode_GW.fault
-        elif algorithms_configs['ManufacturerID']=='XE':#哈电6
-            algorithms_configs['state'] = 6
-            algorithms_configs['fault_code'] = faultcode_hadian.fault
-        elif (algorithms_configs['ManufacturerID']=='SE'):#三一64,吉电三骏120
-            algorithms_configs['state'] = 64
-            algorithms_configs['fault_code'] = faultcode_SANY.fault
-        elif (algorithms_configs['ManufacturerID']=='SI'):#三一64,吉电三骏120
-            algorithms_configs['state'] = 120
-            algorithms_configs['fault_code'] = faultcode_SANY.fault
-        elif algorithms_configs['ManufacturerID']=='EN':#远景5,21
-            algorithms_configs['state'] = 5
-            algorithms_configs['fault_code'] = faultcode_ENOS.fault
-        elif (algorithms_configs['ManufacturerID']=='MY'):
-            algorithms_configs['state'] = 14
-            algorithms_configs['fault_code'] = faultcode_MINYANG.fault
-        elif (algorithms_configs['ManufacturerID']=='My'):#明阳3,MySE8.5-230为14
-            #'''
-            algorithms_configs['state'] = 3
-            algorithms_configs['fault_code'] = faultcode_MINYANG_GANSU_QINGSHUI.fault
-            algorithms_configs['state_code'] = faultcode_MINYANG_GANSU_QINGSHUI.state
-            '''
-            algorithms_configs['state'] = 3
-            algorithms_configs['fault_code'] = faultcode_MINYANG_GANSU_TONGWEI.fault
-            algorithms_configs['state_code'] = faultcode_MINYANG_GANSU_TONGWEI.state
-            '''
-            algorithms_configs['wspd'] = faultcode_MINYANG_GANSU_QINGSHUI.wspd
-            algorithms_configs['pwrat'] = faultcode_MINYANG_GANSU_QINGSHUI.pwrat
-            algorithms_configs['Rotspd_Connect'] = faultcode_MINYANG_GANSU_QINGSHUI.Rotspd_Connect
-            algorithms_configs['Rotspd_Rate'] = faultcode_MINYANG_GANSU_QINGSHUI.Rotspd_Rate
-            algorithms_configs['Pitch_Min'] = faultcode_MINYANG_GANSU_QINGSHUI.Pitch_Min
-        elif (algorithms_configs['ManufacturerID']=='H1')|(algorithms_configs['ManufacturerID']=='HZ'):#海装32
-            algorithms_configs['state'] = 32
-            algorithms_configs['fault_code'] = faultcode_HZ.fault
-        elif algorithms_configs['ManufacturerID']=='WD':#运达6
-            algorithms_configs['state'] = 6
-            algorithms_configs['fault_code'] = faultcode_YUNDA.fault
-        elif algorithms_configs['ManufacturerID']=='WT':#中车0，10MW为8
-            #state = 1
-            #fault_code = faultcode_ZHONGCHE.fault
-            algorithms_configs['state'] = 14##许继机组
-            algorithms_configs['fault_code'] = faultcode_XUJI.fault
-        elif algorithms_configs['ManufacturerID']=='FD':#中车0
-            algorithms_configs['state'] = 2
-            algorithms_configs['fault_code'] = faultcode_FD.fault
-        elif algorithms_configs['ManufacturerID']=='UP':#中车0
-            algorithms_configs['state'] = 5
-            algorithms_configs['fault_code'] = faultcode_UP.fault
-        elif (algorithms_configs['ManufacturerID']=='W2')|(algorithms_configs['ManufacturerID']=='W3')|(algorithms_configs['ManufacturerID']=='W4')|(algorithms_configs['ManufacturerID']=='EW'):#上气
-            algorithms_configs['state'] = 8
-            algorithms_configs['fault_code'] = faultcode_HZ.fault
-        elif algorithms_configs['ManufacturerID']=='XW':#中车0
-            algorithms_configs['state'] = 14
-            algorithms_configs['fault_code'] = faultcode_UP.fault
-        elif algorithms_configs['ManufacturerID']=='TZ':#中车0
-            algorithms_configs['state'] = 13
-            algorithms_configs['fault_code'] = faultcode_TZ.fault
-        else:
-            pass
+        algorithms_configs['Turbine_attr'] = Turbine_attr
+        algorithms_configs['Df_all_all_alltype'] = pd.DataFrame()
+        algorithms_configs['Df_all_m_all_alltype'] = pd.DataFrame()
+        algorithms_configs['zuobiao_all'] = pd.DataFrame()
+        for i_type in range(len(np.unique(Turbine_attr['turbineTypeID']))):
+            algorithms_configs['Turbine_attr_type'] = Turbine_attr[Turbine_attr['turbineTypeID'] == np.unique(Turbine_attr['turbineTypeID'])[i_type]]
+            algorithms_configs['typeProcess'] = i_type
+            algorithms_configs['Turbine_attr_type'] = algorithms_configs['Turbine_attr_type'].reset_index()
+            algorithms_configs['path'] = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[i_type]))
+            if os.path.exists(algorithms_configs['path'])==False:
+                os.makedirs(algorithms_configs['path'])
+            algorithms_configs['Pwrat_Rate'] = algorithms_configs['Turbine_attr_type'].loc[0,'ratedPower']#['ratedPower']
+            if('rotorDiameter' in algorithms_configs['Turbine_attr_type']): #.loc[0,'attributes']
+                algorithms_configs['rotor_radius'] = algorithms_configs['Turbine_attr_type'].loc[0,'rotorDiameter']*0.5#['rotorDiameter']*0.5
+            else:
+                algorithms_configs['rotor_radius'] = 131*0.5
+            algorithms_configs['hub_high'] = algorithms_configs['Turbine_attr_type'].loc[0,'hubHeight']#['hubHeight']
+
+            algorithms_configs['turbineTypeID'] = str(np.unique(Turbine_attr['turbineTypeID'])[i_type])
+            algorithms_configs['ManufacturerID'] = str(np.unique(Turbine_attr['turbineTypeID'])[i_type])[:2]
+            algorithms_configs['typeName'] = str(np.unique(Turbine_attr['turbineTypeID'])[i_type])
+            if algorithms_configs['ManufacturerID']=='GW':#金风5，哈电6，三一64，远景5，明阳3,海装32,运达6,中车0
+                algorithms_configs['state'] = 5 
+                algorithms_configs['fault_code'] = faultcode_GW.fault
+            elif algorithms_configs['ManufacturerID']=='XE':#哈电6
+                algorithms_configs['state'] = 6
+                algorithms_configs['fault_code'] = faultcode_hadian.fault
+            elif (algorithms_configs['ManufacturerID']=='SE'):#三一64,吉电三骏120
+                algorithms_configs['state'] = 64
+                algorithms_configs['fault_code'] = faultcode_SANY.fault
+            elif (algorithms_configs['ManufacturerID']=='SI'):#三一64,吉电三骏120
+                algorithms_configs['state'] = 120
+                algorithms_configs['fault_code'] = faultcode_SANY.fault
+            elif algorithms_configs['ManufacturerID']=='EN':#远景5,21
+                algorithms_configs['state'] = 5
+                algorithms_configs['fault_code'] = faultcode_ENOS.fault
+            # elif (algorithms_configs['ManufacturerID']=='MY'):
+            #     algorithms_configs['state'] = 14
+            #     algorithms_configs['fault_code'] = faultcode_MINYANG.fault
+            elif (algorithms_configs['ManufacturerID'].upper()=='MY'):#明阳3,MySE8.5-230为14
+                #'''
+                algorithms_configs['state'] = 3
+                algorithms_configs['fault_code'] = faultcode_MINYANG_GANSU_QINGSHUI.fault
+                algorithms_configs['state_code'] = faultcode_MINYANG_GANSU_QINGSHUI.state
+                '''
+                algorithms_configs['state'] = 3
+                algorithms_configs['fault_code'] = faultcode_MINYANG_GANSU_TONGWEI.fault
+                algorithms_configs['state_code'] = faultcode_MINYANG_GANSU_TONGWEI.state
+                '''
+                algorithms_configs['wspdTheory'] = faultcode_MINYANG_GANSU_QINGSHUI.wspd
+                algorithms_configs['pwratTheory'] = faultcode_MINYANG_GANSU_QINGSHUI.pwrat
+                algorithms_configs['Rotspd_Connect'] = faultcode_MINYANG_GANSU_QINGSHUI.Rotspd_Connect
+                algorithms_configs['Rotspd_Rate'] = faultcode_MINYANG_GANSU_QINGSHUI.Rotspd_Rate
+                algorithms_configs['Pitch_Min'] = faultcode_MINYANG_GANSU_QINGSHUI.Pitch_Min
+            elif (algorithms_configs['ManufacturerID']=='H1')|(algorithms_configs['ManufacturerID']=='HZ'):#海装32
+                algorithms_configs['state'] = 32
+                algorithms_configs['fault_code'] = faultcode_HZ.fault
+            elif algorithms_configs['ManufacturerID']=='WD':#运达6
+                algorithms_configs['state'] = 6
+                algorithms_configs['fault_code'] = faultcode_YUNDA.fault
+            elif algorithms_configs['ManufacturerID']=='WT':#中车0，10MW为8
+                #state = 1
+                #fault_code = faultcode_ZHONGCHE.fault
+                algorithms_configs['state'] = 14##许继机组
+                algorithms_configs['fault_code'] = faultcode_XUJI.fault
+            elif algorithms_configs['ManufacturerID']=='FD':#中车0
+                algorithms_configs['state'] = 2
+                algorithms_configs['fault_code'] = faultcode_FD.fault
+            elif algorithms_configs['ManufacturerID']=='UP':#中车0
+                algorithms_configs['state'] = 5
+                algorithms_configs['fault_code'] = faultcode_UP.fault
+            elif (algorithms_configs['ManufacturerID']=='W2')|(algorithms_configs['ManufacturerID']=='W3')|(algorithms_configs['ManufacturerID']=='W4')|(algorithms_configs['ManufacturerID']=='EW'):#上气
+                algorithms_configs['state'] = 8
+                algorithms_configs['fault_code'] = faultcode_HZ.fault
+            elif algorithms_configs['ManufacturerID']=='XW':#中车0
+                algorithms_configs['state'] = 14
+                algorithms_configs['fault_code'] = faultcode_UP.fault
+            elif algorithms_configs['ManufacturerID']=='TZ':#中车0
+                algorithms_configs['state'] = 13
+                algorithms_configs['fault_code'] = faultcode_TZ.fault
+            else:
+                pass
+                
+            #存理论曲线
+            insertTheoryWindPower(algorithms_configs)
+            #pw_df_hadian = pd.DataFrame()
+            #state_all_all = pd.DataFrame()
+            #fault_all_all = pd.DataFrame()
+            algorithms_configs['Df_all_all'] = pd.DataFrame()
+            algorithms_configs['Df_all_m_all'] = pd.DataFrame()
+            algorithms_configs['yaw_time'] = pd.DataFrame()
             
-         
-        #pw_df_hadian = pd.DataFrame()
-        #state_all_all = pd.DataFrame()
-        #fault_all_all = pd.DataFrame()
-        algorithms_configs['Df_all_all'] = pd.DataFrame()
-        algorithms_configs['Df_all_m_all'] = pd.DataFrame()
-        algorithms_configs['yaw_time'] = pd.DataFrame()
-        
-        
-        
-        ####修改计算机组台数
-        #Turbine_attr_type = Turbine_attr_type.iloc[[21],:]
-        #Turbine_attr_type = Turbine_attr_type.iloc[0:1,:]
-        #####
-        algorithms_configs['Turbine_attr_type'] = algorithms_configs['Turbine_attr_type'].reset_index()
-        algorithms_configs['turbine_err_all'] = pd.DataFrame()
-        algorithms_configs['turbine_err_all']['wtid'] = algorithms_configs['Turbine_attr_type'].loc[:,'name']
-        algorithms_configs['turbine_err_all']['power_rate_err'] = 0  #额定功率异常
-        algorithms_configs['turbine_err_all']['wspd_power_err'] = 0  #风速功率散点异常
-        algorithms_configs['turbine_err_all']['torque_kopt_err'] = 0 #最佳Cp段转矩控制异常
-        algorithms_configs['turbine_err_all']['torque_rate_err'] = 0 #额定转速段转矩控制异常
-        algorithms_configs['turbine_err_all']['yaw_duifeng_err'] = 0 #对风偏航角度过大
-        algorithms_configs['turbine_err_all']['yaw_leiji_err'] = 0 #偏航控制误差过大
-        algorithms_configs['turbine_err_all']['pitch_min_err'] = 0 #最小桨距角异常
-        algorithms_configs['turbine_err_all']['pitch_control_err'] = 0 #变桨控制异常
-        algorithms_configs['turbine_err_all']['pitch_balance_err'] = 0 #三叶片变桨不平衡
-        
-        algorithms_configs['turbine_err_all']['power_rate_loss'] = 0
-        algorithms_configs['turbine_err_all']['wspd_power_loss'] = 0
-        algorithms_configs['turbine_err_all']['torque_kopt_loss'] = 0
-        algorithms_configs['turbine_err_all']['torque_rate_loss'] = 0
-        algorithms_configs['turbine_err_all']['yaw_duifeng_loss'] = 0
-        algorithms_configs['turbine_err_all']['yaw_leiji_loss'] = 0
-        algorithms_configs['turbine_err_all']['pitch_min_loss'] = 0
-        algorithms_configs['turbine_err_all']['pitch_control_loss'] = 0
-        algorithms_configs['turbine_err_all']['pitch_balance_loss'] = 0
-        algorithms_configs['turbine_err_all']['pwrat_order'] = 1
-        
-        algorithms_configs['turbine_param_all'] = pd.DataFrame()
+            
+            
+            ####修改计算机组台数
+            #Turbine_attr_type = Turbine_attr_type.iloc[[21],:]
+            #Turbine_attr_type = Turbine_attr_type.iloc[0:1,:]
+            #####
+            algorithms_configs['Turbine_attr_type'] = algorithms_configs['Turbine_attr_type'].reset_index()
+            algorithms_configs['turbine_err_all'] = pd.DataFrame()
+            algorithms_configs['turbine_err_all']['wtid'] = algorithms_configs['Turbine_attr_type'].loc[:,'name']
+            algorithms_configs['turbine_err_all']['power_rate_err'] = 0  #额定功率异常
+            algorithms_configs['turbine_err_all']['wspd_power_err'] = 0  #风速功率散点异常
+            algorithms_configs['turbine_err_all']['torque_kopt_err'] = 0 #最佳Cp段转矩控制异常
+            algorithms_configs['turbine_err_all']['torque_rate_err'] = 0 #额定转速段转矩控制异常
+            algorithms_configs['turbine_err_all']['yaw_duifeng_err'] = 0 #对风偏航角度过大
+            algorithms_configs['turbine_err_all']['yaw_leiji_err'] = 0 #偏航控制误差过大
+            algorithms_configs['turbine_err_all']['pitch_min_err'] = 0 #最小桨距角异常
+            algorithms_configs['turbine_err_all']['pitch_control_err'] = 0 #变桨控制异常
+            algorithms_configs['turbine_err_all']['pitch_balance_err'] = 0 #三叶片变桨不平衡
+            
+            algorithms_configs['turbine_err_all']['power_rate_loss'] = 0
+            algorithms_configs['turbine_err_all']['wspd_power_loss'] = 0
+            algorithms_configs['turbine_err_all']['torque_kopt_loss'] = 0
+            algorithms_configs['turbine_err_all']['torque_rate_loss'] = 0
+            algorithms_configs['turbine_err_all']['yaw_duifeng_loss'] = 0
+            algorithms_configs['turbine_err_all']['yaw_leiji_loss'] = 0
+            algorithms_configs['turbine_err_all']['pitch_min_loss'] = 0
+            algorithms_configs['turbine_err_all']['pitch_control_loss'] = 0
+            algorithms_configs['turbine_err_all']['pitch_balance_loss'] = 0
+            algorithms_configs['turbine_err_all']['pwrat_order'] = 1
+            
+            algorithms_configs['turbine_param_all'] = pd.DataFrame()
 
-        # 运行单机型预警项目的主体逻辑函数
-        await algorithms_turbines_stream(mainLog, algorithmLogs, multi_algorithms, algorithms_configs)#algorithms_configs['Turbine_attr_type']
+            # 运行单机型预警项目的主体逻辑函数
+            await algorithms_turbines_stream(mainLog, algorithmLogs, multi_algorithms, algorithms_configs)#algorithms_configs['Turbine_attr_type']
 
         
     gc.collect()
@@ -390,7 +407,10 @@ async def algorithms_turbines_stream(mainLog, algorithmLogs, multi_algorithms, a
     
     mainLog.info(f'开始执行算法{multi_algorithms}') #，执行时间范围{startTime}-{endTime}
     mainLog.info(f'获取风场{Wind_Farm}的风机数量为'+str(algorithms_configs['Turbine_attr_type'].shape[0]))
-    assetIds = algorithms_configs['Turbine_attr_type']['mdmId']
+    if Platform == "ZhongTai":
+        assetIds = algorithms_configs['Turbine_attr_type']['mdmId']
+    elif Platform == "WuLianWang":
+        assetIds = algorithms_configs['Turbine_attr_type']['assetId']
     #获取每个风机私有节点id
     # try:
     #     multiModelAssetIds = await getWindTurbinesNode(assetIds, algorithms_configs, nameConstrain=extraModelName) #一个风机可能会有多个模型资产Id
@@ -476,7 +496,10 @@ async def algorithms_turbines_stream(mainLog, algorithmLogs, multi_algorithms, a
             startTurbineTime = datetime.now()
 
             turbineIndex += 1
-            assetId = row['mdmId'] #风机id
+            if Platform == "ZhongTai":
+                assetId = row['mdmId'] #风机id
+            elif Platform == "WuLianWang":
+                assetId = row['assetId'] #风机id
             turbineName = row['name']
             ratedPower = row['ratedPower']
             mainLog.info(f'-----------------------------------开始执行风机{assetId}预警模型{name}: {turbineIndex}/'+str(algorithms_configs['Turbine_attr_type'].shape[0])+'----------------------------------------------')
@@ -669,19 +692,20 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
                 private_points += pointValue
         else:
             private_points = []
+        #检测数据量
+        assert algorithms_configs['Df_all_all'].empty==False, "获取"+str(algorithms_configs["farmName"])+"风场的"+str(algorithms_configs["turbineTypeID"])+"的历史数据为空"
         #参数确定
         get_data_async.define_parameters(algorithms_configs, name)
-        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-        #调试record_pwrt_picture专用语句，其他情况注释该语句为了调试记录和加载数据
-        if not os.path.exists('Efficiency_ana_V3.pkl.gz') and name == 'record_pwrt_picture':
-            # algorithms_configs.to_pickle('algorithms_configs.pkl.gz', compression='gzip')
-            with open('Efficiency_ana_V3.pkl.gz', 'wb') as f:
-                f.write(gzip.compress(pickle.dumps(algorithms_configs)))
-                # pickle.dump(algorithms_configs, f)
-        elif os.path.exists('Efficiency_ana_V3.pkl.gz') and name == 'record_pwrt_picture':
-            with open('Efficiency_ana_V3.pkl.gz', 'rb') as f:
-                algorithms_configs = pickle.loads(gzip.decompress(f.read()))
-            # algorithms_configs = pd.read_pickle('algorithms_configs.pkl.gz')
+        # #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        # #调试record_pwrt_picture专用语句，其他情况注释该语句为了调试记录和加载数据
+        # if not os.path.exists('Efficiency_ana_V3.pkl.gz') and name == 'record_pwrt_picture':
+        #     # algorithms_configs.to_pickle('algorithms_configs.pkl.gz', compression='gzip')
+        #     with open('Efficiency_ana_V3.pkl.gz', 'wb') as f:
+        #         f.write(gzip.compress(pickle.dumps(algorithms_configs)))
+        #         # pickle.dump(algorithms_configs, f)
+        # elif os.path.exists('Efficiency_ana_V3.pkl.gz') and name == 'record_pwrt_picture':
+        #     with open('Efficiency_ana_V3.pkl.gz', 'rb') as f:
+        #         algorithms_configs = pickle.loads(gzip.decompress(f.read()))
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # 跑模型
         if name == "Efficiency_ana_V3":
@@ -771,8 +795,8 @@ def schedule():
     # scheduler.add_job(execute_multi_algorithms, 'cron', hour=3, args=(scheduleConfig['clock-2'], "hour")) # 每天1点执行
 
     # 中期
-    scheduler.add_job(execute_multi_algorithms, 'interval', days=5, args=(scheduleConfig['day-1'], "day")) # 每隔半个月执行一次
-    scheduler.add_job(execute_multi_algorithms, 'interval', days=1, args=(scheduleConfig['day-2'], "day")) # 每隔半个月执行一次
+    scheduler.add_job(execute_multi_algorithms, 'interval', days=10, args=(scheduleConfig['day-1'], "day")) # 每隔半个月执行一次
+    scheduler.add_job(execute_multi_algorithms, 'cron', hour=0, minute=5, args=(scheduleConfig['day-2'], "day")) # 每隔半个月执行一次
     # 长期
     
     # scheduler.add_job(execute_multi_algorithms, 'interval', seconds=30, args=(['blade_freeze'],))

@@ -10,10 +10,10 @@
 # accesskey: minioadmin
 # secretkey: nt-Y9@xAfyyMoHBc
 # bucketName: wind-efficiency-pictures
-url: 127.0.0.1:19000 #172.16.1.189:9000  #10.104.2.160:9000 #82.157.145.88:19000 #172.24.108.18:9000
+url: 173.17.4.12:9000 #127.0.0.1:19000 #172.16.1.189:9000  #10.104.2.160:9000 #82.157.145.88:19000 #172.24.108.18:9000
 domainName: #osp.spic #null #osp.spic
-accesskey: minioadmin
-secretkey: Zhang123.
+accesskey: admin #minioadmin
+secretkey: minio1234 #Zhang123.
 bucketName: wind-efficiency-pictures
 
 

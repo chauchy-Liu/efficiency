@@ -8,7 +8,7 @@ import asyncio
 from datetime import datetime as datetime
 from configs.config import algConfig
 import data.efficiency_function as turbine_efficiency_function
-from db.db import selectPwTimeAll, insertTechnologyLossAll, insertLimturbineLossAll, insertFaultgridLossAll,insertStopLossAll,insertFaultLossAll, insertLimgridLossAll,insertEnyWspdAll
+from db.db import selectPwTimeAll, insertTechnologyLossAll, insertLimturbineLossAll, insertFaultgridLossAll,insertStopLossAll,insertFaultLossAll, insertLimgridLossAll,insertEnyWspdAll, insertTurbineWarningAll
 from matplotlib import pyplot as plt
 from pylab import mpl
 import sys
@@ -197,6 +197,9 @@ async def judge_model(algorithms_configs):
     #全场单机型       
     ##全场损失统计           
     # fenduan_all.to_csv(str(path+'/fenduan.csv'),index=True, encoding='utf-8')
+    if len(turbine_warning)>0:
+        turbine_warning.set_index(('localtime'),inplace= True)
+        insertTurbineWarningAll(turbine_warning, algorithms_configs)
     if len(fault_loss_all)>0:
         fault_loss_all.set_index(('localtime'),inplace= True)
         insertFaultLossAll(fault_loss_all, algorithms_configs)

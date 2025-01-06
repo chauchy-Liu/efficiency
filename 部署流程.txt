@@ -16,10 +16,12 @@
 		或
 		docker pull minio/minio
 	(2)启动
+		docker run -d -p 19000:9000 -p 19090:9090 --name minio  -e "MINIO_ROOT_USER=minioadmin" -e "MINIO_ROOT_PASSWORD=Zhang123." -v 自己的目录/docker/minio:/data quay.io/minio/minio server /data --console-address ":9090"
+		或
 		docker run -d -p 19000:9000 -p 19090:9090 --name minio  -e "MINIO_ROOT_USER=minioadmin" -e "MINIO_ROOT_PASSWORD=Zhang123." -v 自己的目录/docker/minio:/data minio/minio server /data --console-address ":9090"
 
 
-配置
+配置（目录 /自己目录/configs）
 1、项目IP
 项目工作目录/configs/config.py
 
@@ -33,7 +35,7 @@ MainPort = 8889
 项目工作目录/configs/config.py
 
 ######################################### mysql数据库配置#######################################################################
-DB_HOST = '127.0.0.1'#'172.17.11.95'
+DB_HOST = '127.0.0.1'
 DB_USERNAME = 'root'
 DB_PORT = 13306
 DB_PASSWORD = 'Zhang123.'

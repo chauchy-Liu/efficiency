@@ -1,0 +1,90 @@
+server:
+    # 服务器的HTTP端口,默认为8080
+    port: 9100
+
+# 天易开发框架配置
+tianyi:
+    name: 天易微服务
+    version: 0.0.1-SNAPSHOT
+    client-id: 528270008741011456
+    client-secret: v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW
+    client-name: 能效算法分析
+    # 运行模式(微服务)
+    runtime-mode: cloud
+    jwt:
+        sign-key: abcdefghijklmnopqrstuvwxyz
+    log:
+        operate:
+            enabled: false
+            provider-name: tianyi-system
+    web:
+        xss:
+            enabled: false
+    exception:
+        i18n: false
+        guarantees-exception-msg-type: exception_stack_trace
+    security:
+        # 访问设置
+        access:
+            # 匿名用户访问,没有,则删除该配置
+            anonymous:
+                patterns:
+                    # 配置 TODO
+                    - TODO
+            # 任意用户访问,没有,则删除该配置
+            permit-all:
+                patterns:
+                    # 配置 TODO
+                    - TODO
+            # 禁止用户访问,没有,则删除该配置
+            deny-all:
+                patterns:
+                    # 配置 TODO
+                    - TODO
+            # 忽略的请求,没有,则删除该配置
+            ignore:
+                patterns:
+                    # 配置 TODO
+                    - TODO
+        # 认证设置
+        oauth2:
+            client:
+                # 客户端唯一标识
+                client-id: ${tianyi.client-id}
+                # 客户端密钥
+                client-secret: ${tianyi.client-secret}
+                # 用户统一授权路径
+                user-authorization-url: http://173.17.4.18:9210/auth/oauth/server/authorize
+                # 用户统一退出路径
+                logout-authorization-url: http://173.17.4.18:9210/auth/oauth/server/logout
+                # 业务系统登录成功回调路径
+                backend-redirect-url: http://173.17.4.18:9210/system/oauth/login
+                # 业务系统前端路径
+                front-redirect-url: http://173.17.4.18:9225
+    idempotent:
+        enabled: true
+    snpit-base:
+        file-system:
+            #持久化策略
+            persistence: mysql
+            #默认文件存储源
+            primary: minio
+            #是否启用分片
+            slice-switch: true
+            #*文件源配置
+            proxy: /miniofile
+            file-module:
+                minio:
+                    type: minio
+                    url: http://173.17.4.20:9000
+                    access-key: minioadmin 
+                    secret-key: nt-Y9@xAfyyMoHBc
+                    timeout: 20
+                    ##组态图桶名，需要先在minio创建好,设置为public
+                    bucketName: 2d-model
+                    #文件执行类
+                    execute: com.tianyi.file.core.assembly.interceptor.impl.minio.MinioExecute
+
+spring:
+    profiles:
+        active: dev

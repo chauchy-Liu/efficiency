@@ -8,17 +8,17 @@ import asyncio
 from datetime import datetime as datetime
 from configs.config import algConfig
 import data.efficiency_function as turbine_efficiency_function
-from db.db import selectPwTurbineAll, insertWindDirectionPicture, upload, insertPwTurbineAll, insertWindFrequencyPicture, insertAirDensityPicture,insertTurbulencePicture,insertNavigationBiasDirectionPicture,insertNavigationBiasControlPicture,insertPitchAnglePicture,insertPitchActionPicture,insertTorqueControlPicture
+from db.db import selectPwTurbineAll, selectTheoryWindPower, insertWindDirectionPicture, upload, insertPwTurbineAll, insertWindFrequencyPicture, insertAirDensityPicture,insertTurbulencePicture,insertNavigationBiasDirectionPicture,insertNavigationBiasControlPicture,insertPitchAnglePicture,insertPitchActionPicture,insertTorqueControlPicture
 from matplotlib import pyplot as plt
 from pylab import mpl
 import sys
 import statistics as st
 from scipy import signal,integrate
 from datetime import datetime
-from configs.config import wspd, pwrat
+# from configs.config import wspd, pwrat
 # from faultcode.faultcode_MINYANG_GANSU_QINGSHUI import wspd, pwrat
 
-def analyse(farmName, typeName:str, startTime, endTime):
+def analyse(farmName, typeName:str, wtid:list, startTime, endTime):
     #赋值
     windbin = np.arange(2.0,25.0,0.5)
     pw_startTime = startTime
@@ -30,11 +30,12 @@ def analyse(farmName, typeName:str, startTime, endTime):
     pw_df_all = pd.DataFrame()
     pw_df_all['windbin'] = windbin
     
+    wspd, pwrat = selectTheoryWindPower(farmName, typeName)
     pwrat_standard = pd.DataFrame({'windbin':wspd,'pwrat':pwrat})
     result = {'table':[]}
-    #######机组功率曲线计算
-    for num in range(len(turbine_list)):
-        turbine_name = turbine_list[num]
+    #######机组功率曲线计算wtid替换turbine_list
+    for num in range(len(wtid)):
+        turbine_name = wtid[num]
         pw_df = turbine_efficiency_function.pwratcurve_rho(pw_turbine_all,turbine_type,turbine_name,pw_startTime,pw_endTime,windbin,6)
         pw_df = pw_df.loc[:,['windbin','pwrat','count']]
         pw_df.rename(columns = {'pwrat':turbine_name,'count':str(turbine_name+'_'+'count')},inplace = True) 
@@ -44,7 +45,8 @@ def analyse(farmName, typeName:str, startTime, endTime):
     #####某机型实测功率曲线及理论功率曲线
     pw_df_all = pw_df_all.dropna(axis=0,how='all',subset=pw_df_all.columns[1:],inplace=False)
     pw_df_all = pd.merge(pw_df_all,pwrat_standard,how='outer',on='windbin')
-    for turbine_name in turbine_list:
+    #传入风机数量控制传出风机数量
+    for turbine_name in wtid: #turbine_list:
         for i in range(len(pw_df_all['windbin'])):
             elem = {
                 #机组
@@ -65,12 +67,12 @@ def analyse(farmName, typeName:str, startTime, endTime):
             if str(pw_df_all.iloc[i]['pwrat']) == 'nan':
                 elem['theory'] = None
             else:
-                elem['theory'] = str(pw_df_all.iloc[i]['pwrat'])
+                elem['theory'] = '%.2f' %(pw_df_all.iloc[i]['pwrat'])
             #实测值
             if str(pw_df_all.iloc[i][turbine_name]) == 'nan':
                 elem['actual'] = None
             else:
-                elem['actual'] = str(pw_df_all.iloc[i][turbine_name])
+                elem['actual'] = '%.2f' %(pw_df_all.iloc[i][turbine_name])
 
             result['table'].append(elem)
     

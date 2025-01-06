@@ -65,7 +65,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
         #myfault = myfault.append(new_row,ignore_index=True)
         myfault = myfault[myfault['freq']>0] 
         for i in range(len(myfault['freq'].values)):
-            result[str(myfault.iloc[i]['fnum'])] = "%.1"%(myfault.iloc[i]['freq'])
+            result[str(myfault.iloc[i]['fnum'])] = "%.1f"%(myfault.iloc[i]['freq'])
         # fig = plt.figure(figsize=(5,5),dpi=100)
         # plt.axes(aspect=1.0)
         # plt.pie(x=myfault['freq'],labels=myfault['fnum'],autopct='%3.1f %%',shadow=False,labeldistance=1.05,startangle=90,pctdistance=0.8,textprops={'fontsize':8,'color':'black'},radius=1.0)

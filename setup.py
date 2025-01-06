@@ -20,9 +20,11 @@ except_files = {
     'gunicorn.config.py',
     'logging_config.py',
     'enos_get_data.py',
-    'test.py',
+    os.path.join(currdir, 'test.py'),
     '.gitignore',
     '__init__.py',
+    # os.path.join(currdir, 'data', 'get_data_async.py'),
+    os.path.join(currdir, 'db', 'db.py')
 }
 
 
@@ -31,6 +33,9 @@ def filter_file(file_name):
         file_name = file_name.replace(currdir, '')
     if file_name in except_files:  # 过滤文件
         return True
+    for except_file in except_files:
+        if file_name in except_file or file_name == except_file:
+            return True
     file_path = file_name.split("/")
     if len(file_path) > 1:
         file_dir = ""

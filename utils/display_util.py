@@ -5,7 +5,21 @@ import utils.time_util as time_util
 import configs.config as config
 import os
 import glob
-
+import platform
+ 
+def get_os():
+    system = platform.system()
+    if system == 'Windows':
+        return 'win'
+    elif system == 'Darwin':
+        return 'mac'
+    elif system == 'Linux':
+        return 'linux'
+    else:
+        return 'unknown'
+ 
+# os_type = get_os()
+# print(f"The operating system is: {os_type}")
 
 def get_file_creation_date(filename):
     # os.path.getmtime(filename)#修改时间

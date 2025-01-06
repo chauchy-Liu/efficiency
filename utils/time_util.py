@@ -1,4 +1,6 @@
 import re
+import pytz
+from datetime import datetime
 
 __timedelta_resample_unit_dict = {
     'D':'D',
@@ -57,3 +59,29 @@ def is_lower_than_day(sample_interval):
     interval_value = re.match(r"(\d+)", sample_interval).group(1)
     interval_unit = sample_interval.strip(interval_value)
     return True if (interval_unit == 'h' or interval_unit == 'm' or interval_unit == 's' or interval_unit == 'ms' or interval_unit == 'um' or interval_unit == 'ns') else False
+
+#时间戳转本地时间
+def timestamp_to_localtime(timestamp):
+    #毫秒单位转秒单位
+    timestamp /= 1000
+    # 指定时区（例如，'Asia/Shanghai'为中国标准时间）
+    timezone = pytz.timezone('Asia/Shanghai')
+
+    # 转换为指定时区的datetime对象
+    dt_object = datetime.fromtimestamp(timestamp, tz=timezone)
+
+    # 格式化输出
+    formatted_time = dt_object.strftime("%Y-%m-%d %H:%M:%S %Z")
+    return formatted_time
+
+def timestamp_to_datetime(timestamp):
+    # 创建一个 UTC 时间
+    utc_time = datetime.utcfromtimestamp(timestamp)
+    
+    # 指定目标时区（例如，'Asia/Shanghai' 对应中国标准时间）
+    target_tz = pytz.timezone('Asia/Shanghai')
+    
+    # 将 UTC 时间转换为目标时区时间
+    local_time = utc_time.replace(tzinfo=pytz.UTC).astimezone(target_tz)
+    
+    return local_time

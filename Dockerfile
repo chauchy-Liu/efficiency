@@ -12,7 +12,7 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 3B4FE6ACC0B21F32
 
 RUN echo "==> Install..."  && \
     apt-get update && \
-    apt-get install -y python3-pip libgomp1 gcc vim && \
+    apt-get install -y python3-pip libgomp1 gcc vim ttf-wqy-zenhei && \
     pip3 install -i https://mirrors.aliyun.com/pypi/simple --no-cache-dir --upgrade pip && \
     pip3 install -i https://mirrors.aliyun.com/pypi/simple gunicorn gevent && \
     pip3 install xgboost==2.0.3 && \ 
@@ -32,5 +32,6 @@ RUN cd /src/ && \
 
 WORKDIR /app
 EXPOSE 8889
-CMD ["gunicorn", "app:app", "--preload", "--timeout", "120", "--log-level", "info", "--access-logfile", "-", "--error-logfile", "-", "-c", "gunicorn.config.py"]
+# timeout 120
+CMD ["gunicorn", "app:app", "--preload", "--timeout", "0", "--log-level", "info", "--access-logfile", "-", "--error-logfile", "-", "-c", "gunicorn.config.py"] 
 # CMD ["python", "main_job.py"]

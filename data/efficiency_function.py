@@ -23,12 +23,20 @@ import matplotlib.cm as cm
 from sklearn.ensemble import GradientBoostingRegressor
 import xgboost as xgb
 from sklearn.metrics import accuracy_score
+from utils.display_util import get_os
 
 mpl.interactive(False)
 plt.switch_backend('agg')
-# plt.rcParams['font.sans-serif'] = ['SimHei'] #Windows
-# plt.rcParams['font.sans-serif'] = ['Heiti'] #mac
-plt.rcParams['font.sans-serif'] = ['Arial Unicode MS'] #mac
+os_type = get_os()
+if os_type == "win":
+    plt.rcParams['font.sans-serif'] = ['SimHei'] #Windows
+elif os_type == "mac":
+    plt.rcParams['font.sans-serif'] = ['Arial Unicode MS'] #mac
+elif os_type == "linux":
+    plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei'] #Linux
+else:
+    plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei'] #Linux
+plt.rcParams['axes.unicode_minus'] = False 
 
 
 def thresholdfun_orig(data,threshold):
@@ -72,7 +80,7 @@ def pwratcurve_rho(data,turbine_type,turbine_name,pw_startTime,pw_endTime,windbi
     pc_df_rho = pd.DataFrame()
     
     data_temp = data[data['type']==turbine_type]
-    data_temp = data_temp.loc[pw_startTime:pw_endTime,[turbine_name,str(turbine_name+'_'+'wspd')]]
+    data_temp = data_temp.loc[(data_temp.index>=pw_startTime) & (data_temp.index<=pw_endTime),[turbine_name,str(turbine_name+'_'+'wspd')]]
     data_temp.rename(columns = {turbine_name:'pwrat',str(turbine_name+'_'+'wspd'):'wspd_rho'},inplace = True) 
     for i in range(len(windbin)):
         temp = data_temp[(data_temp['wspd_rho']>=windbin[i]-0.25) & (data_temp['wspd_rho']<windbin[i]+0.25)]
@@ -111,13 +119,13 @@ def monthdata(datatemp,altitude,path):#月数据分析！！！！！！！
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
     ax.plot(month_data.index,month_data['rho'],'o-',color='r',label='空气密度')
     ax.set_ylabel('空气密度(kg/m3)')
-    ax.legend(loc=2)
+    ax.legend(loc=2, framealpha=0)
     ax1 = ax.twinx()
     ax1.plot(month_data.index,month_data['wspd'],'o-',color='b',label='风速')
     ax1.set_ylabel('风速(m/s)')
-    ax1.legend(loc=1)
+    ax1.legend(loc=1, framealpha=0)
     ax.grid()
-    fig.savefig(str(path+'/'+'month.png'),bbox_inches ='tight')
+    fig.savefig(str(path+'/'+'month.png'),transparent=True, bbox_inches ='tight')
     return month_data, str(path+'/'+'month.png')
 
 def pass_filter(data,cutoff_freq,medfilt_freq,wiener_freq,cutoff_freq_butter,order,choice_num):#1:低通滤波器，2：中值滤波，3：wiener滤波，4：巴特沃斯滤波器
@@ -272,7 +280,7 @@ def winddir_err_before_new(data,dirbin,windbin2,dirbin1,windbin1,path,turbine_na
             #plt.colorbar()
         plt.subplots_adjust(top=0.95,bottom=0.08,left=0.08,right=0.95,hspace =0.10, wspace =0.1) #调整边距      
         #plt.margins(0,0)
-        fig.savefig(str(path+'/'+str(turbine_name)+'_'+str(request_num)+'_yawerror.png'),dpi=100,bbox_inches='tight')
+        fig.savefig(str(path+'/'+str(turbine_name)+'_'+str(request_num)+'_yawerror.png'), transparent=True, dpi=100,bbox_inches='tight')
         filename = str(path+'/'+str(turbine_name)+'_'+str(request_num)+'_yawerror.png')
     else:
         err_result_get = -999999
@@ -295,7 +303,7 @@ def winddir_err_before_new(data,dirbin,windbin2,dirbin1,windbin1,path,turbine_na
             #plt.colorbar()
         plt.subplots_adjust(top=0.95,bottom=0.08,left=0.08,right=0.95,hspace =0.10, wspace =0.1) #调整边距      
         #plt.margins(0,0)
-        fig.savefig(str(path+'/'+str(turbine_name)+'_'+str(request_num)+'_yawerror00001.png'),dpi=100,bbox_inches='tight')
+        fig.savefig(str(path+'/'+str(turbine_name)+'_'+str(request_num)+'_yawerror00001.png'), transparent=True,dpi=100,bbox_inches='tight')
         filename = str(path+'/'+str(turbine_name)+'_'+str(request_num)+'_yawerror00001.png')
         
     return err_result_get, filename
@@ -535,9 +543,9 @@ def Torque_Rotspd_Rate_loss(data,Pwrat_Rate,Rotspd_Rate,Rotspd_Connect):
             rate_kopt_err = 1
             rotspd_power_nihe['rotspd'] = np.arange(Rotspd_Connect,Rotspd_Rate+(Rotspd_Rate-Rotspd_Connect)*0.0001,(Rotspd_Rate-Rotspd_Connect)*0.0001)
             rotspd_power_nihe['pwrat'] = kopt_temp*rotspd_power_nihe['rotspd']**3
-            new_row = {'rotspd':Rotspd_Connect,'pwrat':0}
+            new_row = pd.DataFrame({'rotspd':[Rotspd_Connect],'pwrat':[0]})
             rotspd_power_nihe = pd.concat([rotspd_power_nihe,new_row],ignore_index=True)#.append(new_row,ignore_index=True)
-            new_row = {'rotspd':Rotspd_Rate,'pwrat':Pwrat_Rate}
+            new_row = pd.DataFrame({'rotspd':[Rotspd_Rate],'pwrat':[Pwrat_Rate]})
             rotspd_power_nihe = pd.concat([rotspd_power_nihe,new_row],ignore_index=True)
             rotspd_power_nihe = rotspd_power_nihe.sort_values(by='pwrat',ascending=True)
             return rate_kopt_err,rotspd_power_nihe
@@ -713,7 +721,7 @@ def WindRose(data,path):
     #ax.set_yticks([200,500,1000,1500])
     cb = mpl.colorbar.ColorbarBase(ax1,cmap=cmap,norm=norm)
     cb.ax.tick_params(labelsize=14)
-    fig.savefig(path + '/' +str(turbine_name) + '风向玫瑰图.png',dpi=100,bbox_inches='tight')    
+    fig.savefig(path + '/' +str(turbine_name) + '风向玫瑰图.png', transparent=True,dpi=100,bbox_inches='tight')    
     return path + '/' +str(turbine_name) + '风向玫瑰图.png'
 
 
@@ -861,7 +869,7 @@ def Grid_Limit_Loss(data,turbine_name,pw_df_temp,fault_code,state_code):
     limgrid_loss = pd.DataFrame()    
     data_limgrid = pd.DataFrame()
     
-    data_limgrid = data[data['statel','mymode']==90001]
+    data_limgrid = data[data['limpw','mymode']==4] #4：限电, 5:正常, 应填：4
     #列分级
     columns = []
     for elem in pw_df_temp.columns.to_list():
@@ -1089,7 +1097,7 @@ def Turbine_Technology_Loss(data,turbine_name,pw_df_temp,fault_code,state_code):
 ##单机自限电损失输入
 def Turbine_Limit_Loss(data,turbine_name,pw_df_temp,Pitch_Min,Pwrat_Rate,Rotspd_Connect,state): 
     limturbine_loss = pd.DataFrame()
-    data_limt = data[(data['statel','nanmean']==90002)&(data['state','nanmean']==state)]
+    data_limt = data[(data['limpw','nanmean']==5)&(data['state','nanmean']==state)] #4：限电, 5:正常, 应填：5
     #列分级
     columns = []
     for elem in pw_df_temp.columns.to_list():

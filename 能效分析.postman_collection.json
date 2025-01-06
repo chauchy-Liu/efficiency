@@ -1,0 +1,1128 @@
+{
+	"info": {
+		"_postman_id": "fd1df3b4-c135-4f29-859d-2e4121a4a727",
+		"name": "能效分析",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "13849205"
+	},
+	"item": [
+		{
+			"name": "绩效指标接口",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/performance/overview/query",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"performance",
+						"overview",
+						"query"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "损失原因分析",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/loss/reason",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"loss",
+						"reason"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "机组故障分布",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/loss/unit/fault/distribution",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"loss",
+						"unit",
+						"fault",
+						"distribution"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "机组故障损失统计",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/loss/statistics/unit/fault",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"loss",
+						"statistics",
+						"unit",
+						"fault"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "计划停机损失统计",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://10.191.64.90:9100/loss/statistics/scheduled/outage",
+					"protocol": "http",
+					"host": [
+						"10",
+						"191",
+						"64",
+						"90"
+					],
+					"port": "9100",
+					"path": [
+						"loss",
+						"statistics",
+						"scheduled",
+						"outage"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "电网故障损失",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://10.191.64.90:9100/loss/statistics/grid/fault",
+					"protocol": "http",
+					"host": [
+						"10",
+						"191",
+						"64",
+						"90"
+					],
+					"port": "9100",
+					"path": [
+						"loss",
+						"statistics",
+						"grid",
+						"fault"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "电网限电损失统计",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://10.191.64.90:9100/loss/statistics/grid/restriction",
+					"protocol": "http",
+					"host": [
+						"10",
+						"191",
+						"64",
+						"90"
+					],
+					"port": "9100",
+					"path": [
+						"loss",
+						"statistics",
+						"grid",
+						"restriction"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "机组自限电损失统计",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://10.191.64.90:9100/loss/statistics/unit/self/restriction",
+					"protocol": "http",
+					"host": [
+						"10",
+						"191",
+						"64",
+						"90"
+					],
+					"port": "9100",
+					"path": [
+						"loss",
+						"statistics",
+						"unit",
+						"self",
+						"restriction"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "技术待机损失",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://10.191.64.90:9100/loss/statistics/technical/standby",
+					"protocol": "http",
+					"host": [
+						"10",
+						"191",
+						"64",
+						"90"
+					],
+					"port": "9100",
+					"path": [
+						"loss",
+						"statistics",
+						"technical",
+						"standby"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "功率曲线一致性排行",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://10.191.64.90:9100/power/curve/consistency/rank",
+					"protocol": "http",
+					"host": [
+						"10",
+						"191",
+						"64",
+						"90"
+					],
+					"port": "9100",
+					"path": [
+						"power",
+						"curve",
+						"consistency",
+						"rank"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "机型功率曲线",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://10.191.64.90:9100/power/curve/consistency/turbine/type",
+					"protocol": "http",
+					"host": [
+						"10",
+						"191",
+						"64",
+						"90"
+					],
+					"port": "9100",
+					"path": [
+						"power",
+						"curve",
+						"consistency",
+						"turbine",
+						"type"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "功率数据",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://10.191.64.90:9100/power/curve/consistency/data",
+					"protocol": "http",
+					"host": [
+						"10",
+						"191",
+						"64",
+						"90"
+					],
+					"port": "9100",
+					"path": [
+						"power",
+						"curve",
+						"consistency",
+						"data"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "场站维度对标分析",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\", \"1825415034528378881\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/benchmarking/wind/farm",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"benchmarking",
+						"wind",
+						"farm"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "时间维度对标分析",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    },\n    \"compare\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://10.191.64.90:9100/benchmarking/time",
+					"protocol": "http",
+					"host": [
+						"10",
+						"191",
+						"64",
+						"90"
+					],
+					"port": "9100",
+					"path": [
+						"benchmarking",
+						"time"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "机型维度对标分析",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\", \"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://10.191.64.90:9100/benchmarking/turbine/type",
+					"protocol": "http",
+					"host": [
+						"10",
+						"191",
+						"64",
+						"90"
+					],
+					"port": "9100",
+					"path": [
+						"benchmarking",
+						"turbine",
+						"type"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "风频分布图",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/wind/resource/frequency/picture",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"wind",
+						"resource",
+						"frequency",
+						"picture"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "风向玫瑰图",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/wind/resource/direction/picture",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"wind",
+						"resource",
+						"direction",
+						"picture"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "空气密度变化图",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/wind/resource/air/density/picture",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"wind",
+						"resource",
+						"air",
+						"density",
+						"picture"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "湍流强度变化曲线图",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/wind/resource/turbulence/picture",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"wind",
+						"resource",
+						"turbulence",
+						"picture"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "偏航对风误差偏大",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/control/performance/navigation/bias/direction",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"control",
+						"performance",
+						"navigation",
+						"bias",
+						"direction"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "偏航控制误差偏大",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"windTurbineList\": [\"#07\", \"#06\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/control/performance/navigation/bias/control",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"control",
+						"performance",
+						"navigation",
+						"bias",
+						"control"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "最小浆变距角异常",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/control/performance/pitch/angle",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"control",
+						"performance",
+						"pitch",
+						"angle"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "浆变动作异常",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/control/performance/pitch/action",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"control",
+						"performance",
+						"pitch",
+						"action"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "转矩控制异常",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/control/performance/torque/control",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"control",
+						"performance",
+						"torque",
+						"control"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "风场列表",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/wind/farm/list",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"wind",
+						"farm",
+						"list"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "风机列表",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/wind/farm/list",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"wind",
+						"farm",
+						"list"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "风机列表 Copy",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1825415034528378881\"],\n    \"windTurbineTypeList\": [\"MySE5.0-200\"],\n    \"target\": {\n        \"startDate\": \"2024-11-19\",\n        \"endDate\": \"2024-11-29\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/wind/farm/list",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"wind",
+						"farm",
+						"list"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://10.191.64.90:9100",
+			"type": "string"
+		}
+	]
+}

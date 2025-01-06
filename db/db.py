@@ -11,6 +11,7 @@ import logging
 from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
+from urllib.parse import urlparse, parse_qs
 
 log = logging.getLogger('mysql_log')
 if not log.handlers:
@@ -53,13 +54,16 @@ def upload(filename:str, algorithms_configs:dict):
         log.info("Bucket "+ylv['bucketName']+" already exists")
     #name_uuid = uuid.uuid3(uuid.NAMESPACE_DNS, filename)
     basename = os.path.basename(filename)
+    dirname =os.path.dirname(filename)
+    dirList = dirname.split('/')
+
     dir = algorithms_configs['minio_dir']
-    response = minio_client.fput_object(ylv['bucketName'], os.path.join(dir,basename), filename)
+    response = minio_client.fput_object(ylv['bucketName'], os.path.join(dir,dirList[-1]+'-'+basename), filename)
     log.info(
         filename+" is successfully uploaded as "
         "object " +os.path.join(dir,basename)+" to bucket "+ylv['bucketName']+"."
     )
-    file_url = minio_client.presigned_get_object(ylv['bucketName'], os.path.join(dir,basename))
+    file_url = minio_client.presigned_get_object(ylv['bucketName'], os.path.join(dir,dirList[-1]+'-'+basename))
     index = file_url.find("?")
     file_url = file_url[:index]
     if ylv["domainName"] != None and len(ylv["domainName"]) > 0:#替换url为domain name
@@ -68,6 +72,16 @@ def upload(filename:str, algorithms_configs:dict):
     return file_url
 
 #################################mysql#################################
+create_theory_wind_power_table_query = f'''
+    create table theory_wind_power (
+        id int auto_increment primary key comment '主键',
+        farm_name varchar(100) not null comment '风场名',
+        farm_id varchar(100) not null comment '风场ID',
+        type_name varchar(100) not null comment '机型名',
+        wspd float comment '风速m/s',
+        pwrt float comment '功率kw*h'
+    ) comment='各场站和机型对应的理论功率曲线';
+'''
 create_pw_turbine_all_table_query = f'''
     create table pw_turbine_all (
         id int auto_increment primary key comment '主键',
@@ -95,7 +109,7 @@ create_pw_time_all_table_query = f'''
     ) comment='风机功率曲线表';
 '''
 create_turbine_warning_all_table_query = f'''
-    create table pw_turbine_all (
+    create table turbine_warning_all (
         id int auto_increment primary key comment '主键',
         data_time datetime not null comment '数据日期',
         farm_name varchar(100) not null comment '风场名',
@@ -103,9 +117,10 @@ create_turbine_warning_all_table_query = f'''
         type_name varchar(100) not null comment '机型名',
         wtid varchar(100) not null comment '风机号',
         wspd float comment '风速m/s',
-        fault text comment '故障标识',
-        time_rate float comment '时间利用率',
-        count float comment '故障次数'
+        fault text comment '告警标识',
+        time_rate float comment '告警时长',
+        count float comment '告警次数',
+        fault_describe text comment '告警描述'
     ) comment='单机告警';
 '''
 create_technology_loss_all_table_query = f'''
@@ -119,22 +134,22 @@ create_technology_loss_all_table_query = f'''
         fault float comment '故障标识',
         count float comment '故障频数',
         wspd float comment '风速m/s',
-        time_rate float comment '时间利用率',
-        loss float comment '损失功率',
-        fault_describe text comment '故障描述',
+        time_rate float comment '待机时长',
+        loss float comment '损失电量',
+        fault_describe text comment '故障描述'
     ) comment='技术故障损失';
 '''
 create_limturbine_loss_all_table_query = f'''
     create table limturbine_loss_all (
         id int auto_increment primary key comment '主键',
-        data_time datetime not null comment comment '数据日期',
+        data_time datetime not null comment '数据日期',
         farm_name varchar(100) not null comment '风场名',
         farm_id varchar(100) not null comment '风场ID',
         type_name varchar(100) not null comment '机型名',
         wtid varchar(100) not null comment '风机号',
         wspd float comment '风速m/s',
-        time_rate float comment '时间利用率',
-        loss float comment '损失功率'
+        time_rate float comment '限电时间',
+        loss float comment '损失电量'
     ) comment='单机限电损失';
 '''
 create_faultgrid_loss_all_table_query = f'''
@@ -146,8 +161,8 @@ create_faultgrid_loss_all_table_query = f'''
         type_name varchar(100) not null comment '机型名',
         wtid varchar(100) not null comment '风机号',
         wspd float comment '风速m/s',
-        time_rate float comment '时间利用率',
-        loss float comment '损失功率',
+        time_rate float comment '故障时长',
+        loss float comment '损失电量',
         count float comment '故障次数',
         fault float comment '故障标识',
         fault_describe text comment '故障描述'
@@ -163,8 +178,8 @@ create_stop_loss_all_table_query = f'''
         wtid varchar(100) not null comment '风机号',
         wspd float comment '风速m/s',
         exltmp float comment '环境温度',
-        time_rate float comment '时间利用率',
-        loss float comment '损失功率'
+        time_rate float comment '计划停机时长',
+        loss float comment '损失电量'
     ) comment='计划停机损失';
 '''
 create_limgrid_loss_all_table_query = f'''
@@ -176,8 +191,8 @@ create_limgrid_loss_all_table_query = f'''
         type_name varchar(100) not null comment '机型名',
         wtid varchar(100) not null comment '风机号',
         wspd float comment '风速m/s',
-        time_rate float comment '时间利用率',
-        loss float comment '损失功率'
+        time_rate float comment '限电',
+        loss float comment '损失电量'
     ) comment='电网限电损失';
 '''
 create_fault_loss_all_table_query = f'''
@@ -189,8 +204,8 @@ create_fault_loss_all_table_query = f'''
         type_name varchar(100) not null comment '机型名',
         wtid varchar(100) not null comment '风机号',
         wspd float comment '风速m/s',
-        time_rate float comment '时间利用率',
-        loss float comment '损失功率',
+        time_rate float comment '故障时长',
+        loss float comment '损失电量',
         count float comment '故障次数',
         fault float comment '故障标识',
         fault_describe text comment '故障描述',
@@ -220,6 +235,8 @@ create_wind_frequency_picture_table_query = f'''
         farm_id varchar(100) not null comment '风场ID',
         type_name varchar(100) not null comment '风机机型',
         minio_url text comment '图片存储minio地址',
+        bucket_name text comment '桶名',
+        file_name text comment '图片名',
         del_flag tinyint default 0 comment '删除数据标志位'
     ) comment='风频图';
 '''
@@ -232,6 +249,8 @@ create_wind_direction_picture_table_query = f'''
         type_name varchar(100) not null comment '风机机型',
         wtid varchar(100) not null comment '风机号名',
         minio_url text comment '图片存储minio地址',
+        bucket_name text comment '桶名',
+        file_name text comment '图片名',
         del_flag tinyint default 0 comment '删除数据标志位'
     ) comment='风向图';
 '''
@@ -244,6 +263,8 @@ create_air_density_picture_table_query = f'''
         farm_id varchar(100) not null comment '风场ID',
         type_name varchar(100) not null comment '风机机型',
         minio_url text comment '图片存储minio地址',
+        bucket_name text comment '桶名',
+        file_name text comment '图片名',
         del_flag tinyint default 0 comment '删除数据标志位'
     ) comment='空气密度图';
 '''
@@ -256,6 +277,8 @@ create_turbulence_picture_table_query = f'''
         farm_id varchar(100) not null comment '风场ID',
         type_name varchar(100) not null comment '风机机型',
         minio_url text comment '图片存储minio地址',
+        bucket_name text comment '桶名',
+        file_name text comment '图片名',
         del_flag tinyint default 0 comment '删除数据标志位'
     ) comment='湍流图';
 '''
@@ -268,6 +291,8 @@ create_navigation_bias_direction_picture_table_query = f'''
         type_name varchar(100) not null comment '风机机型',
         wtid varchar(100) not null comment '风机号名',
         minio_url text comment '图片存储minio地址',
+        bucket_name text comment '桶名',
+        file_name text comment '图片名',
         del_flag tinyint default 0 comment '删除数据标志位'
     ) comment='偏航对风图';
 '''
@@ -280,6 +305,8 @@ create_navigation_bias_control_picture_table_query = f'''
         type_name varchar(100) not null comment '风机机型',
         wtid varchar(100) not null comment '风机号名',
         minio_url text comment '图片存储minio地址',
+        bucket_name text comment '桶名',
+        file_name text comment '图片名',
         del_flag tinyint default 0 comment '删除数据标志位'
     ) comment='偏航控制图';
 '''
@@ -292,6 +319,8 @@ create_pitch_angle_picture_table_query = f'''
         type_name varchar(100) not null comment '风机机型',
         wtid varchar(100) not null comment '风机号名',
         minio_url text comment '图片存储minio地址',
+        bucket_name text comment '桶名',
+        file_name text comment '图片名',
         del_flag tinyint default 0 comment '删除数据标志位'
     ) comment='最小桨距角图';
 '''
@@ -304,6 +333,8 @@ create_pitch_action_picture_table_query = f'''
         type_name varchar(100) not null comment '风机机型',
         wtid varchar(100) not null comment '风机号名',
         minio_url text comment '图片存储minio地址',
+        bucket_name text comment '桶名',
+        file_name text comment '图片名',
         del_flag tinyint default 0 comment '删除数据标志位'
     ) comment='变桨动作图';
 '''
@@ -316,6 +347,8 @@ create_torque_control_picture_table_query = f'''
         type_name varchar(100) not null comment '风机机型',
         wtid varchar(100) not null comment '风机号名',
         minio_url text comment '图片存储minio地址',
+        bucket_name text comment '桶名',
+        file_name text comment '图片名',
         del_flag tinyint default 0 comment '删除数据标志位'
     ) comment='转矩控制图';
 '''
@@ -323,9 +356,42 @@ create_torque_control_picture_table_query = f'''
 #提取数据
 ####################################################33
 
+def selectTheoryWindPower(farmName, typeName): #typeName是一个机型，不多个机型
+    conn = get_connection()
+    cursor = conn.cursor()
+    wspd = []
+    pwrt = []
+    log.info(f"##################################提取theory_wind_power数据####################")
+    obtain_query = "SELECT \
+        farm_name, \
+        farm_id, \
+        type_name, \
+        wspd, \
+        pwrt \
+        from theory_wind_power \
+        where farm_name=%s AND type_name=%s \
+    "
+    data_to_obtain = (farmName, typeName)
+    log.info(f'sql语句：{obtain_query}')
+    log.info(f'sql数据：{data_to_obtain}')
+    cursor.execute(obtain_query, data_to_obtain)
+    queryResult = cursor.fetchall()
+    if queryResult == None or len(queryResult) <= 0:
+        pass #return pd.DataFrame()
+    else:
+        for lineValue in queryResult:
+            localtime = pd.to_datetime(lineValue[0],errors='coerce')
+            #nan验证
+            lineValue = list(lineValue)
+            if lineValue[3] == nan:
+                lineValue[3] = np.nan
+            if lineValue[4] == nan:
+                lineValue[4] = np.nan
+            wspd.append(lineValue[3])
+            pwrt.append(lineValue[4])
+    return wspd, pwrt
 
-
-def selectPwTimeAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=1), end_time=datetime.now()-timedelta(days=91)):
+def selectPwTimeAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
     startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
     start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
     endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
@@ -386,8 +452,17 @@ def selectPwTimeAll(data, farmName, typeName, start_time=datetime.now()-timedelt
     if queryResult == None or len(queryResult) <= 0:
         pass #return pd.DataFrame()
     else:
+        #重复机名的次数
+        wtidCount = 0
+        firstWtidName = None
         for i, lineValue in enumerate(queryResult):
             localtime = pd.to_datetime(lineValue[0],errors='coerce')
+            if i == 0:
+                firstWtidName = lineValue[4]
+                wtidCount += 1
+            else:
+                if lineValue[4] == firstWtidName:
+                    wtidCount += 1
             #nan验证
             lineValue = list(lineValue)
             if lineValue[5] == nan:
@@ -398,11 +473,14 @@ def selectPwTimeAll(data, farmName, typeName, start_time=datetime.now()-timedelt
                 lineValue[7] = np.nan
             if lineValue[8] == nan:
                 lineValue[8] = np.nan
-            data.loc[i, ['windbin','pwrat',lineValue[4],lineValue[4]+'_count']] = [lineValue[5], lineValue[6],lineValue[7],lineValue[8]]
+            if lineValue[4] == firstWtidName:
+                data.loc[i, ['windbin','pwrat',lineValue[4],lineValue[4]+'_count']] = [lineValue[5], lineValue[6],lineValue[7],lineValue[8]]
+            else:
+                data.loc[i%wtidCount, ['windbin','pwrat',lineValue[4],lineValue[4]+'_count']] = [lineValue[5], lineValue[6],lineValue[7],lineValue[8]]
     data.replace(b'', 0, inplace=True)
     return data
 
-def selectPwTurbineAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=1), end_time=datetime.now()-timedelta(days=91)):
+def selectPwTurbineAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
     startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
     start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
     endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
@@ -450,27 +528,162 @@ def selectPwTurbineAll(data, farmName, typeName, start_time=datetime.now()-timed
     if queryResult == None or len(queryResult) <= 0:
         pass #return pd.DataFrame()
     else:
-        for lineValue in queryResult:
-            localtime = pd.to_datetime(lineValue[0],errors='coerce')
-            #nan验证
-            lineValue = list(lineValue)
-            if lineValue[5] == nan:
-                lineValue[5] = np.nan
-            if lineValue[6] == nan:
-                lineValue[6] = np.nan
-            data.loc[localtime, ['type',lineValue[4]+'_wspd',lineValue[4]]] = [lineValue[3], lineValue[5],lineValue[6]]
-            if len(typeName) > 0:
-                if lineValue[4] not in wtids:
-                    wtids.append(lineValue[4])
-            else:
-                if lineValue[3] in wtids:
-                    wtids[lineValue[3]].append(lineValue[4])
-                else:
-                    wtids[lineValue[3]] = [lineValue[4]]
+        # for lineValue in queryResult:
+        #     localtime = pd.to_datetime(lineValue[0],errors='coerce')
+        #     #nan验证
+        #     lineValue = list(lineValue)
+        #     if lineValue[5] == nan:
+        #         lineValue[5] = np.nan
+        #     if lineValue[6] == nan:
+        #         lineValue[6] = np.nan
+        #     data.loc[localtime, ['type',lineValue[4]+'_wspd',lineValue[4]]] = [lineValue[3], lineValue[5],lineValue[6]]
+        #     if len(typeName) > 0:
+        #         if lineValue[4] not in wtids:
+        #             wtids.append(lineValue[4])
+        #     else:
+        #         if lineValue[3] in wtids:
+        #             wtids[lineValue[3]].append(lineValue[4])
+        #         else:
+        #             wtids[lineValue[3]] = [lineValue[4]]
+        originTable = pd.DataFrame(queryResult)
+        turbineType = list(set(originTable[3]))[-1]
+        originTable = originTable[originTable[3]==turbineType]
+        turbineNames = list(set(originTable[4]))
+        turbineNameWspd = [x+'_wspd' for x in turbineNames]
+        localtime = sorted(list(set(originTable[0].apply(lambda x: pd.to_datetime(x,errors='coerce')))))
+        data = pd.DataFrame(columns=['type']+turbineNames+turbineNameWspd, index=localtime)
+        for i, ele in enumerate(turbineNames):
+            tmp = originTable[originTable[4]==ele]
+            tmp.set_index(0, inplace=True)
+            common_indices = data.index.intersection(tmp.index)
+            data.loc[common_indices, ele] = tmp.loc[common_indices, 6]
+            data.loc[common_indices, turbineNameWspd[i]] = tmp.loc[common_indices, 5]
+        data['type'] = turbineType
+        #nan验证
+        data.replace(nan, np.nan, inplace=True)
+        if len(typeName) > 0:
+            wtids = turbineNames
+        else:
+            wtids[turbineType] = turbineNames
+        
     data.replace(b'', 0, inplace=True)
     return data, wtids
 
-def selectTechnologyLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=1), end_time=datetime.now()-timedelta(days=91)):
+def selectTurbineWarningAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"###########################提取turbine_warning_all数据###############")
+    wtids = {}
+    #查询表名
+    check_table_query = f"show tables like 'turbine_warning_all';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        columns = ['type', 'wtid', 'fault', 'count', 'time', 'wspd', 'fault_describe']
+        data = pd.DataFrame(columns=columns)
+        return data, wtids
+    typeNameStr = ""
+    for name in typeName:
+        typeNameStr += str(name) + ','
+    typeNameStr = typeNameStr.rstrip(',')
+    if len(typeName) > 0:
+        obtain_query = "SELECT \
+            data_time, \
+            farm_name, \
+            farm_id, \
+            type_name, \
+            wtid, \
+            fault, \
+            count, \
+            wspd, \
+            time_rate, \
+            fault_describe \
+            from technology_loss_all \
+            where farm_name=%s AND type_name=%s  AND data_time BETWEEN %s AND %s \
+        "
+        data_to_obtain = (farmName, typeNameStr, start_time, end_time)
+        log.info(f'sql语句：{obtain_query}')
+        log.info(f'sql数据：{data_to_obtain}')
+        cursor.execute(obtain_query, data_to_obtain)
+    else:
+        obtain_query = "SELECT \
+            data_time, \
+            farm_name, \
+            farm_id, \
+            type_name, \
+            wtid, \
+            fault, \
+            count, \
+            wspd, \
+            time_rate, \
+            fault_describe \
+            from technology_loss_all \
+            where farm_name=%s AND data_time BETWEEN %s AND %s \
+        "
+        data_to_obtain = (farmName, start_time, end_time)
+        log.info(f'sql语句：{obtain_query}')
+        log.info(f'sql数据：{data_to_obtain}')
+        cursor.execute(obtain_query, data_to_obtain)
+    queryResult = cursor.fetchall()
+    if queryResult == None or len(queryResult) <= 0:
+        pass #return pd.DataFrame()
+    else:
+        if len(typeName) > 0:
+            for i, lineValue in enumerate(queryResult):
+                localtime = pd.to_datetime(lineValue[0],errors='coerce')
+                #nan验证
+                lineValue = list(lineValue)
+                # if lineValue[9] == nan:
+                #     lineValue[9] = np.nan
+                if lineValue[6] == nan:
+                    lineValue[6] = np.nan
+                if lineValue[7] == nan:
+                    lineValue[7] = np.nan
+                if lineValue[8] == nan:
+                    lineValue[8] = np.nan
+                data.loc[i, ['localtime', 'type', 'wtid', 'fault', 'count', 'time', 'wspd', 'fault_describe']] = [localtime, lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[7], lineValue[9]]
+                if lineValue[3] in wtids:
+                    if lineValue[4] not in wtids[lineValue[3]]:
+                        wtids[lineValue[3]].append(lineValue[4])
+                else:
+                    wtids[lineValue[3]] = [lineValue[4]]
+        else:
+            for i, lineValue in enumerate(queryResult):
+                localtime = pd.to_datetime(lineValue[0],errors='coerce')
+                #nan验证
+                lineValue = list(lineValue)
+                # if lineValue[9] == nan:
+                #     lineValue[9] = np.nan
+                if lineValue[6] == nan:
+                    lineValue[6] = np.nan
+                if lineValue[7] == nan:
+                    lineValue[7] = np.nan
+                if lineValue[8] == nan:
+                    lineValue[8] = np.nan
+                data.loc[i, ['localtime','type', 'wtid', 'fault', 'count', 'time', 'wspd', 'fault_describe']] = [localtime, lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8],  lineValue[7], lineValue[9]]
+                if lineValue[3] in wtids:
+                    if lineValue[4] not in wtids[lineValue[3]]:
+                        wtids[lineValue[3]].append(lineValue[4])
+                else:
+                    wtids[lineValue[3]] = [lineValue[4]]
+                if lineValue[3] in typeName:
+                    pass
+                else:
+                    typeName.append(lineValue[3])
+    data.replace(b'', 0, inplace=True)
+    if 'localtime' in data.columns.to_list():
+        data.set_index('localtime', inplace=True)
+    return data, wtids
+
+def selectTechnologyLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
     startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
     start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
     endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
@@ -540,7 +753,7 @@ def selectTechnologyLossAll(data, farmName, typeName, start_time=datetime.now()-
         pass #return pd.DataFrame()
     else:
         if len(typeName) > 0:
-            for lineValue in queryResult:
+            for i, lineValue in enumerate(queryResult):
                 localtime = pd.to_datetime(lineValue[0],errors='coerce')
                 #nan验证
                 lineValue = list(lineValue)
@@ -552,14 +765,14 @@ def selectTechnologyLossAll(data, farmName, typeName, start_time=datetime.now()-
                     lineValue[7] = np.nan
                 if lineValue[8] == nan:
                     lineValue[8] = np.nan
-                data.loc[localtime, ['type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10]]
+                data.loc[i, ['localtime', 'type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe']] = [localtime, lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10]]
                 if lineValue[3] in wtids:
                     if lineValue[4] not in wtids[lineValue[3]]:
                         wtids[lineValue[3]].append(lineValue[4])
                 else:
                     wtids[lineValue[3]] = [lineValue[4]]
         else:
-            for lineValue in queryResult:
+            for i, lineValue in enumerate(queryResult):
                 localtime = pd.to_datetime(lineValue[0],errors='coerce')
                 #nan验证
                 lineValue = list(lineValue)
@@ -571,7 +784,7 @@ def selectTechnologyLossAll(data, farmName, typeName, start_time=datetime.now()-
                     lineValue[7] = np.nan
                 if lineValue[8] == nan:
                     lineValue[8] = np.nan
-                data.loc[localtime, ['type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10]]
+                data.loc[i, ['localtime', 'type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe']] = [localtime, lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10]]
                 if lineValue[3] in wtids:
                     if lineValue[4] not in wtids[lineValue[3]]:
                         wtids[lineValue[3]].append(lineValue[4])
@@ -582,8 +795,10 @@ def selectTechnologyLossAll(data, farmName, typeName, start_time=datetime.now()-
                 else:
                     typeName.append(lineValue[3])
     data.replace(b'', 0, inplace=True)
+    if 'localtime' in data.columns.to_list():
+        data.set_index('localtime', inplace=True)
     return data, wtids
-def selectLimturbineLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=1), end_time=datetime.now()-timedelta(days=91)):
+def selectLimturbineLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
     startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
     start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
     endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
@@ -647,7 +862,7 @@ def selectLimturbineLossAll(data, farmName, typeName, start_time=datetime.now()-
         pass #return pd.DataFrame()
     else:
         if len(typeName) > 0:
-            for lineValue in queryResult:
+            for i, lineValue in enumerate(queryResult):
                 localtime = pd.to_datetime(lineValue[0],errors='coerce')
                 #nan验证
                 lineValue = list(lineValue)
@@ -657,14 +872,14 @@ def selectLimturbineLossAll(data, farmName, typeName, start_time=datetime.now()-
                     lineValue[6] = np.nan
                 if lineValue[7] == nan:
                     lineValue[7] = np.nan
-                data.loc[localtime, ['type', 'wtid', 'time', 'loss', 'wspd']] = [lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5]]
+                data.loc[i, ['localtime', 'type', 'wtid', 'time', 'loss', 'wspd']] = [localtime, lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5]]
                 if lineValue[3] in wtids:
                     if lineValue[4] not in wtids[lineValue[3]]:
                         wtids[lineValue[3]].append(lineValue[4])
                 else:
                     wtids[lineValue[3]] = [lineValue[4]]
         else:
-            for lineValue in queryResult:
+            for i, lineValue in enumerate(queryResult):
                 localtime = pd.to_datetime(lineValue[0],errors='coerce')
                 #nan验证
                 lineValue = list(lineValue)
@@ -674,7 +889,7 @@ def selectLimturbineLossAll(data, farmName, typeName, start_time=datetime.now()-
                     lineValue[6] = np.nan
                 if lineValue[7] == nan:
                     lineValue[7] = np.nan
-                data.loc[localtime, ['type', 'wtid', 'time', 'loss', 'wspd']] = [lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5]]
+                data.loc[i, ['localtime', 'type', 'wtid', 'time', 'loss', 'wspd']] = [localtime, lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5]]
                 if lineValue[3] in wtids:
                     if lineValue[4] not in wtids[lineValue[3]]:
                         wtids[lineValue[3]].append(lineValue[4])
@@ -685,8 +900,10 @@ def selectLimturbineLossAll(data, farmName, typeName, start_time=datetime.now()-
                 else:
                     typeName.append(lineValue[3])
     data.replace(b'', 0, inplace=True)
+    if 'localtime' in data.columns.to_list():
+        data.set_index('localtime', inplace=True)
     return data,wtids
-def selectFaultgridLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=1), end_time=datetime.now()-timedelta(days=91)):
+def selectFaultgridLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
     startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
     start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
     endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
@@ -756,7 +973,7 @@ def selectFaultgridLossAll(data, farmName, typeName, start_time=datetime.now()-t
         pass #return pd.DataFrame()
     else:
         if len(typeName) > 0:
-            for lineValue in queryResult:
+            for i, lineValue in enumerate(queryResult):
                 localtime = pd.to_datetime(lineValue[0],errors='coerce')
                 #nan验证
                 lineValue = list(lineValue)
@@ -768,14 +985,14 @@ def selectFaultgridLossAll(data, farmName, typeName, start_time=datetime.now()-t
                     lineValue[7] = np.nan
                 if lineValue[8] == nan:
                     lineValue[8] = np.nan
-                data.loc[localtime, ['type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10]]
+                data.loc[i, ['localtime', 'type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe']] = [localtime, lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10]]
                 if lineValue[3] in wtids:
                     if lineValue[4] not in wtids[lineValue[3]]:
                         wtids[lineValue[3]].append(lineValue[4])
                 else:
                     wtids[lineValue[3]] = [lineValue[4]]
         else:
-            for lineValue in queryResult:
+            for i, lineValue in enumerate(queryResult):
                 localtime = pd.to_datetime(lineValue[0],errors='coerce')
                 #nan验证
                 lineValue = list(lineValue)
@@ -787,7 +1004,7 @@ def selectFaultgridLossAll(data, farmName, typeName, start_time=datetime.now()-t
                     lineValue[7] = np.nan
                 if lineValue[8] == nan:
                     lineValue[8] = np.nan
-                data.loc[localtime, ['type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10]]
+                data.loc[i, ['localtime', 'type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe']] = [localtime, lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10]]
                 if lineValue[3] in wtids:
                     if lineValue[4] not in wtids[lineValue[3]]:
                         wtids[lineValue[3]].append(lineValue[4])
@@ -798,8 +1015,10 @@ def selectFaultgridLossAll(data, farmName, typeName, start_time=datetime.now()-t
                 else:
                     typeName.append(lineValue[3])
     data.replace(b'', 0, inplace=True)
+    if 'localtime' in data.columns.to_list():
+        data.set_index('localtime', inplace=True)
     return data, wtids
-def selectStopLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=1), end_time=datetime.now()-timedelta(days=91)):
+def selectStopLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
     startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
     start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
     endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
@@ -865,7 +1084,7 @@ def selectStopLossAll(data, farmName, typeName, start_time=datetime.now()-timede
         pass #return pd.DataFrame()
     else:
         if len(typeName) > 0:
-            for lineValue in queryResult:
+            for i, lineValue in enumerate(queryResult):
                 localtime = pd.to_datetime(lineValue[0],errors='coerce')
                 #nan验证
                 lineValue = list(lineValue)
@@ -877,14 +1096,14 @@ def selectStopLossAll(data, farmName, typeName, start_time=datetime.now()-timede
                     lineValue[7] = np.nan
                 if lineValue[8] == nan:
                     lineValue[8] = np.nan
-                data.loc[localtime, ['type', 'wtid', 'time', 'loss', 'wspd', 'exltmp']] = [lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5], lineValue[8]]
+                data.loc[i, ['localtime', 'type', 'wtid', 'time', 'loss', 'wspd', 'exltmp']] = [localtime, lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5], lineValue[8]]
                 if lineValue[3] in wtids:
                     if lineValue[4] not in wtids[lineValue[3]]:
                         wtids[lineValue[3]].append(lineValue[4])
                 else:
                     wtids[lineValue[3]] = [lineValue[4]]
         else:
-            for lineValue in queryResult:
+            for i, lineValue in enumerate(queryResult):
                 localtime = pd.to_datetime(lineValue[0],errors='coerce')
                 #nan验证
                 lineValue = list(lineValue)
@@ -896,7 +1115,7 @@ def selectStopLossAll(data, farmName, typeName, start_time=datetime.now()-timede
                     lineValue[7] = np.nan
                 if lineValue[8] == nan:
                     lineValue[8] = np.nan
-                data.loc[localtime, ['type', 'wtid', 'time', 'loss', 'wspd', 'exltmp']] = [lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5], lineValue[8]]
+                data.loc[i, ['localtime', 'type', 'wtid', 'time', 'loss', 'wspd', 'exltmp']] = [localtime, lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5], lineValue[8]]
                 if lineValue[3] in wtids:
                     if lineValue[4] not in wtids[lineValue[3]]:
                         wtids[lineValue[3]].append(lineValue[4])
@@ -907,8 +1126,10 @@ def selectStopLossAll(data, farmName, typeName, start_time=datetime.now()-timede
                 else:
                     typeName.append(lineValue[3])
     data.replace(b'', 0, inplace=True)
+    if 'localtime' in data.columns.to_list():
+        data.set_index('localtime', inplace=True)
     return data, wtids
-def selectFaultLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=1), end_time=datetime.now()-timedelta(days=91)):
+def selectFaultLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
     startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
     start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
     endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
@@ -980,7 +1201,7 @@ def selectFaultLossAll(data, farmName, typeName, start_time=datetime.now()-timed
         pass #return pd.DataFrame()
     else:
         if len(typeName) > 0:
-            for lineValue in queryResult:
+            for i, lineValue in enumerate(queryResult):
                 localtime = pd.to_datetime(lineValue[0],errors='coerce')
                 #nan验证
                 lineValue = list(lineValue)
@@ -992,14 +1213,14 @@ def selectFaultLossAll(data, farmName, typeName, start_time=datetime.now()-timed
                     lineValue[7] = np.nan
                 if lineValue[8] == nan:
                     lineValue[8] = np.nan
-                data.loc[localtime, ['type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe', 'fsyst']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10], lineValue[11]]
+                data.loc[i, ['localtime', 'type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe', 'fsyst']] = [localtime, lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10], lineValue[11]]
                 if lineValue[3] in wtids:
                     if lineValue[4] not in wtids[lineValue[3]]:
                         wtids[lineValue[3]].append(lineValue[4])
                 else:
                     wtids[lineValue[3]] = [lineValue[4]]
         else:
-            for lineValue in queryResult:
+            for i, lineValue in enumerate(queryResult):
                 localtime = pd.to_datetime(lineValue[0],errors='coerce')
                 #nan验证
                 lineValue = list(lineValue)
@@ -1011,7 +1232,7 @@ def selectFaultLossAll(data, farmName, typeName, start_time=datetime.now()-timed
                     lineValue[7] = np.nan
                 if lineValue[8] == nan:
                     lineValue[8] = np.nan
-                data.loc[localtime, ['type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe', 'fsyst']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10], lineValue[11]]
+                data.loc[i, ['localtime', 'type', 'wtid', 'fault', 'count', 'time', 'loss', 'wspd', 'fault_describe', 'fsyst']] = [localtime, lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[8], lineValue[9], lineValue[7], lineValue[10], lineValue[11]]
                 if lineValue[3] in wtids:
                     if lineValue[4] not in wtids[lineValue[3]]:
                         wtids[lineValue[3]].append(lineValue[4])
@@ -1022,8 +1243,10 @@ def selectFaultLossAll(data, farmName, typeName, start_time=datetime.now()-timed
                 else:
                     typeName.append(lineValue[3])
     data.replace(b'', 0, inplace=True)
+    if 'localtime' in data.columns.to_list():
+        data.set_index('localtime', inplace=True)
     return data, wtids
-def selectLimgridLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=1), end_time=datetime.now()-timedelta(days=91)):
+def selectLimgridLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
     startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
     start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
     endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
@@ -1087,7 +1310,7 @@ def selectLimgridLossAll(data, farmName, typeName, start_time=datetime.now()-tim
         pass #return pd.DataFrame()
     else:
         if len(typeName) > 0:
-            for lineValue in queryResult:
+            for i, lineValue in enumerate(queryResult):
                 localtime = pd.to_datetime(lineValue[0],errors='coerce')
                 #nan验证
                 lineValue = list(lineValue)
@@ -1097,14 +1320,14 @@ def selectLimgridLossAll(data, farmName, typeName, start_time=datetime.now()-tim
                     lineValue[6] = np.nan
                 if lineValue[7] == nan:
                     lineValue[7] = np.nan
-                data.loc[localtime, ['type', 'wtid', 'time', 'loss', 'wspd']] = [lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5]]
+                data.loc[i, ['localtime', 'type', 'wtid', 'time', 'loss', 'wspd']] = [localtime, lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5]]
                 if lineValue[3] in wtids:
                     if lineValue[4] not in wtids[lineValue[3]]:
                         wtids[lineValue[3]].append(lineValue[4])
                 else:
                     wtids[lineValue[3]] = [lineValue[4]]
         else:
-            for lineValue in queryResult:
+            for i, lineValue in enumerate(queryResult):
                 localtime = pd.to_datetime(lineValue[0],errors='coerce')
                 #nan验证
                 lineValue = list(lineValue)
@@ -1114,7 +1337,7 @@ def selectLimgridLossAll(data, farmName, typeName, start_time=datetime.now()-tim
                     lineValue[6] = np.nan
                 if lineValue[7] == nan:
                     lineValue[7] = np.nan
-                data.loc[localtime, ['type', 'wtid', 'time', 'loss', 'wspd']] = [lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5]]
+                data.loc[i, ['localtime', 'type', 'wtid', 'time', 'loss', 'wspd']] = [localtime, lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5]]
                 if lineValue[3] in wtids:
                     if lineValue[4] not in wtids[lineValue[3]]:
                         wtids[lineValue[3]].append(lineValue[4])
@@ -1125,9 +1348,11 @@ def selectLimgridLossAll(data, farmName, typeName, start_time=datetime.now()-tim
                 else:
                     typeName.append(lineValue[3])
     data.replace(b'', 0, inplace=True)
+    if 'localtime' in data.columns.to_list():
+        data.set_index('localtime', inplace=True)
     return data, wtids
 
-def selectEnyWspdAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=1), end_time=datetime.now()-timedelta(days=91)):
+def selectEnyWspdAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
     startTimeStr = datetime.strftime(start_time, "%Y-%m-%d")#stop_loss
     start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
     endTimeStr = datetime.strftime(end_time, "%Y-%m-%d")
@@ -1192,19 +1417,19 @@ def selectEnyWspdAll(data, farmName, typeName, start_time=datetime.now()-timedel
     if queryResult == None or len(queryResult) <= 0:
         pass #return pd.DataFrame()
     else:
-        if len(typeName) > 0:
-            for lineValue in queryResult:
+        if len(typeName) > 0:#字符串
+            for i, lineValue in enumerate(queryResult):
                 localtime = pd.to_datetime(lineValue[0],errors='coerce')
-                data.loc[localtime, ['type', 'wtid', 'eny', 'wspd', 'count', 'Rate_power']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[7], lineValue[8]]
+                data.loc[i, ['localtime', 'type', 'wtid', 'eny', 'wspd', 'count', 'Rate_power']] = [localtime, lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[7], lineValue[8]]
                 if lineValue[3] in wtids:
                     if lineValue[4] not in wtids[lineValue[3]]:
                         wtids[lineValue[3]].append(lineValue[4])
                 else:
                     wtids[lineValue[3]] = [lineValue[4]]
-        else:
-            for lineValue in queryResult:
+        else: #空列表代表全机组
+            for i, lineValue in enumerate(queryResult):
                 localtime = pd.to_datetime(lineValue[0],errors='coerce')
-                data.loc[localtime, ['type', 'wtid', 'eny', 'wspd', 'count', 'Rate_power']] = [lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[7], lineValue[8]]
+                data.loc[i, ['localtime', 'type', 'wtid', 'eny', 'wspd', 'count', 'Rate_power']] = [localtime, lineValue[3], lineValue[4],lineValue[5], lineValue[6], lineValue[7], lineValue[8]]
                 if lineValue[3] in wtids:
                     if lineValue[4] not in wtids[lineValue[3]]:
                         wtids[lineValue[3]].append(lineValue[4])
@@ -1215,12 +1440,97 @@ def selectEnyWspdAll(data, farmName, typeName, start_time=datetime.now()-timedel
                 else:
                     typeName.append(lineValue[3])
     data.replace(b'', 0, inplace=True)
+    if 'localtime' in data.columns.to_list():
+        data.set_index('localtime', inplace=True)
     return data, wtids
 ###################################################
 #录入数据
 ###################################################
 
 ########################存功率##################################
+def insertTheoryWindPower(algorithms_configs):
+    conn = get_connection()
+    cursor = conn.cursor()
+    #查询表名
+    check_table_query = f"show tables like 'theory_wind_power';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_theory_wind_power_table_query}')
+        cursor.execute(create_theory_wind_power_table_query)
+        #插入数据
+        log.info(f"#########################theory_wind_power表插入数据#########################")
+        #遍历风仓
+        for j in len(algorithms_configs["wspdTheory"]):
+            insert_query = "INSERT INTO theory_wind_power ( \
+                    farm_name, \
+                    farm_id, \
+                    type_name, \
+                    wspd, \
+                    pwrt \
+                    ) VALUES (%s, %s, %s, %s, %s)"
+            #nan验证
+            if algorithms_configs["wspdTheory"][j] == np.nan or str(algorithms_configs["wspdTheory"][j]) == 'nan':
+                wspd = nan
+            else:
+                wspd = algorithms_configs["wspdTheory"][j]
+            if algorithms_configs["pwratTheory"][j] == np.nan or str(algorithms_configs["pwratTheory"][j]) == 'nan':
+                pwrat = nan
+            else:
+                pwrat = algorithms_configs["pwratTheory"][j]
+            data_to_insert = (algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['turbineTypeID'], wspd, pwrat)
+            log.info(f'sql语句：{insert_query}')
+            log.info(f'sql数据：{data_to_insert}')
+            cursor.execute(insert_query, data_to_insert)
+    else:
+        #插入数据
+        log.info(f"#########################theory_wind_power表插入数据#########################")
+        obtain_query = "SELECT \
+            farm_name, \
+            farm_id, \
+            type_name, \
+            wspd, \
+            pwrt \
+            from theory_wind_power \
+            where farm_name=%s AND type_name=%s \
+        "
+        data_to_obtain = (algorithms_configs['farmName'], algorithms_configs['turbineTypeID'])
+        log.info(f'sql语句：{obtain_query}')
+        log.info(f'sql数据：{data_to_obtain}')
+        cursor.execute(obtain_query, data_to_obtain)
+        queryResult = cursor.fetchall()    
+        if not queryResult and len(queryResult) == 0:
+            #遍历风仓
+            for j in range(len(algorithms_configs["wspdTheory"])):
+                insert_query = "INSERT INTO theory_wind_power ( \
+                        farm_name, \
+                        farm_id, \
+                        type_name, \
+                        wspd, \
+                        pwrt \
+                        ) VALUES (%s, %s, %s, %s, %s)"
+                #nan验证
+                if algorithms_configs["wspdTheory"][j] == np.nan or str(algorithms_configs["wspdTheory"][j]) == 'nan':
+                    wspd = nan
+                else:
+                    wspd = algorithms_configs["wspdTheory"][j]
+                if algorithms_configs["pwratTheory"][j] == np.nan or str(algorithms_configs["pwratTheory"][j]) == 'nan':
+                    pwrat = nan
+                else:
+                    pwrat = algorithms_configs["pwratTheory"][j]
+                data_to_insert = (algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['turbineTypeID'], wspd, pwrat)
+                log.info(f'sql语句：{insert_query}')
+                log.info(f'sql数据：{data_to_insert}')
+                cursor.execute(insert_query, data_to_insert)
+
+    conn.commit()
+    cursor.close()
+
 def insertPwTimeAll(data, algorithms_configs):
     conn = get_connection()
     cursor = conn.cursor()
@@ -1435,7 +1745,115 @@ def insertPwTurbineAll(data, algorithms_configs):
 
 ########################存损失电量##################################
 
-#def insertTurbineWarningAll():
+def insertTurbineWarningAll(data, algorithms_configs):
+    conn = get_connection()
+    cursor = conn.cursor()
+    #查询表名
+    check_table_query = f"show tables like 'turbine_warning_all';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_turbine_warning_all_table_query}')
+        cursor.execute(create_turbine_warning_all_table_query)
+        #插入数据
+        log.info(f"#########################turbine_warning_all表插入数据#########################")
+        
+        #dataframe摄取全部的列
+        tmp = data[['type', 'wtid', 'fault', 'count', 'time', 'wspd', 'fault_describe']]
+        #遍历时间
+        for j in range(tmp.shape[0]):
+            insert_query = "INSERT INTO turbine_warning_all ( \
+                    data_time, \
+                    farm_name, \
+                    farm_id, \
+                    type_name, \
+                    wtid, \
+                    fault, \
+                    count, \
+                    wspd, \
+                    time_rate, \
+                    fault_describe \
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            #nan验证
+            if tmp.iloc[j]['count'] == np.nan or str(tmp.iloc[j]['count']) == 'nan':
+                count = nan
+            else:
+                count = tmp.iloc[j]['count']
+            if tmp.iloc[j]['wspd'] == np.nan or str(tmp.iloc[j]['wspd']) == 'nan':
+                wspd = nan
+            else:
+                wspd = tmp.iloc[j]['wspd']
+            if tmp.iloc[j]['time'] == np.nan or str(tmp.iloc[j]['time']) == 'nan':
+                time = nan
+            else:
+                time = tmp.iloc[j]['time']
+            # if tmp.iloc[j]['loss'] == np.nan or str(tmp.iloc[j]['loss']) == 'nan':
+            #     loss = nan
+            # else:
+            #     loss = tmp.iloc[j]['loss']
+            data_to_insert = (tmp.index[j], algorithms_configs['farmName'], algorithms_configs['farmId'], tmp.iloc[j]['type'], tmp.iloc[j]['wtid'], tmp.iloc[j]['fault'], count, wspd, time, tmp.iloc[j]['fault_describe'])
+            log.info(f'sql语句：{insert_query}')
+            log.info(f'sql数据：{data_to_insert}')
+            cursor.execute(insert_query, data_to_insert)
+    else:
+        #插入数据
+        log.info(f"#########################turbine_warning_all表插入数据#########################")
+        #查询表中已有数据的时间最大值
+        queryItem = "select max(data_time) from turbine_warning_all"
+        log.info(f'sql语句：{queryItem}')
+        cursor.execute(queryItem)
+        result = cursor.fetchone()
+        if result != None and result[0] != None:
+            max_sql_time = result[0]
+        else:
+            max_sql_time = "2020-10-24 00:00:00"
+            max_sql_time = datetime.strptime(max_sql_time, "%Y-%m-%d %H:%M:%S")
+        #dataframe摄取全部的列
+        tmp = data[['type', 'wtid', 'fault', 'count', 'time', 'wspd', 'fault_describe']]
+        tmp = tmp[tmp.index > max_sql_time] 
+        #遍历时间
+        for j in range(tmp.shape[0]):
+            insert_query = "INSERT INTO turbine_warning_all ( \
+                    data_time, \
+                    farm_name, \
+                    farm_id, \
+                    type_name, \
+                    wtid, \
+                    fault, \
+                    count, \
+                    wspd, \
+                    time_rate, \
+                    fault_describe \
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            #nan验证
+            if tmp.iloc[j]['count'] == np.nan or str(tmp.iloc[j]['count']) == 'nan':
+                count = nan
+            else:
+                count = tmp.iloc[j]['count']
+            if tmp.iloc[j]['wspd'] == np.nan or str(tmp.iloc[j]['wspd']) == 'nan':
+                wspd = nan
+            else:
+                wspd = tmp.iloc[j]['wspd']
+            if tmp.iloc[j]['time'] == np.nan or str(tmp.iloc[j]['time']) == 'nan':
+                time = nan
+            else:
+                time = tmp.iloc[j]['time']
+            # if tmp.iloc[j]['loss'] == np.nan or str(tmp.iloc[j]['loss']) == 'nan':
+            #     loss = nan
+            # else:
+            #     loss = tmp.iloc[j]['loss']
+            data_to_insert = (tmp.index[j], algorithms_configs['farmName'], algorithms_configs['farmId'], tmp.iloc[j]['type'], tmp.iloc[j]['wtid'], tmp.iloc[j]['fault'], count, wspd, time, tmp.iloc[j]['fault_describe'])
+            log.info(f'sql语句：{insert_query}')
+            log.info(f'sql数据：{data_to_insert}')
+            cursor.execute(insert_query, data_to_insert)
+
+    conn.commit()
+    cursor.close() 
 def insertTechnologyLossAll(data, algorithms_configs):
     conn = get_connection()
     cursor = conn.cursor()
@@ -2150,6 +2568,9 @@ def insertEnyWspdAll(data, algorithms_configs):
 
 #############################存图片地址######################################
 def insertAllWindFrequencyPicture(algorithms_configs, url_path):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
     conn = get_connection()
     cursor = conn.cursor()
     #查询表名
@@ -2170,15 +2591,20 @@ def insertAllWindFrequencyPicture(algorithms_configs, url_path):
                         farm_name, \
                         farm_id, \
                         type_name, \
+                        file_name, \
+                        bucket_name, \
                         minio_url \
-                        ) VALUES (%s, %s, %s, %s, %s)"
-    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], 'all', url_path)
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], 'all', file_name, bucket_name, url_path)
     log.info(f'sql语句：{insert_query}')
     log.info(f'sql数据：{data_to_insert}')
     cursor.execute(insert_query, data_to_insert)
     conn.commit()
     cursor.close()
 def insertWindFrequencyPicture(algorithms_configs, url_path):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
     conn = get_connection()
     cursor = conn.cursor()
     #查询表名
@@ -2199,15 +2625,20 @@ def insertWindFrequencyPicture(algorithms_configs, url_path):
                         farm_name, \
                         farm_id, \
                         type_name, \
+                        file_name, \
+                        bucket_name, \
                         minio_url \
-                        ) VALUES (%s, %s, %s, %s, %s)"
-    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], url_path)
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], file_name, bucket_name, url_path)
     log.info(f'sql语句：{insert_query}')
     log.info(f'sql数据：{data_to_insert}')
     cursor.execute(insert_query, data_to_insert)
     conn.commit()
     cursor.close()
 def insertWindDirectionPicture(algorithms_configs, url_path, turbine_name):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
     conn = get_connection()
     cursor = conn.cursor()
     #查询表名
@@ -2229,9 +2660,11 @@ def insertWindDirectionPicture(algorithms_configs, url_path, turbine_name):
                         farm_id, \
                         type_name, \
                         wtid, \
+                        file_name, \
+                        bucket_name, \
                         minio_url \
-                        ) VALUES (%s, %s, %s, %s, %s, %s)"
-    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], turbine_name, url_path)
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], turbine_name, file_name, bucket_name, url_path)
     log.info(f'sql语句：{insert_query}')
     log.info(f'sql数据：{data_to_insert}')
     cursor.execute(insert_query, data_to_insert)
@@ -2239,6 +2672,9 @@ def insertWindDirectionPicture(algorithms_configs, url_path, turbine_name):
     cursor.close()
 
 def insertAllAirDensityPicture(algorithms_configs, url_path):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
     conn = get_connection()
     cursor = conn.cursor()
     #查询表名
@@ -2259,9 +2695,11 @@ def insertAllAirDensityPicture(algorithms_configs, url_path):
                         farm_name, \
                         farm_id, \
                         type_name, \
+                        file_name, \
+                        bucket_name, \
                         minio_url \
-                        ) VALUES (%s, %s, %s, %s, %s)"
-    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], 'all', url_path)
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], 'all', file_name, bucket_name, url_path)
     log.info(f'sql语句：{insert_query}')
     log.info(f'sql数据：{data_to_insert}')
     cursor.execute(insert_query, data_to_insert)
@@ -2269,6 +2707,9 @@ def insertAllAirDensityPicture(algorithms_configs, url_path):
     cursor.close()
 
 def insertAirDensityPicture(algorithms_configs, url_path):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
     conn = get_connection()
     cursor = conn.cursor()
     #查询表名
@@ -2289,9 +2730,11 @@ def insertAirDensityPicture(algorithms_configs, url_path):
                         farm_name, \
                         farm_id, \
                         type_name, \
+                        file_name, \
+                        bucket_name, \
                         minio_url \
-                        ) VALUES (%s, %s, %s, %s, %s)"
-    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], url_path)
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], file_name, bucket_name, url_path)
     log.info(f'sql语句：{insert_query}')
     log.info(f'sql数据：{data_to_insert}')
     cursor.execute(insert_query, data_to_insert)
@@ -2299,6 +2742,9 @@ def insertAirDensityPicture(algorithms_configs, url_path):
     cursor.close()
 
 def insertAllTurbulencePicture(algorithms_configs, url_path):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
     conn = get_connection()
     cursor = conn.cursor()
     #查询表名
@@ -2319,9 +2765,11 @@ def insertAllTurbulencePicture(algorithms_configs, url_path):
                         farm_name, \
                         farm_id, \
                         type_name, \
+                        file_name, \
+                        bucket_name, \
                         minio_url \
-                        ) VALUES (%s, %s, %s, %s, %s)"
-    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], 'all', url_path)
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], 'all', file_name, bucket_name, url_path)
     log.info(f'sql语句：{insert_query}')
     log.info(f'sql数据：{data_to_insert}')
     cursor.execute(insert_query, data_to_insert)
@@ -2329,6 +2777,9 @@ def insertAllTurbulencePicture(algorithms_configs, url_path):
     cursor.close()
 
 def insertTurbulencePicture(algorithms_configs, url_path):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
     conn = get_connection()
     cursor = conn.cursor()
     #查询表名
@@ -2349,15 +2800,20 @@ def insertTurbulencePicture(algorithms_configs, url_path):
                         farm_name, \
                         farm_id, \
                         type_name, \
+                        file_name, \
+                        bucket_name, \
                         minio_url \
-                        ) VALUES (%s, %s, %s, %s, %s)"
-    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], url_path)
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], file_name, bucket_name, url_path)
     log.info(f'sql语句：{insert_query}')
     log.info(f'sql数据：{data_to_insert}')
     cursor.execute(insert_query, data_to_insert)
     conn.commit()
     cursor.close()
 def insertNavigationBiasDirectionPicture(algorithms_configs, url_path, turbine_name):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
     conn = get_connection()
     cursor = conn.cursor()
     #查询表名
@@ -2379,15 +2835,20 @@ def insertNavigationBiasDirectionPicture(algorithms_configs, url_path, turbine_n
                         farm_id, \
                         type_name, \
                         wtid, \
+                        file_name, \
+                        bucket_name, \
                         minio_url \
-                        ) VALUES (%s, %s, %s, %s, %s, %s)"
-    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], turbine_name, url_path)
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], turbine_name, file_name, bucket_name, url_path)
     log.info(f'sql语句：{insert_query}')
     log.info(f'sql数据：{data_to_insert}')
     cursor.execute(insert_query, data_to_insert)
     conn.commit()
     cursor.close()
 def insertNavigationBiasControlPicture(algorithms_configs, url_path, turbine_name):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
     conn = get_connection()
     cursor = conn.cursor()
     #查询表名
@@ -2409,15 +2870,20 @@ def insertNavigationBiasControlPicture(algorithms_configs, url_path, turbine_nam
                         farm_id, \
                         type_name, \
                         wtid, \
+                        file_name, \
+                        bucket_name, \
                         minio_url \
-                        ) VALUES (%s, %s, %s, %s, %s, %s)"
-    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], turbine_name, url_path)
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], turbine_name, file_name, bucket_name, url_path)
     log.info(f'sql语句：{insert_query}')
     log.info(f'sql数据：{data_to_insert}')
     cursor.execute(insert_query, data_to_insert)
     conn.commit()
     cursor.close()
 def insertPitchAnglePicture(algorithms_configs, url_path, turbine_name):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
     conn = get_connection()
     cursor = conn.cursor()
     #查询表名
@@ -2439,15 +2905,20 @@ def insertPitchAnglePicture(algorithms_configs, url_path, turbine_name):
                         farm_id, \
                         type_name, \
                         wtid, \
+                        file_name, \
+                        bucket_name, \
                         minio_url \
-                        ) VALUES (%s, %s, %s, %s, %s, %s)"
-    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], turbine_name, url_path)
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], turbine_name, file_name, bucket_name, url_path)
     log.info(f'sql语句：{insert_query}')
     log.info(f'sql数据：{data_to_insert}')
     cursor.execute(insert_query, data_to_insert)
     conn.commit()
     cursor.close()
 def insertPitchActionPicture(algorithms_configs, url_path, turbine_name):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
     conn = get_connection()
     cursor = conn.cursor()
     #查询表名
@@ -2469,15 +2940,20 @@ def insertPitchActionPicture(algorithms_configs, url_path, turbine_name):
                         farm_id, \
                         type_name, \
                         wtid, \
+                        file_name, \
+                        bucket_name, \
                         minio_url \
-                        ) VALUES (%s, %s, %s, %s, %s, %s)"
-    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], turbine_name, url_path)
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], turbine_name, file_name, bucket_name, url_path)
     log.info(f'sql语句：{insert_query}')
     log.info(f'sql数据：{data_to_insert}')
     cursor.execute(insert_query, data_to_insert)
     conn.commit()
     cursor.close()
 def insertTorqueControlPicture(algorithms_configs, url_path, turbine_name):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
     conn = get_connection()
     cursor = conn.cursor()
     #查询表名
@@ -2499,9 +2975,11 @@ def insertTorqueControlPicture(algorithms_configs, url_path, turbine_name):
                         farm_id, \
                         type_name, \
                         wtid, \
+                        file_name, \
+                        bucket_name, \
                         minio_url \
-                        ) VALUES (%s, %s, %s, %s, %s, %s)"
-    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], turbine_name, url_path)
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], turbine_name, file_name, bucket_name, url_path)
     log.info(f'sql语句：{insert_query}')
     log.info(f'sql数据：{data_to_insert}')
     cursor.execute(insert_query, data_to_insert)

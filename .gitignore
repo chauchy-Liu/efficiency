@@ -8,4 +8,6 @@ result/*
 /build
 *.pyc
 *.pyx
+*.tar
+*.tar.gz
 

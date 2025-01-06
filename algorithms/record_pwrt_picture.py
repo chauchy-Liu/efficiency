@@ -14,12 +14,21 @@ from pylab import mpl
 import sys
 import statistics as st
 from scipy import signal,integrate
+import os
+from utils.display_util import get_os
 
 mpl.interactive(False)
 plt.switch_backend('agg')
-# plt.rcParams['font.sans-serif'] = ['SimHei'] #Windows
-# plt.rcParams['font.sans-serif'] = ['Heiti TC'] #mac
-plt.rcParams['font.sans-serif'] = ['Arial Unicode MS'] #mac
+os_type = get_os()
+if os_type == "win":
+    plt.rcParams['font.sans-serif'] = ['SimHei'] #Windows
+elif os_type == "mac":
+    plt.rcParams['font.sans-serif'] = ['Arial Unicode MS'] #mac
+elif os_type == "linux":
+    plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei'] #Linux
+else:
+    plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei'] #Linux
+plt.rcParams['axes.unicode_minus'] = False 
 
 name = algConfig['record_pwrt_picture']['name']#'叶片角度不平衡'
 # 把所需测点定义到每个算法里
@@ -153,11 +162,11 @@ async def judge_model(algorithms_configs):
     wind_freq = turbine_efficiency_function.winddistribute(Df_all_m_all,windbin,windbinreg)
     
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-    ax.bar(wind_freq['windbin'],wind_freq['freq'],color='cyan',bottom = 0,width=0.2)
+    ax.bar(wind_freq['windbin'],wind_freq['freq'],color='royalblue',bottom = 0,width=0.2)
     ax.set_xlabel(xlabel='风速(m/s)',fontsize=10)
     ax.set_ylabel('风频',fontsize=10)
     ax.tick_params(labelsize=10)   
-    fig.savefig(path + '/' + 'windfreq.png',dpi=100,bbox_inches='tight')
+    fig.savefig(path + '/' + 'windfreq.png', transparent=True,dpi=100,bbox_inches='tight')
     ########################################################
     #上传图片到minio
     picture_path = path + '/' + 'windfreq.png'
@@ -395,7 +404,7 @@ async def judge_model(algorithms_configs):
             plt.xlabel('风速(m/s)',fontsize=14)
             plt.ylabel('功率(kW)',fontsize=14)
             plt.legend(loc=0,fontsize=14)
-        fig.savefig(path + '/' +str(turbine_name) + '_fengsu_gonglv_state.png',dpi=100)
+        fig.savefig(path + '/' +str(turbine_name) + '_fengsu_gonglv_state.png', transparent=True,dpi=100)
         
         state_temp = pd.Series((np.unique(Df_all_m['statety','mymode'])))
         state_temp = state_temp.dropna()
@@ -413,7 +422,7 @@ async def judge_model(algorithms_configs):
             plt.xlabel('风速(m/s)',fontsize=14)
             plt.ylabel('功率(kW)',fontsize=14)
             plt.legend(loc=0,fontsize=14)
-        fig.savefig(path + '/' +str(turbine_name) + '_fengsu_gonglv_statety.png',dpi=100)
+        fig.savefig(path + '/' +str(turbine_name) + '_fengsu_gonglv_statety.png', transparent=True,dpi=100)
         
         
         fig = plt.figure(figsize=(10,8),dpi=100)  
@@ -427,7 +436,7 @@ async def judge_model(algorithms_configs):
             plt.xlabel('风速(m/s)',fontsize=14)
             plt.ylabel('功率(kW)',fontsize=14)
             plt.colorbar()
-        fig.savefig(path + '/' +str(turbine_name) + '_fengsu_gonglv_clear.png',dpi=100)
+        fig.savefig(path + '/' +str(turbine_name) + '_fengsu_gonglv_clear.png', transparent=True,dpi=100)
         
         
         fig = plt.figure(figsize=(10,8),dpi=100)  
@@ -440,7 +449,7 @@ async def judge_model(algorithms_configs):
             plt.xlabel('风速(m/s)',fontsize=14)
             plt.ylabel('功率(kW)',fontsize=14)
             plt.colorbar(label='月份',ticks=np.unique(Df_all_m_clear.index.month))
-        fig.savefig(path + '/' +str(turbine_name) + '_fengsu_gonglv_time.png',dpi=100)
+        fig.savefig(path + '/' +str(turbine_name) + '_fengsu_gonglv_time.png', transparent=True,dpi=100)
         
         
         fig = plt.figure(figsize=(10,8),dpi=100)  
@@ -454,7 +463,7 @@ async def judge_model(algorithms_configs):
             plt.xlabel('转速(rpm)',fontsize=14)
             plt.ylabel('功率(kW)',fontsize=14)
             plt.colorbar()
-        fig.savefig(path + '/' +str(turbine_name) + '_zhuansu_gonglv_clear.png',dpi=100)
+        fig.savefig(path + '/' +str(turbine_name) + '_zhuansu_gonglv_clear.png', transparent=True,dpi=100)
         
         fig = plt.figure(figsize=(10,8),dpi=100)  
         plt.title(str(turbine_name))    
@@ -467,7 +476,7 @@ async def judge_model(algorithms_configs):
             plt.xlabel('转速(rpm)',fontsize=14)
             plt.ylabel('功率(kW)',fontsize=14)
             plt.colorbar(label='月份',ticks=np.unique(Df_all_m_clear.index.month))
-        fig.savefig(path + '/' +str(turbine_name) + '_zhuansu_gonglv_time.png',dpi=100)
+        fig.savefig(path + '/' +str(turbine_name) + '_zhuansu_gonglv_time.png', transparent=True,dpi=100)
                     
         
         fig = plt.figure(figsize=(10,8),dpi=100)  
@@ -482,7 +491,7 @@ async def judge_model(algorithms_configs):
             plt.xlabel('功率(kW)',fontsize=14)
             plt.ylabel('桨距角(°)',fontsize=14)
             plt.colorbar()
-        fig.savefig(path + '/' +str(turbine_name) + '_gonglv_pitch_clear.png',dpi=100)
+        fig.savefig(path + '/' +str(turbine_name) + '_gonglv_pitch_clear.png', transparent=True,dpi=100)
         
         fig = plt.figure(figsize=(10,8),dpi=100)  
         plt.title(str(turbine_name))    
@@ -494,7 +503,7 @@ async def judge_model(algorithms_configs):
             plt.xlabel('功率(kW)',fontsize=14)
             plt.ylabel('桨距角(°)',fontsize=14)
             plt.colorbar(label='月份',ticks=np.unique(Df_all_m_clear.index.month))
-        fig.savefig(path + '/' +str(turbine_name) + '_gonglv_pitch_time.png',dpi=100)
+        fig.savefig(path + '/' +str(turbine_name) + '_gonglv_pitch_time.png', transparent=True,dpi=100)
         
         fig = plt.figure(figsize=(10,8),dpi=100)  
         plt.title(str(turbine_name))    
@@ -506,7 +515,7 @@ async def judge_model(algorithms_configs):
             plt.xlabel('风速(m/s)',fontsize=14)
             plt.ylabel('桨距角(°)',fontsize=14)
             plt.colorbar()
-        fig.savefig(path + '/' +str(turbine_name) + '_wspd_pitch_clear.png',dpi=100)
+        fig.savefig(path + '/' +str(turbine_name) + '_wspd_pitch_clear.png', transparent=True,dpi=100)
         
         fig = plt.figure(figsize=(10,8),dpi=100)  
         plt.title(str(turbine_name))    
@@ -519,7 +528,7 @@ async def judge_model(algorithms_configs):
             plt.ylim(-2,25)
             plt.xlabel('风速(m/s)',fontsize=14)
             plt.ylabel('桨距角(°)',fontsize=14)
-        fig.savefig(path + '/' +str(turbine_name) + '_wspd_pitch_clear123.png',dpi=100)
+        fig.savefig(path + '/' +str(turbine_name) + '_wspd_pitch_clear123.png', transparent=True,dpi=100)
         
         fig = plt.figure(figsize=(10,8),dpi=100)  
         plt.title(str(turbine_name))    
@@ -531,7 +540,7 @@ async def judge_model(algorithms_configs):
             plt.xlabel('风速(m/s)',fontsize=14)
             plt.ylabel('桨距角(°)',fontsize=14)
             plt.colorbar(label='月份',ticks=np.unique(Df_all_m_clear.index.month))
-        fig.savefig(path + '/' +str(turbine_name) + '_wspd_pitch_time.png',dpi=100)
+        fig.savefig(path + '/' +str(turbine_name) + '_wspd_pitch_time.png', transparent=True,dpi=100)
         
         ###机组Cp值展示
         turbine_cp = turbine_efficiency_function.turbine_Cp(df_all_clear, windbin, num)
@@ -557,7 +566,7 @@ async def judge_model(algorithms_configs):
             for k in range(len(mycolor)):
                 plt.scatter([],[],c=mycolor[k],label=mylabels[k]) 
             plt.legend(loc=4,fontsize=10)
-        fig.savefig(path + '/' +str(turbine_name) + '_90002——90001.png',dpi=100)     
+        fig.savefig(path + '/' +str(turbine_name) + '_90002——90001.png', transparent=True,dpi=100)     
         
         
         ###########分段统计#########
@@ -588,7 +597,7 @@ async def judge_model(algorithms_configs):
             plt.xlabel('风速',fontsize=14)
             plt.ylabel('功率',fontsize=14)
             plt.colorbar()
-        fig.savefig(path + '/' +str(turbine_name) + '_分段2.png',dpi=100, bbox_inches='tight')
+        fig.savefig(path + '/' +str(turbine_name) + '_分段2.png', transparent=True,dpi=100, bbox_inches='tight')
         
         #额定功率异常
         if turbine_efficiency_function.Pwrat_Rate_loss(Df_all_m_clear,Pwrat_Rate):
@@ -741,7 +750,7 @@ async def judge_model(algorithms_configs):
                     plt.xlabel('风速(wspd)',fontsize=14)
                     plt.ylabel('功率(kW)',fontsize=14)
                     #plt.colorbar()
-                fig.savefig(path + '/' +str(turbine_name) + '_torqueerr_风速_功率.png',dpi=100)
+                fig.savefig(path + '/' +str(turbine_name) + '_torqueerr_风速_功率.png', transparent=True,dpi=100)
                 
                 ##界面不展示
                 fig = plt.figure(figsize=(10,8),dpi=100)  
@@ -754,7 +763,7 @@ async def judge_model(algorithms_configs):
                     plt.xlabel('转速(rpm)',fontsize=14)
                     plt.ylabel('功率(kW)',fontsize=14)
                     plt.colorbar(label='月份',ticks=np.unique(data_temp.index.month))
-                fig.savefig(path + '/' +str(turbine_name) + '_torqueerr_时间.png',dpi=100)
+                fig.savefig(path + '/' +str(turbine_name) + '_torqueerr_时间.png', transparent=True,dpi=100)
             
             #额定功率段转矩控制异常异常
             else:
@@ -1008,7 +1017,7 @@ async def judge_model(algorithms_configs):
                 plt.ylabel('主轴转速(rpm)',fontsize=14)
                 plt.xlabel('发电机转速(rpm)',fontsize=14)
                 plt.colorbar(label='月份',ticks=np.unique(temp.index.month))
-            fig.savefig(path + '/' +str(turbine_name) + '_主轴_发电机_转速.png',dpi=100, bbox_inches='tight')
+            fig.savefig(path + '/' +str(turbine_name) + '_主轴_发电机_转速.png', transparent=True,dpi=100, bbox_inches='tight')
                 
             #temp['gearsscale'].nlargest(10)
             #aaa = temp.loc[temp['gearsscale'].nsmallest(200).index,:]#nsmallest(20)
@@ -1080,14 +1089,14 @@ async def judge_model(algorithms_configs):
         wind_mean = np.nanmean(Df_all_m_all_alltype['wspd','nanmean'])
         
         fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-        ax.bar(wind_freq['windbin'],wind_freq['freq'],color='cyan',bottom = 0,width=0.2)
+        ax.bar(wind_freq['windbin'],wind_freq['freq'],color='royalblue',bottom = 0,width=0.2)
         ax.set_xlabel(xlabel='风速(m/s)',fontsize=10)
         ax.set_ylabel('风频',fontsize=10)
         ax.tick_params(labelsize=10)   
-        fig.savefig(path + '/' + 'windfreq.png',dpi=100,bbox_inches='tight')
+        fig.savefig(os.path.dirname(path) + '/' + 'windfreq.png', transparent=True,dpi=100,bbox_inches='tight')
         ########################################################
         #上传图片到minio
-        picture_path = path + '/' + 'windfreq.png'
+        picture_path = os.path.dirname(path) + '/' + 'windfreq.png'
         url_picture = upload(picture_path, algorithms_configs)
         #mysql记录
         insertAllWindFrequencyPicture(algorithms_configs, url_picture)
@@ -1095,7 +1104,7 @@ async def judge_model(algorithms_configs):
         
         #全场月平均空气密度及风速
         altitude_farm = np.nanmean(algorithms_configs['zuobiao_all']['Z'])
-        month_data, filename = turbine_efficiency_function.monthdata(Df_all_m_all_alltype,altitude_farm,path)
+        month_data, filename = turbine_efficiency_function.monthdata(Df_all_m_all_alltype,altitude_farm,os.path.dirname(path))
         ########################################################
         #上传图片到minio
         picture_path = filename
@@ -1119,10 +1128,10 @@ async def judge_model(algorithms_configs):
             plt.gca().spines["bottom"].set_color('#869AA7')
             plt.gca().spines["right"].set_color('#869AA7')
             plt.gca().spines["top"].set_color('#869AA7')
-        fig.savefig(path + '/' +'湍流曲线'+'.png',dpi=100, transparent=True, bbox_inches='tight')
+        fig.savefig(os.path.dirname(path) + '/' +'湍流曲线'+'.png',dpi=100, transparent=True, bbox_inches='tight')
         ########################################################
         #上传图片到minio
-        picture_path = filename
+        picture_path = os.path.dirname(path) + '/' +'湍流曲线'+'.png'
         url_picture = upload(picture_path, algorithms_configs)
         #mysql记录
         insertAllTurbulencePicture(algorithms_configs, url_picture)

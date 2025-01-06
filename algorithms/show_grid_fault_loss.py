@@ -57,9 +57,9 @@ def analyse(farmName, typeName:list, startTime, endTime):
             #机位号
             elem['wtid'] = '%s'%(faultgrid_loss_show_temp.iloc[i]['wtid'])
             #故障编码
-            elem['faultCode'] = '%s'%(faultgrid_loss_show_temp.iloc[i]['fault'])
+            elem['faultCode'] = '%s'%(int(faultgrid_loss_show_temp.iloc[i]['fault']))
             #故障频次
-            elem['faultCount'] = '%s'%(faultgrid_loss_show_temp.iloc[i]['count'])
+            elem['faultCount'] = '%d'%(faultgrid_loss_show_temp.iloc[i]['count'])
             #故障时长(h)
             elem['faultTime'] = '%.4f'%(faultgrid_loss_show_temp.iloc[i]['time'])
             #故障损失电量(kwh)

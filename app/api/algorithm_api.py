@@ -16,7 +16,7 @@ from app.api.analyse import analyseData
 import utils.display_util as display_util
 import os
 # from checkout import execute_multi_algorithms
-from algorithms import show_fault_distribute, show_grid_fault_loss, show_grid_limit_loss, show_loss_reason_indicator, show_power_consistence, show_power_curve, show_power_data, show_station_compare, show_stop_loss, show_technology_loss, show_time_compare, show_turbine_fault_loss, show_turbine_limit_loss, show_turbine_type_compare
+from algorithms import show_fault_distribute, show_grid_fault_loss, show_grid_limit_loss, show_loss_reason_indicator, show_power_consistence, show_power_curve, show_power_data, show_station_compare, show_stop_loss, show_technology_loss, show_time_compare, show_turbine_fault_loss, show_turbine_limit_loss, show_turbine_type_compare, show_warning
 import logging
 import traceback
 
@@ -87,6 +87,7 @@ def indicate():
     try:
         logger.info(f"#####################################指标####################################")
         params = request.json
+        logger.info(f"参数：{params}")
         farmName = params['farm'][-1]['mdmId']
         typeName = []
         for name_dict in params['farm'][-1]['turbineType']:
@@ -120,14 +121,25 @@ def power_consistence():
     try:
         logger.info(f"#####################################功率一致性####################################")
         params = request.json
+        logger.info(f"参数：{params}")
         farmName = params['farm'][-1]['mdmId']
-        if len(params['farm'][-1]['turbineType']) > 0:
-            typeName = params['farm'][-1]['turbineType'][-1]['name']
+        typeName = params['farm'][-1]['turbineType'][-1]['name']
+        if "," in ['wtid'][-1]:#字符串型风机号 "03#,10#"
+            wtid = params['farm'][-1]['turbineType'][-1]['wtid'][-1].replace(" ", "").split(',')
         else:
-            typeName = ''
+            if len(params['farm'][-1]['turbineType'][-1]['wtid']) > 0:
+                if isinstance(params['farm'][-1]['turbineType'][-1]['wtid'], str):#列表型风机号["03#","10#"]
+                    wtid = params['farm'][-1]['turbineType'][-1]['wtid']
+                else:#列表型风机号[{"name":"03#"},{"name":"10#"}]
+                    wtid = []
+                    for elem in params['farm'][-1]['turbineType'][-1]['wtid']:
+                        wtid.append(elem["name"]) #params['farm'][-1]['turbineType'][-1]['wtid']
+            else:
+                wtid = []
+
         startTime = params['target']['startDate']
         endTime = params['target']['endDate']
-        result = show_power_consistence.analyse(farmName, typeName, startTime, endTime)
+        result = show_power_consistence.analyse(farmName, typeName, wtid, startTime, endTime)
         logger.info(f"功率一致性返回结果：")
         logger.info(f"{result}")
         return result
@@ -143,11 +155,24 @@ def power_curve():
     try:
         logger.info(f"#####################################功率曲线做图####################################")
         params = request.json
+        logger.info(f"参数：{params}")
         farmName = params['farm'][-1]['mdmId']
         typeName = params['farm'][-1]['turbineType'][-1]['name']
+        if "," in ['wtid'][-1]:#字符串型风机号 "03#,10#"
+            wtid = params['farm'][-1]['turbineType'][-1]['wtid'][-1].replace(" ", "").split(',')
+        else:
+            if len(params['farm'][-1]['turbineType'][-1]['wtid']) > 0:
+                if isinstance(params['farm'][-1]['turbineType'][-1]['wtid'], str):#列表型风机号["03#","10#"]
+                    wtid = params['farm'][-1]['turbineType'][-1]['wtid']
+                else:#列表型风机号[{"name":"03#"},{"name":"10#"}]
+                    wtid = []
+                    for elem in params['farm'][-1]['turbineType'][-1]['wtid']:
+                        wtid.append(elem["name"]) #params['farm'][-1]['turbineType'][-1]['wtid']
+            else:
+                wtid = []
         startTime = params['target']['startDate']
         endTime = params['target']['endDate']
-        result = show_power_curve.analyse(farmName, typeName, startTime, endTime)
+        result = show_power_curve.analyse(farmName, typeName, wtid, startTime, endTime)
         logger.info(f"功率曲线做图返回结果：")
         logger.info(f"{result}")
         return result
@@ -163,11 +188,24 @@ def power_data():
     try:
         logger.info(f"#####################################功率数据表####################################")
         params = request.json
+        logger.info(f"参数：{params}")
         farmName = params['farm'][-1]['mdmId']
         typeName = params['farm'][-1]['turbineType'][-1]['name']
+        if "," in ['wtid'][-1]:#字符串型风机号 "03#,10#"
+            wtid = params['farm'][-1]['turbineType'][-1]['wtid'][-1].replace(" ", "").split(',')
+        else:
+            if len(params['farm'][-1]['turbineType'][-1]['wtid']) > 0:
+                if isinstance(params['farm'][-1]['turbineType'][-1]['wtid'], str):#列表型风机号["03#","10#"]
+                    wtid = params['farm'][-1]['turbineType'][-1]['wtid']
+                else:#列表型风机号[{"name":"03#"},{"name":"10#"}]
+                    wtid = []
+                    for elem in params['farm'][-1]['turbineType'][-1]['wtid']:
+                        wtid.append(elem["name"]) #params['farm'][-1]['turbineType'][-1]['wtid']
+            else:
+                wtid = []
         startTime = params['target']['startDate']
         endTime = params['target']['endDate']
-        result = show_power_data.analyse(farmName, typeName, startTime, endTime)
+        result = show_power_data.analyse(farmName, typeName, wtid, startTime, endTime)
         logger.info(f"功率数据表返回结果：")
         logger.info(f"{result}")
         return result
@@ -197,6 +235,7 @@ def loss_reason():
     try:
         logger.info(f"#####################################损失原因####################################")
         params = request.json
+        logger.info(f"参数：{params}")
         farmName = params['farm'][-1]['mdmId']
         typeName = []
         for name_dict in params['farm'][-1]['turbineType']:
@@ -218,6 +257,7 @@ def fault_distribute():
     try:
         logger.info(f"#####################################故障分布####################################")
         params = request.json
+        logger.info(f"参数：{params}")
         farmName = params['farm'][-1]['mdmId']
         typeName = []
         for name_dict in params['farm'][-1]['turbineType']:
@@ -239,6 +279,7 @@ def turbine_fault_loss():
     try:
         logger.info(f"#####################################机组故障####################################")
         params = request.json
+        logger.info(f"参数：{params}")
         farmName = params['farm'][-1]['mdmId']
         typeName = []
         for name_dict in params['farm'][-1]['turbineType']:
@@ -260,6 +301,7 @@ def stop_loss():
     try:
         logger.info(f"#####################################计划停机####################################")
         params = request.json
+        logger.info(f"参数：{params}")
         farmName = params['farm'][-1]['mdmId']
         typeName = []
         for name_dict in params['farm'][-1]['turbineType']:
@@ -281,6 +323,7 @@ def grid_fault_loss():
     try:
         logger.info(f"#####################################电网故障####################################")
         params = request.json
+        logger.info(f"参数：{params}")
         farmName = params['farm'][-1]['mdmId']
         typeName = []
         for name_dict in params['farm'][-1]['turbineType']:
@@ -302,6 +345,7 @@ def grid_limit_loss():
     try:
         logger.info(f"#####################################电网限电####################################")
         params = request.json
+        logger.info(f"参数：{params}")
         farmName = params['farm'][-1]['mdmId']
         typeName = []
         for name_dict in params['farm'][-1]['turbineType']:
@@ -323,6 +367,7 @@ def turbine_limit_loss():
     try:
         logger.info(f"#####################################机组自限电####################################")
         params = request.json
+        logger.info(f"参数：{params}")
         farmName = params['farm'][-1]['mdmId']
         typeName = []
         for name_dict in params['farm'][-1]['turbineType']:
@@ -344,6 +389,7 @@ def technology_loss():
     try:
         logger.info(f"#####################################技术待机####################################")
         params = request.json
+        logger.info(f"参数：{params}")
         farmName = params['farm'][-1]['mdmId']
         typeName = []
         for name_dict in params['farm'][-1]['turbineType']:
@@ -359,12 +405,35 @@ def technology_loss():
         logger.info(f'\033[31m{errorInfomation}\033[0m')
         logger.info(f'\033[33m技术待机报错：{e}\033[0m')
         return {}
+#告警统计
+@api.route('/loss_analysis/warning', methods=['POST'])
+def warning():
+    try:
+        logger.info(f"#####################################告警####################################")
+        params = request.json
+        logger.info(f"参数：{params}")
+        farmName = params['farm'][-1]['mdmId']
+        typeName = []
+        for name_dict in params['farm'][-1]['turbineType']:
+            typeName.append(name_dict['name'])
+        startTime = params['target']['startDate']
+        endTime = params['target']['endDate']
+        result = show_warning.analyse(farmName, typeName, startTime, endTime)
+        logger.info(f"告警返回结果：")
+        logger.info(f"{result}")
+        return result
+    except Exception as e:
+        errorInfomation = traceback.format_exc()
+        logger.info(f'\033[31m{errorInfomation}\033[0m')
+        logger.info(f'\033[33m告警报错：{e}\033[0m')
+        return {}
 #场站对比
 @api.route('/compare_analysis/farm_compare', methods=['POST'])
 def farm_compare():
     try:
         logger.info(f"#####################################场站对比####################################")
         params = request.json
+        logger.info(f"参数：{params}")
         # farmName = params['farm'][-1]['mdmId']
         result_dict = {"indicator":[], "reason":[]}
         for name_dict in params['farm']:
@@ -392,6 +461,7 @@ def time_compare():
     try:
         logger.info(f"#####################################时间对比####################################")
         params = request.json
+        logger.info(f"参数：{params}")
         # farmName = params['farm'][-1]['mdmId']
         result_dict = {"indicator":[], "reason":[]}
         farmName = params['farm'][-1]['mdmId']
@@ -424,6 +494,7 @@ def turbine_type_compare():
     try:
         logger.info(f"#####################################机型对比####################################")
         params = request.json
+        logger.info(f"参数：{params}")
         result_dict = {'indicator':[], 'reason':[]}
         for farm in params['farm']:
             # farm_temp = {'farmName':None, 'turbineType':[]}
@@ -459,6 +530,7 @@ def execute():
     response = make_response('ok2')
     # modelCode = request.args.getlist('modelCode')#.decode('utf-8')
     modelCode = request.json
+    logger.info(f"参数：{modelCode}")
     # modelCode = [item["modelCode"] for item in models]
     # configs = {}
     # for item in models:
