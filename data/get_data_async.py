@@ -203,7 +203,7 @@ async def getWindFarmIntel():
         data_logger.info(f'\033[31m{errorInfomation}\033[0m')
         data_logger.info(f'\033[33m发生异常：{e}\033[0m')
         WindFarm_attr = pd.DataFrame()
-    time_logger.info(f'###########################执行一次 getWindFarmInte l时间{time.time()-funStartTime}秒###################')
+    time_logger.info(f'###########################执行一次 getWindFarmIntel 时间{time.time()-funStartTime}秒###################')
     return WindFarm_attr
 #风机信息
 def selectCoreDeviceAttributes(coreDeviceAttributesList, attribute):
@@ -322,6 +322,8 @@ async def getGeneralDataIntel(algorithmName: str, startTime, endTime, assetId: s
     data_logger.info(f"数据接口参数：{params}")
     try:
         ResponsePoint = await asyncio.to_thread(requests.post, Url_point, headers=head, data=params, timeout=requestTime)
+        funStartTime1 = time.time()
+        time_logger.info(f'###########################执行一次 getGeneralDataIntel requests.post 时间{time.time()-funStartTime1}秒, 设定的超时时间{requestTime}秒###################')
         # ResponsePoint = await asyncio.to_thread(requests.post, Url_point, headers=head, data=params)
         # data_logger.info(f"接口响应：{ResponsePoint.text}")
         ResponsePoint = json.loads(ResponsePoint.text)
@@ -377,6 +379,8 @@ async def getDiDataIntel(algorithmName: str, startTime, endTime, assetId: str, p
     data_logger.info(f"数据接口参数：{params}")
     try:
         ResponsePoint = await asyncio.to_thread(requests.post, Url_point, headers=head, data=params, timeout=requestTime)
+        funStartTime1 = time.time()
+        time_logger.info(f'###########################执行一次 getDiDataIntel requests.post 时间{time.time()-funStartTime1}秒, 设定的超时时间{requestTime}秒###################')
         # data_logger.info(f"接口响应：{ResponsePoint.text}")
         ResponsePoint = json.loads(ResponsePoint.text)
         DfTemp = pd.DataFrame()
@@ -432,6 +436,8 @@ async def getAiDataIntel(algorithmName: str, startTime, endTime, assetId: str, p
     data_logger.info(f"数据接口参数：{params}")
     try:
         ResponsePoint = await asyncio.to_thread(requests.post, Url_point, headers=head, data=params, timeout=requestTime)
+        funStartTime1 = time.time()
+        time_logger.info(f'###########################执行一次 getAiDataIntel requests.post 时间{time.time()-funStartTime1}秒, 设定的超时时间{requestTime}秒###################')
         # ResponsePoint = requests.post(Url_point, headers=head, data=params)
         # data_logger.info(f"接口响应：{ResponsePoint.text}")
         ResponsePoint = json.loads(ResponsePoint.text)
@@ -460,7 +466,7 @@ async def getAiDataIntel(algorithmName: str, startTime, endTime, assetId: str, p
         data_logger.info(f'\033[31m{errorInfomation}\033[0m')
         data_logger.info(f'\033[33m发生异常：{e}\033[0m')
         DfTemp = pd.DataFrame()
-    time_logger.info(f'###########################执行一次 getDiDataIntel 时间{time.time()-funStartTime}秒###################')
+    time_logger.info(f'###########################执行一次 getAiDataIntel 时间{time.time()-funStartTime}秒###################')
     return DfTemp
 #智慧场站
 ############################
