@@ -8,7 +8,7 @@ import asyncio
 from datetime import datetime as datetime
 from configs.config import algConfig
 import data.efficiency_function as turbine_efficiency_function
-from db.db import selectPwTimeAll, insertTechnologyLossAll, insertLimturbineLossAll, insertFaultgridLossAll,insertStopLossAll,insertFaultLossAll, insertLimgridLossAll,insertEnyWspdAll, insertTurbineWarningAll
+from db.db import selectPwTimeAll, insertTechnologyLossAll, insertLimturbineLossAll, insertFaultgridLossAll,insertStopLossAll,insertFaultLossAll, insertLimgridLossAll,insertEnyWspdAll, insertTurbineWarningAll, selectStopLossAll, selectZeroWrop
 from matplotlib import pyplot as plt
 from pylab import mpl
 import sys
@@ -48,7 +48,7 @@ async def judge_model(algorithms_configs):
     Technology_loss_all = pd.DataFrame()#algorithms_configs['Technology_loss_all']
     turbine_warning_all = pd.DataFrame()#algorithms_configs['turbine_warning_all']
     eny_wspd_all = pd.DataFrame()#algorithms_configs['eny_wspd_all']
-    Turbine_attr_type = algorithms_configs['Turbine_attr_type']
+    Turbine_attr_type = algorithms_configs['Turbine_attr_type'] #同一风机类型下的风机属性
     wtids = algorithms_configs['wtids']
     turbine_param_all = algorithms_configs['turbine_param_all']
     zuobiao = algorithms_configs['zuobiao']
@@ -71,8 +71,16 @@ async def judge_model(algorithms_configs):
     pw_df_alltime = selectPwTimeAll(pd.DataFrame(), algorithms_configs['farmName'], algorithms_configs['typeName'])
     ##########################################################每天执行一次计算
     day_list = pd.date_range(np.min(Df_all_m_all.index),np.max(Df_all_m_all.index),freq="1d",normalize=True).strftime('%Y-%m-%d %H:%M:%S').to_list()#7天为一周期判断
+    
     for i in range(len(day_list)-1):
         print(str(day_list[i]))
+        startTime = datetime.strptime(str(day_list[i]), "%Y-%m-%d %H:%M:%S") - pd.Timedelta(days=1)
+        if i == 0:
+            stop_loss_all_record, turbine_dict = selectStopLossAll(pd.DataFrame(), algorithms_configs['farmName'], typeName, startTime, startTime)
+        else:
+            stop_loss_all_record = stop_loss_all
+        # 场站限停时段
+        zero_wrop = selectZeroWrop(algorithms_configs['farmName'], datetime.strptime(str(day_list[i]), "%Y-%m-%d %H:%M:%S"), datetime.strptime(str(day_list[i]), "%Y-%m-%d %H:%M:%S") + pd.Timedelta(days=1))
         for num in range(len(Turbine_attr_type)):
             
             fault_loss = pd.DataFrame()
@@ -104,7 +112,62 @@ async def judge_model(algorithms_configs):
             except Exception:
                 Df_all_m_clear = Df_all_m
                 Df_all_m_clear['clear'] = 6
-
+            
+            #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # 将电网限电后10到20min的连续计划停机的限电标志位改为4
+            #计划停机限电状态跨天
+            #单机单类型
+            #承接前一天
+            if not stop_loss_all_record.empty:
+                limgrid_continue_flag = stop_loss_all_record[(stop_loss_all_record['wtid']==turbine_name)&(stop_loss_all_record['type']==typeName)&(stop_loss_all_record['localtime']==startTime)]['limgrid_continue_flag'].values[0]
+                if limgrid_continue_flag == 1:
+                    lim_start_time = datetime.strptime(str(day_list[i]), "%Y-%m-%d %H:%M:%S")
+                    lim_end_time = lim_start_time + pd.Timedelta(minutes=20)
+                    while True:
+                        mask = (Df_all_m['state','mymode']==8) & (Df_all_m['fault','nanmean']==200004) & (Df_all_m['localtime']<=lim_end_time) & (Df_all_m['localtime']>lim_start_time)
+                        Df_all_m_stop = Df_all_m[mask] #停机码：state:8, fault:20004
+                        if not Df_all_m_stop.empty:
+                            Df_all_m.loc[mask, ('limpw','mymode')] = 4
+                            lim_start_time = Df_all_m_stop['localtime'].max()
+                            lim_end_time = lim_start_time + pd.Timedelta(minutes=20)
+                        else:
+                            break
+            #处理当天
+            Df_all_m_limpw = Df_all_m[Df_all_m['limpw','mymode']==4] #限电：4
+            if Df_all_m_limpw.empty:
+                lim_start_time = datetime.strptime(str(day_list[i]), "%Y-%m-%d %H:%M:%S")
+                lim_end_time = datetime.strptime(str(day_list[i]), "%Y-%m-%d %H:%M:%S")
+            for lim_i in range(Df_all_m_limpw.shape[0]):
+                #跨过重叠时间
+                if not stop_loss_all_record.empty and limgrid_continue_flag == 1 and Df_all_m_limpw.iloc[lim_i]['localtime'].values[0]<=lim_start_time:
+                    continue
+                lim_start_time = Df_all_m_limpw.iloc[lim_i]['localtime'].values[0]
+                lim_end_time = lim_start_time + pd.Timedelta(minutes=20)
+                while True:
+                    mask = (Df_all_m['state','mymode']==8) & (Df_all_m['fault','nanmean']==200004) & (Df_all_m['localtime']<=lim_end_time) & (Df_all_m['localtime']>lim_start_time)
+                    Df_all_m_stop = Df_all_m[mask] #停机码：state:8
+                    if not Df_all_m_stop.empty:
+                        Df_all_m.loc[mask, ('limpw','mymode')]= 4
+                        lim_start_time = Df_all_m_stop['localtime'].max()
+                        lim_end_time = lim_start_time + pd.Timedelta(minutes=20)
+                    else:
+                        break
+            #计划停机限电状态跨天
+            #启下当天之后的限电状态
+            if lim_end_time >= datetime.strptime(str(day_list[i]), "%Y-%m-%d %H:%M:%S")+pd.Timedelta(days=1):
+                limgrid_continue_flag = 1
+            else:
+                limgrid_continue_flag = 0
+            #------------------------------------------------------------------------------------------------------
+            # 场站限停也把计划停机的限电标志位改为4
+            for zero_i in range(zero_wrop.shape[0]):
+                zero_start_time = zero_wrop.iloc[zero_i]['start_time']
+                zero_end_time = zero_wrop.iloc[zero_i]['end_time']
+                mask = (Df_all_m['state','mymode']==8) & (Df_all_m['fault','nanmean']==200004) & (Df_all_m['localtime']<=zero_end_time) & (Df_all_m['localtime']>=zero_start_time)
+                Df_all_m_stop = Df_all_m[mask] #停机码：state:8
+                if not Df_all_m_stop.empty:
+                    Df_all_m.loc[mask, ('limpw','mymode')] = 4
+            #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
             ###单机故障损失计算(分仓、功率曲线合并后的数据框---未知故障解释的停机全部归到故障停机中)###有故障时故障码不为0！！！！！！！！！！！！！！
             ##金风机组发生编码为733的故障时，风速不更新，导致损失电量计算不准确
@@ -131,6 +194,7 @@ async def judge_model(algorithms_configs):
             
             ###单机计划停机损失
             stop_loss = turbine_efficiency_function.Stop_Loss(Df_all_m,turbine_name,pw_df_temp,state_code)
+            stop_loss.insert(0, 'limgrid_continue_flag', limgrid_continue_flag)
             stop_loss.insert(0, 'type', typeName)
             day_temp = datetime.strptime(day_list[i], '%Y-%m-%d %H:%M:%S')
             day_temp = datetime.strftime(day_temp, '%Y-%m-%d')

@@ -56,5 +56,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
             #stop_loss_show_temp.loc[i,'exltmp'] = np.nanmean(temp_turbine['exltmp'])
         # limgrid_loss_show_temp.insert(0, 'wtid', turbine_list[num])
         limgrid_loss_show = pd.concat([limgrid_loss_show,limgrid_loss_show_temp])#.append(limgrid_loss_show_temp)
+    #排序
+    result['table'] = sorted(result['table'], key=lambda x: x['wtid'], reverse=False)
     
     return result

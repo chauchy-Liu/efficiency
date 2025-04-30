@@ -69,5 +69,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
             #故障描述
             elem['faultDescribe'] = '%s'%(faultgrid_loss_show_temp.iloc[i]['fault_describe'])
             result['table'].append(elem)
+    #排序
+    result['table'] = sorted(result['table'], key=lambda x: x['wtid'], reverse=False)
 
     return result

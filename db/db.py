@@ -69,6 +69,8 @@ def upload(filename:str, algorithms_configs:dict):
     if ylv["domainName"] != None and len(ylv["domainName"]) > 0:#替换url为domain name
         index = file_url.find(ylv['bucketName']) - 1
         file_url = file_url[:len("http://")] + ylv['domainName'] + file_url[index:]
+        log.info("url替换: "+ylv["url"]+'==>'+ylv['domainName'])
+        log.info("替换后的URL: "+file_url)
     return file_url
 
 #################################mysql#################################
@@ -179,7 +181,8 @@ create_stop_loss_all_table_query = f'''
         wspd float comment '风速m/s',
         exltmp float comment '环境温度',
         time_rate float comment '计划停机时长',
-        loss float comment '损失电量'
+        loss float comment '损失电量',
+        limgrid_continue_flag int comment '限电持续标志, 1:限电，0:非限电'
     ) comment='计划停机损失';
 '''
 create_limgrid_loss_all_table_query = f'''
@@ -355,6 +358,45 @@ create_torque_control_picture_table_query = f'''
 ####################################################33
 #提取数据
 ####################################################33
+def selectZeroWrop(farmName, start_time, end_time):
+    data = pd.DataFrame()
+    conn = get_connection_zero()
+    cursor = conn.cursor()
+    log.info(f"##################################提取zero_wrop_warn数据####################")
+    obtain_query = "SELECT \
+        station_name, \
+        warn_start_time, \
+        warn_end_time \
+        from zero_wrop_warn \
+        where (station_name LIKE %s) AND ((warn_start_time >= %s AND warn_start_time < %s) OR (warn_start_time < %s AND warn_end_time >= %s)) \
+    "
+    data_to_obtain = (farmName[:-1]+'%', start_time, end_time, start_time, start_time)
+    log.info(f'sql语句：{obtain_query}')
+    log.info(f'sql数据：{data_to_obtain}')
+    cursor.execute(obtain_query, data_to_obtain)
+    queryResult = cursor.fetchall()
+    if queryResult == None or len(queryResult) <= 0:
+        pass #return pd.DataFrame()
+    else:
+        for i, lineValue in enumerate(queryResult):
+            startTime = pd.to_datetime(lineValue[1],errors='coerce')
+            # endTime = pd.to_datetime(lineValue[2],errors='coerce')
+            #nan验证
+            lineValue = list(lineValue)
+            if startTime < start_time:
+                startTime = start_time
+            if lineValue[2] == None:
+                endTime = pd.to_datetime(datetime.now(),errors='coerce')
+                if endTime > end_time:
+                    endTime = end_time
+            elif pd.to_datetime(lineValue[1],errors='coerce') > end_time:
+                endTime = end_time
+            else:
+                endTime = pd.to_datetime(lineValue[2],errors='coerce')
+            
+            data.loc[i, ['start_time','end_time']] = [startTime, endTime]
+    data.replace(b'', 0, inplace=True)
+    return data
 
 def selectTheoryWindPower(farmName, typeName): #typeName是一个机型，不多个机型
     conn = get_connection()
@@ -1036,7 +1078,7 @@ def selectStopLossAll(data, farmName, typeName, start_time=datetime.now()-timede
     result = cursor.fetchone()
     #判断表是否存在
     if not result:
-        columns = ['type', 'wtid', 'time', 'loss', 'wspd', 'exltmp']
+        columns = ['type', 'wtid', 'time', 'loss', 'wspd', 'exltmp', 'limgrid_continue_flag']
         data = pd.DataFrame(columns=columns)
         return data, wtids
     typeNameStr = ""
@@ -1053,7 +1095,8 @@ def selectStopLossAll(data, farmName, typeName, start_time=datetime.now()-timede
             wspd, \
             time_rate, \
             loss, \
-            exltmp \
+            exltmp, \
+            limgrid_continue_flag \
             from stop_loss_all \
             where farm_name=%s AND type_name=%s  AND data_time BETWEEN %s AND %s \
         "
@@ -1071,7 +1114,8 @@ def selectStopLossAll(data, farmName, typeName, start_time=datetime.now()-timede
             wspd, \
             time_rate, \
             loss, \
-            exltmp \
+            exltmp, \
+            limgrid_continue_flag \
             from stop_loss_all \
             where farm_name=%s AND data_time BETWEEN %s AND %s \
         "
@@ -1096,7 +1140,7 @@ def selectStopLossAll(data, farmName, typeName, start_time=datetime.now()-timede
                     lineValue[7] = np.nan
                 if lineValue[8] == nan:
                     lineValue[8] = np.nan
-                data.loc[i, ['localtime', 'type', 'wtid', 'time', 'loss', 'wspd', 'exltmp']] = [localtime, lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5], lineValue[8]]
+                data.loc[i, ['localtime', 'type', 'wtid', 'time', 'loss', 'wspd', 'exltmp', 'limgrid_continue_flag']] = [localtime, lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5], lineValue[8], lineValue[9]]
                 if lineValue[3] in wtids:
                     if lineValue[4] not in wtids[lineValue[3]]:
                         wtids[lineValue[3]].append(lineValue[4])
@@ -1115,7 +1159,7 @@ def selectStopLossAll(data, farmName, typeName, start_time=datetime.now()-timede
                     lineValue[7] = np.nan
                 if lineValue[8] == nan:
                     lineValue[8] = np.nan
-                data.loc[i, ['localtime', 'type', 'wtid', 'time', 'loss', 'wspd', 'exltmp']] = [localtime, lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5], lineValue[8]]
+                data.loc[i, ['localtime', 'type', 'wtid', 'time', 'loss', 'wspd', 'exltmp', 'limgrid_continue_flag']] = [localtime, lineValue[3], lineValue[4],lineValue[6], lineValue[7], lineValue[5], lineValue[8], lineValue[9]]
                 if lineValue[3] in wtids:
                     if lineValue[4] not in wtids[lineValue[3]]:
                         wtids[lineValue[3]].append(lineValue[4])
@@ -2191,7 +2235,7 @@ def insertStopLossAll(data, algorithms_configs):
         log.info(f"#########################stop_loss_all表插入数据#########################")
         
         #dataframe摄取全部的列
-        tmp = data[['type', 'wtid', 'time', 'loss', 'wspd', 'exltmp']]
+        tmp = data[['type', 'wtid', 'time', 'loss', 'wspd', 'exltmp', 'limgrid_continue_flag']]
         #遍历时间
         for j in range(tmp.shape[0]):
             insert_query = "INSERT INTO stop_loss_all ( \
@@ -2203,8 +2247,9 @@ def insertStopLossAll(data, algorithms_configs):
                     wspd, \
                     time_rate, \
                     loss, \
-                    exltmp \
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+                    exltmp, \
+                    limgrid_continue_flag \
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
             #nan验证
             if tmp.iloc[j]['exltmp'] == np.nan or str(tmp.iloc[j]['exltmp']) == 'nan':
                 exltmp = nan
@@ -2222,7 +2267,7 @@ def insertStopLossAll(data, algorithms_configs):
                 loss = nan
             else:
                 loss = tmp.iloc[j]['loss']
-            data_to_insert = (tmp.index[j], algorithms_configs['farmName'], algorithms_configs['farmId'], tmp.iloc[j]['type'], tmp.iloc[j]['wtid'], wspd, time, loss, exltmp)
+            data_to_insert = (tmp.index[j], algorithms_configs['farmName'], algorithms_configs['farmId'], tmp.iloc[j]['type'], tmp.iloc[j]['wtid'], wspd, time, loss, exltmp, int(tmp.iloc[j]['limgrid_continue_flag']))
             log.info(f'sql语句：{insert_query}')
             log.info(f'sql数据：{data_to_insert}')
             cursor.execute(insert_query, data_to_insert)
@@ -2240,7 +2285,7 @@ def insertStopLossAll(data, algorithms_configs):
             max_sql_time = "2020-10-24 00:00:00" 
             max_sql_time = datetime.strptime(max_sql_time, "%Y-%m-%d %H:%M:%S")
         #dataframe摄取全部的列
-        tmp = data[['type', 'wtid', 'time', 'loss', 'wspd', 'exltmp']]
+        tmp = data[['type', 'wtid', 'time', 'loss', 'wspd', 'exltmp', 'limgrid_continue_flag']]
         tmp = tmp[tmp.index > max_sql_time] 
         #遍历时间
         for j in range(tmp.shape[0]):
@@ -2253,8 +2298,9 @@ def insertStopLossAll(data, algorithms_configs):
                     wspd, \
                     time_rate, \
                     loss, \
-                    exltmp \
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+                    exltmp, \
+                    limgrid_continue_flag \
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
             #nan验证
             if tmp.iloc[j]['exltmp'] == np.nan or str(tmp.iloc[j]['exltmp']) == 'nan':
                 exltmp = nan
@@ -2272,7 +2318,7 @@ def insertStopLossAll(data, algorithms_configs):
                 loss = nan
             else:
                 loss = tmp.iloc[j]['loss']
-            data_to_insert = (tmp.index[j], algorithms_configs['farmName'], algorithms_configs['farmId'], tmp.iloc[j]['type'], tmp.iloc[j]['wtid'], wspd, time, loss, exltmp)
+            data_to_insert = (tmp.index[j], algorithms_configs['farmName'], algorithms_configs['farmId'], tmp.iloc[j]['type'], tmp.iloc[j]['wtid'], wspd, time, loss, exltmp, int(tmp.iloc[j]['limgrid_continue_flag']))
             log.info(f'sql语句：{insert_query}')
             log.info(f'sql数据：{data_to_insert}')
             cursor.execute(insert_query, data_to_insert)
@@ -3012,6 +3058,17 @@ def get_connection_efficiency(config_path):
         database=ylv["DB_DATABASE"]
     )
     return conn
+def get_connection_zero():
+    conn = mysql.connector.connect(
+        host=config.DB_HOST,
+        port=config.DB_PORT,
+        user=config.DB_USERNAME,
+        password=config.DB_PASSWORD,
+        database=config.DB_DATABASE2,
+        buffered=True
+    )
+    return conn 
+
 def InsertIndex(conn, average_wind_speed, actual_power_generation, loss_of_electricity, equivalent_hours, wind_rate, time_rate, start_time, end_time):
     cursor = conn.cursor()
     insert_query = "INSERT INTO operation_index (average_wind_speed, \

@@ -118,13 +118,51 @@ def monthdata(datatemp,altitude,path):#月数据分析！！！！！！！
     month_data = month_data.sort_index()
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
     ax.plot(month_data.index,month_data['rho'],'o-',color='r',label='空气密度')
-    ax.set_ylabel('空气密度(kg/m3)')
-    ax.legend(loc=2, framealpha=0)
+    ax.set_ylabel('空气密度(kg/m3)', color='#ccc')
+    
     ax1 = ax.twinx()
     ax1.plot(month_data.index,month_data['wspd'],'o-',color='b',label='风速')
-    ax1.set_ylabel('风速(m/s)')
-    ax1.legend(loc=1, framealpha=0)
+    ax1.set_ylabel('风速(m/s)', color='#ccc')
+    
     ax.grid()
+
+    # 设置刻度颜色
+    ax.tick_params(axis='x', colors='#426977')  # 设置角度刻度颜色
+    ax.tick_params(axis='y', colors='#426977')  # 设置半径刻度颜色
+    ax1.tick_params(axis='x', colors='#426977')  # 设置角度刻度颜色
+    ax1.tick_params(axis='y', colors='#426977')  # 设置半径刻度颜色
+    # 设置刻度值颜色
+    for label in ax.get_xticklabels():
+        label.set_color('#DBE9F1')  # 设置x轴刻度值颜色为橙色
+
+    for label in ax.get_yticklabels():
+        label.set_color('#DBE9F1')  # 设置y轴刻度值颜色为橙色
+    for label in ax1.get_xticklabels():
+        label.set_color('#DBE9F1')  # 设置x轴刻度值颜色为橙色
+
+    for label in ax1.get_yticklabels():
+        label.set_color('#DBE9F1')  # 设置y轴刻度值颜色为橙色
+    # 设置坐标轴边框颜色
+    ax.spines['top'].set_color('#426977')    # 设置上边框颜色
+    ax.spines['right'].set_color('#426977')  # 设置右边框颜色
+    ax.spines['left'].set_color('#426977')  # 设置左边框颜色
+    ax.spines['bottom'].set_color('#426977')  # 设置下边框颜色
+    ax1.spines['top'].set_color('#426977')    # 设置上边框颜色
+    ax1.spines['right'].set_color('#426977')  # 设置右边框颜色
+    ax1.spines['left'].set_color('#426977')  # 设置左边框颜色
+    ax1.spines['bottom'].set_color('#426977')  # 设置下边框颜色
+    # 设置经纬线颜色
+    ax.xaxis.grid(color='#426977')
+    ax.yaxis.grid(color='#426977')
+    ax1.xaxis.grid(color='#426977')
+    ax1.yaxis.grid(color='#426977')
+    # 设置图例
+    legend = ax.legend(loc=2, framealpha=0)
+    for text in legend.get_texts():
+        text.set_color('#ccc')  # 设置图例标签颜色
+    legend = ax1.legend(loc=1, framealpha=0)
+    for text in legend.get_texts():
+        text.set_color('#ccc')  # 设置图例标签颜色
     fig.savefig(str(path+'/'+'month.png'),transparent=True, bbox_inches ='tight')
     return month_data, str(path+'/'+'month.png')
 
@@ -264,7 +302,7 @@ def winddir_err_before_new(data,dirbin,windbin2,dirbin1,windbin1,path,turbine_na
         # mpl.rcParams['font.sans-serif'] = ['SimHei'] 
         fig = plt.figure(figsize=(10,8),dpi=100)
         plt.subplot(1,1,1)    
-        plt.title(str(turbine_name)+'对风偏差角度：'+str('%.1f' %err_result_get)+'，理论损失电量：'+str('{:.2%}'.format((1 - np.cos(3.14159*err_result_get/180.0)**2)*0.75)),fontsize=16)
+        plt.title(str(turbine_name)+'对风偏差角度：'+str('%.1f' %err_result_get)+'，理论损失电量：'+str('{:.2%}'.format((1 - np.cos(3.14159*err_result_get/180.0)**2)*0.75)),fontsize=16, color='#ccc')
         with plt.style.context('ggplot'):            
             plt.scatter(X_train_mean['wdir0'],X_train_mean['pwrat_scaler_minmax'],color='blue',s=10)
             #plt.scatter(yaw_err_temp['wdir0cut1'],yaw_err_temp['pwrat','post'],color='red',s=20)
@@ -274,10 +312,16 @@ def winddir_err_before_new(data,dirbin,windbin2,dirbin1,windbin1,path,turbine_na
             plt.plot(np.full((len(X_train_mean),1),np.unique(X_train_mean['wdir0'])[np.argmax(yfit)]),X_train_mean['pwrat_scaler_minmax'],'--',color='black')
             #plt.plot(np.full((len(aa),1),dirbin[np.argmax(yfit1)]),yaw_err_minmax['pwrat_scaler'],'--',color='green')
             plt.grid()
-            plt.xlabel('偏航偏差角度(°)',fontsize=14)
-            plt.ylabel('发电性能',fontsize=14)
+            plt.xlabel('偏航偏差角度(°)',fontsize=14, color='#ccc')
+            plt.ylabel('发电性能',fontsize=14, color='#ccc')
+            plt.tick_params(which='both',labelcolor='#ccc', width=0,color='#426977', labelsize=14,gridOn=True,grid_color='#426977',direction ='in',right=True)
             #plt.text(0,min(train_minmax),str('%.1f' %windbin2[i]+'m/s'))
             #plt.colorbar()
+            # 设置坐标轴边框颜色
+            plt.gca().spines['top'].set_color('#426977')    # 设置上边框颜色
+            plt.gca().spines['right'].set_color('#426977')  # 设置右边框颜色
+            plt.gca().spines['left'].set_color('#426977')  # 设置左边框颜色
+            plt.gca().spines['bottom'].set_color('#426977')  # 设置下边框颜色
         plt.subplots_adjust(top=0.95,bottom=0.08,left=0.08,right=0.95,hspace =0.10, wspace =0.1) #调整边距      
         #plt.margins(0,0)
         fig.savefig(str(path+'/'+str(turbine_name)+'_'+str(request_num)+'_yawerror.png'), transparent=True, dpi=100,bbox_inches='tight')
@@ -287,7 +331,7 @@ def winddir_err_before_new(data,dirbin,windbin2,dirbin1,windbin1,path,turbine_na
         
         fig = plt.figure(figsize=(10,8),dpi=100)
         plt.subplot(1,1,1)    
-        plt.title(str(turbine_name)+'对风偏差角度：'+str('%.1f' %err_result_get)+'，理论损失电量：'+str('{:.2%}'.format((1 - np.cos(3.14159*err_result_get/180.0)**2)*0.75)),fontsize=16)
+        plt.title(str(turbine_name)+'对风偏差角度：'+str('%.1f' %err_result_get)+'，理论损失电量：'+str('{:.2%}'.format((1 - np.cos(3.14159*err_result_get/180.0)**2)*0.75)),fontsize=16, color='#ccc')
         with plt.style.context('ggplot'):            
             plt.scatter(X_train_mean['wdir0'],X_train_mean['pwrat_scaler_minmax'],color='blue',s=10)
             #plt.scatter(yaw_err_temp['wdir0cut1'],yaw_err_temp['pwrat','post'],color='red',s=20)
@@ -297,8 +341,14 @@ def winddir_err_before_new(data,dirbin,windbin2,dirbin1,windbin1,path,turbine_na
             plt.plot(np.full((len(X_train_mean),1),np.unique(X_train_mean['wdir0'])[np.argmax(yfit)]),X_train_mean['pwrat_scaler_minmax'],'--',color='black')
             #plt.plot(np.full((len(aa),1),dirbin[np.argmax(yfit1)]),yaw_err_minmax['pwrat_scaler'],'--',color='green')
             plt.grid()
-            plt.xlabel('偏航偏差角度(°)',fontsize=14)
-            plt.ylabel('发电性能',fontsize=14)
+            plt.xlabel('偏航偏差角度(°)',fontsize=14, color='#ccc')
+            plt.ylabel('发电性能',fontsize=14, color='#ccc')
+            plt.tick_params(which='both',labelcolor='#ccc', width=0,color='#426977', labelsize=14,gridOn=True,grid_color='#426977',direction ='in',right=True)
+            # 设置坐标轴边框颜色
+            plt.gca().spines['top'].set_color('#426977')    # 设置上边框颜色
+            plt.gca().spines['right'].set_color('#426977')  # 设置右边框颜色
+            plt.gca().spines['left'].set_color('#426977')  # 设置左边框颜色
+            plt.gca().spines['bottom'].set_color('#426977')  # 设置下边框颜色
             #plt.text(0,min(train_minmax),str('%.1f' %windbin2[i]+'m/s'))
             #plt.colorbar()
         plt.subplots_adjust(top=0.95,bottom=0.08,left=0.08,right=0.95,hspace =0.10, wspace =0.1) #调整边距      
@@ -716,11 +766,20 @@ def WindRose(data,path):
         ax.bar(theta,rad,width=width,bottom=100,label=idx,tick_label=labels,color=colors[i])
     ax.set_theta_zero_location('N')
     ax.set_theta_direction(-1)
-    ax.set_title(turbine_name+'风向玫瑰图',fontsize=20)
+    ax.set_title(turbine_name+'风向玫瑰图',fontsize=20, color='#ccc')
     ax.tick_params(labelsize=15)
+    # 设置经纬线颜色
+    ax.xaxis.grid(color='#426977')  # 设置极坐标的径向网格线颜色
+    ax.yaxis.grid(color='#426977')  # 设置极坐标的圆
+    ax.spines['polar'].set_color('#426977')  # 设置极坐标轴的颜色
+    # 设置刻度颜色
+    ax.tick_params(axis='x', colors='#DBE9F1')  # 设置角度刻度颜色
+    ax.tick_params(axis='y', colors='#DBE9F1')  # 设置半径刻度颜色
+
     #ax.set_yticks([200,500,1000,1500])
     cb = mpl.colorbar.ColorbarBase(ax1,cmap=cmap,norm=norm)
-    cb.ax.tick_params(labelsize=14)
+    cb.ax.tick_params(labelsize=14, labelcolor='#DBE9F1')
+    cb.ax.yaxis.set_tick_params(color='#426977')  # 设置刻度线颜色为绿色
     fig.savefig(path + '/' +str(turbine_name) + '风向玫瑰图.png', transparent=True,dpi=100,bbox_inches='tight')    
     return path + '/' +str(turbine_name) + '风向玫瑰图.png'
 
@@ -933,7 +992,7 @@ def Stop_Loss(data,turbine_name,pw_df_temp,state_code):
     data_stop = data_stop[(data_stop['state_type']=='服务状态')|(data_stop['state_type']=='用户停机')|   ##机组故障码计划停机信息
                           ((data_stop['fault','nanmean']==0)&(data_stop['pitch1','nanmean']>=85)
                           &(data_stop['wspd','nanmean']>=np.min(temp['windbin']))&(data_stop['pwrat','nanmean']<10.0))]  ###其它自行判断的计划停机信息
-    
+    data_stop = data_stop[data_stop['limpw','mymode']!=4] #非限电
     if len(data_stop) > 0:
         #stop_loss.loc[turbine_name,'turbine'] = turbine_name
         stop_loss.loc[turbine_name,'loss'] = np.nansum(data_stop[turbine_name])/6.0

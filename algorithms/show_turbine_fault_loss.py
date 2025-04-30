@@ -71,5 +71,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
             #系统故障描述
             elem['sysDescribe'] = '%s'%(fault_loss_show.iloc[i]['fsyst'])
             result['table'].append(elem)
+    #排序
+    result['table'] = sorted(result['table'], key=lambda x: x['wtid'], reverse=False)
 
     return result

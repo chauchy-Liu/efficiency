@@ -94,6 +94,18 @@ if not data_logger.handlers:
     # data_logger.addHandler(console_handler)
     data_logger.addHandler(data_file_handler)
 
+time_logger = logging.getLogger('get_time')
+if not time_logger.handlers:
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(process)d - %(threadName)s - %(message)s')
+    # console_handler = logging.StreamHandler()
+    # console_handler.setFormatter(formatter)
+    # alarm_file_handler = TimedRotatingFileHandler('logs/alarm.log', when='midnight', interval=1, backupCount=30)
+    time_file_handler = logging.handlers.RotatingFileHandler(filename=os.path.join("logs","time"+".log"), mode='a', maxBytes=5*1024**2, backupCount=3)
+    time_file_handler.setFormatter(formatter)
+    time_logger.setLevel(logging.INFO)
+    # data_logger.addHandler(console_handler)
+    time_logger.addHandler(time_file_handler)
+
 #################################################################
 #中台
 Url_asset = GW_Url + '/cds-asset-service/v1.0/hierarchy?orgId=' + OrgId  # 这个api哪里来的？
@@ -119,6 +131,7 @@ head = {
 requestTime = 5
 #风场信息
 async def getWindFarmIntel():
+    funStartTime= time.time()
     global Url_farm
     WindFarm_attr = pd.DataFrame()
     data_logger.info(f"#############################获取风场信息############################")
@@ -190,9 +203,11 @@ async def getWindFarmIntel():
         data_logger.info(f'\033[31m{errorInfomation}\033[0m')
         data_logger.info(f'\033[33m发生异常：{e}\033[0m')
         WindFarm_attr = pd.DataFrame()
+    time_logger.info(f'###########################执行一次 getWindFarmInte l时间{time.time()-funStartTime}秒###################')
     return WindFarm_attr
 #风机信息
 def selectCoreDeviceAttributes(coreDeviceAttributesList, attribute):
+    funStartTime= time.time()
     attributeList = []
     for turbine in coreDeviceAttributesList:
         for item in turbine:
@@ -206,12 +221,14 @@ def selectCoreDeviceAttributes(coreDeviceAttributesList, attribute):
                 else:
                     value = item['value']
                 attributeList.append(value)
+    time_logger.info(f'###########################执行一次 selectCoreDeviceAttributes 时间{time.time()-funStartTime}秒###################')
     return attributeList
 
 async def getWindTurbinesIntel(wind_farm):
     '''
     获取风场下的风机
     '''
+    
     global Url_turbine
     if "%s" in Url_turbine:
         Url_turbine = Url_turbine%wind_farm
@@ -257,6 +274,7 @@ async def getWindTurbinesIntel(wind_farm):
 
 #格式转化
 def FormatConvert(oldFormat:list):
+    funStartTime = time.time()
     try:
         newFormat = pd.DataFrame()
         for obj1 in oldFormat:
@@ -278,11 +296,12 @@ def FormatConvert(oldFormat:list):
         data_logger.info(f'\033[33m发生异常：{e}\033[0m')
         data_logger.info(f'###############################formatConvert######################')
         data_logger.info(f'{pointName}:{obj2}, localtime type:{type(obj2["localtime"])}')
+    time_logger.info(f'###########################执行一次 FormatConvert 时间{time.time()-funStartTime}秒###################')
     return newFormat
 
 
 async def getGeneralDataIntel(algorithmName: str, startTime, endTime, assetId: str, points, resample_interval, algorithms_configs):
-
+    funStartTime = time.time()
     data_logger.info(f"#############################获取通用故障测点信息############################")
     global Url_point
     turbinenames = dict(zip(algorithms_configs[algorithmName]['param_assetIds'],algorithms_configs[algorithmName]['param_turbine_num']))
@@ -333,10 +352,11 @@ async def getGeneralDataIntel(algorithmName: str, startTime, endTime, assetId: s
         data_logger.info(f'\033[31m{errorInfomation}\033[0m')
         data_logger.info(f'\033[33m发生异常：{e}\033[0m')
         DfTemp = pd.DataFrame()
+    time_logger.info(f'###########################执行一次 getGeneralDataIntel 时间{time.time()-funStartTime}秒###################')
     return DfTemp
 
 async def getDiDataIntel(algorithmName: str, startTime, endTime, assetId: str, points, resample_interval, algorithms_configs):
-
+    funStartTime = time.time()
     data_logger.info(f"#############################获取状态测点信息############################")
     global Url_point
     turbinenames = dict(zip(algorithms_configs[algorithmName]['param_assetIds'],algorithms_configs[algorithmName]['param_turbine_num']))
@@ -384,11 +404,12 @@ async def getDiDataIntel(algorithmName: str, startTime, endTime, assetId: str, p
         data_logger.info(f'\033[31m{errorInfomation}\033[0m')
         data_logger.info(f'\033[33m发生异常：{e}\033[0m')
         DfTemp = pd.DataFrame()
+    data_logger.info(f'###########################执行一次 getDiDataIntel 时间{time.time()-funStartTime}秒###################')
     return DfTemp
 
 
 async def getAiDataIntel(algorithmName: str, startTime, endTime, assetId: str, points, resample_interval, algorithms_configs):
-
+    funStartTime = time.time()
     data_logger.info(f"#############################获取数据测点信息############################")
     global Url_point
     turbinenames = dict(zip(algorithms_configs[algorithmName]['param_assetIds'],algorithms_configs[algorithmName]['param_turbine_num']))
@@ -439,6 +460,7 @@ async def getAiDataIntel(algorithmName: str, startTime, endTime, assetId: str, p
         data_logger.info(f'\033[31m{errorInfomation}\033[0m')
         data_logger.info(f'\033[33m发生异常：{e}\033[0m')
         DfTemp = pd.DataFrame()
+    time_logger.info(f'###########################执行一次 getDiDataIntel 时间{time.time()-funStartTime}秒###################')
     return DfTemp
 #智慧场站
 ############################
@@ -777,6 +799,7 @@ def parallel_fill_data(df_list, result, num_processes=None):
     return result
 
 def custom_merge(df_list):
+    funStartTime = time.time()
     # 获取所有DataFrame的行索引和列名
     all_index = set()
     all_columns = set()
@@ -803,12 +826,11 @@ def custom_merge(df_list):
         local_result.update(df.where(mask))
         result.update(local_result)
 
-    
+    time_logger.info(f'###########################执行一次 custom_merge pandas表融合时长{time.time()-funStartTime}秒###################')
     return result
 
 async def TimeDeviceSlice(algorithms_configs): #, ai_points, resample_interval, getData
-
-    
+    funStartTime = time.time()
     # 按算法种类、时间和设备分片
     time_asset_param = []
     di_time_asset_param = []
@@ -938,7 +960,9 @@ async def TimeDeviceSlice(algorithms_configs): #, ai_points, resample_interval, 
         tmp = [task.cancel() for task in pending]
     else:
         generalResults = []
-    
+
+    time_logger.info(f'###########################执行一次 TimeDeviceSlice 请求总时长{time.time()-funStartTime}秒###################')
+    funStartTime = time.time()
     #存储数据结果
     ai_df = {}
     di_df = {}
@@ -1162,14 +1186,14 @@ async def TimeDeviceSlice(algorithms_configs): #, ai_points, resample_interval, 
         
     # df = pd.concat(results)
 
-
+    time_logger.info(f'###########################执行一次 TimeDeviceSlice 存储去重整理格式总时间{time.time()-funStartTime}秒###################')
     return ai_df, di_df, cj_di_df, ty_di_df, general_df, private_df
 
 
 async def getDataForMultiAlgorithms(algorithms_configs, state): #assetIds：风机id ,mainLog, algorithmLogs, algorithms_configs是一个算法命中的配置，不是全局配置algorithms_configs, 注意和main_job中的algorithms_configs做区别
 
     df_ai, df_di, df_di_cj, df_di_ty, df_general, df_private = await TimeDeviceSlice(algorithms_configs)
-
+    funStartTime = time.time()
     final_df = {}
     countsAlg = 0
     for key, value in algorithms_configs.items():
@@ -1351,7 +1375,7 @@ async def getDataForMultiAlgorithms(algorithms_configs, state): #assetIds：风�
                     # df_current_assetId[allow_points] = df_current_assetId[allow_points].ffill()#用前面行/列的值填充空值
                     # df_current_assetId[allow_points] = df_current_assetId[allow_points].bfill()#用前面行/列的值填充空值
                 final_df[key] = pd.concat([final_df[key], df_current_assetId])
-
+    time_logger.info(f'###########################执行一次 getDataForMultiAlgorithms 去除 TimeDeviceSlice 后的总时间{time.time()-funStartTime}秒###################')
     #算法名：(数据1分钟)， 数据10分钟)
     return final_df
     

@@ -138,7 +138,7 @@ async def execute_multi_algorithms(names: list, execute_time=''):
             if "pianhang_duifeng_buzheng" == name_convice:
                 endTime = datetime.strptime(datetime.now().strftime('%Y-%m-%d 00:00:00'), '%Y-%m-%d %H:%M:%S')
             else:
-                endTime = datetime.now()#datetime.strptime(datetime.now().strftime('%Y-%m-%d 00:00:00'), '%Y-%m-%d %H:%M:%S')
+                endTime = datetime.strptime(datetime.now().strftime('%Y-%m-%d 00:00:00'), '%Y-%m-%d %H:%M:%S')
                 # endTime = datetime.strptime('2024-12-22 11:14:13', '%Y-%m-%d %H:%M:%S')#datetime.now()#.strftime('%Y-%m-%d %H:%M:%S')
             startTime = endTime - pd.to_timedelta(multi_algorithms[-1].time_duration)
             multi_algorithms_config[name_convice] = {

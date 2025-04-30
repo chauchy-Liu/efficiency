@@ -81,6 +81,7 @@ def analyse(farmName, typeName:str, wtid:list, startTime, endTime):
     elem['name'] = 'theoryPower' 
     powerCurve['legend']['data'].append('theoryPower')
     elem['type'] = 'line'
+    elem['color'] = 'green'
     elem['data']= pw_df_all['pwrat'].to_list()
     powerCurve['series'].append(elem)
     #输入风机控制输出风机

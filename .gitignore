@@ -10,4 +10,5 @@ result/*
 *.pyx
 *.tar
 *.tar.gz
+*.csv
 

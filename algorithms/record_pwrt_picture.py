@@ -163,9 +163,24 @@ async def judge_model(algorithms_configs):
     
     fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
     ax.bar(wind_freq['windbin'],wind_freq['freq'],color='royalblue',bottom = 0,width=0.2)
-    ax.set_xlabel(xlabel='风速(m/s)',fontsize=10)
-    ax.set_ylabel('风频',fontsize=10)
+    ax.set_xlabel(xlabel='风速(m/s)',fontsize=10, color='#ccc')
+    ax.set_ylabel('风频',fontsize=10, color='#ccc')
     ax.tick_params(labelsize=10)   
+    # 设置刻度颜色
+    ax.tick_params(axis='x', colors='#426977')  # 设置角度刻度颜色
+    ax.tick_params(axis='y', colors='#426977')  # 设置半径刻度颜色
+    # 设置刻度值颜色
+    for label in ax.get_xticklabels():
+        label.set_color('#DBE9F1')  # 设置x轴刻度值颜色为橙色
+
+    for label in ax.get_yticklabels():
+        label.set_color('#DBE9F1')  # 设置y轴刻度值颜色为橙色
+    # 设置坐标轴边框颜色
+    ax.spines['top'].set_color('#426977')    # 设置上边框颜色
+    ax.spines['right'].set_color('#426977')  # 设置右边框颜色
+    ax.spines['left'].set_color('#426977')  # 设置左边框颜色
+    ax.spines['bottom'].set_color('#426977')  # 设置下边框颜色
+
     fig.savefig(path + '/' + 'windfreq.png', transparent=True,dpi=100,bbox_inches='tight')
     ########################################################
     #上传图片到minio
@@ -191,13 +206,13 @@ async def judge_model(algorithms_configs):
         plt.plot(wind_ti_all['windbin'],wind_ti_all['ti'],'-o',color='cornflowerblue',markersize=5)           
         plt.grid()
         #plt.ylim(-2,25)
-        plt.xlabel('风速(m/s)',fontsize=20)
-        plt.ylabel('湍流',fontsize=20)
-        plt.tick_params(which='both',labelcolor='#869AA7', width=0,color='#869AA7', labelsize=20,gridOn=True,grid_color='#869AA7',direction ='in',right=True)
-        plt.gca().spines["left"].set_color('#869AA7')
-        plt.gca().spines["bottom"].set_color('#869AA7')
-        plt.gca().spines["right"].set_color('#869AA7')
-        plt.gca().spines["top"].set_color('#869AA7')
+        plt.xlabel('风速(m/s)',fontsize=20, color='#ccc')
+        plt.ylabel('湍流',fontsize=20, color='#ccc')
+        plt.tick_params(which='both',labelcolor='#ccc', width=0,color='#426977', labelsize=20,gridOn=True,grid_color='#426977',direction ='in',right=True)
+        plt.gca().spines["left"].set_color('#426977')
+        plt.gca().spines["bottom"].set_color('#426977')
+        plt.gca().spines["right"].set_color('#426977')
+        plt.gca().spines["top"].set_color('#426977')
     fig.savefig(path + '/' +'湍流曲线'+'.png',dpi=100, transparent=True, bbox_inches='tight')
     ########################################################
     #上传图片到minio
@@ -649,18 +664,18 @@ async def judge_model(algorithms_configs):
             
             df_all_clear_pitch_min = Df_all_m_clear[Df_all_m_clear['clear'] <= 7]
             fig = plt.figure(figsize=(10,8),dpi=100)  
-            plt.title(str(turbine_name))    
+            plt.title(str(turbine_name), color='#ccc')    
             with plt.style.context('ggplot'):  
                 plt.scatter(df_all_clear_pitch_min['wspd','nanmean'],df_all_clear_pitch_min['pitch1','nanmean'],color='red',s=15)
                 plt.grid()
                 plt.ylim(-2,25)
-                plt.xlabel('风速(m/s)',fontsize=20)
-                plt.ylabel('桨距角(°)',fontsize=20)
-                plt.tick_params(which='both',labelcolor='#869AA7', width=0,color='#869AA7', labelsize=20,gridOn=True,grid_color='#869AA7',direction ='in',right=True)
-                plt.gca().spines["left"].set_color('#869AA7')
-                plt.gca().spines["bottom"].set_color('#869AA7')
-                plt.gca().spines["right"].set_color('#869AA7')
-                plt.gca().spines["top"].set_color('#869AA7')
+                plt.xlabel('风速(m/s)',fontsize=20, color='#ccc')
+                plt.ylabel('桨距角(°)',fontsize=20, color='#ccc')
+                plt.tick_params(which='both',labelcolor='#ccc', width=0,color='#426977', labelsize=20,gridOn=True,grid_color='#426977',direction ='in',right=True)
+                plt.gca().spines["left"].set_color('#426977')
+                plt.gca().spines["bottom"].set_color('#426977')
+                plt.gca().spines["right"].set_color('#426977')
+                plt.gca().spines["top"].set_color('#426977')
             fig.savefig(path + '/' +str(turbine_name) + '_最小桨距角异常.png',dpi=100, transparent=True, bbox_inches='tight')
             
             ########################################################
@@ -678,20 +693,20 @@ async def judge_model(algorithms_configs):
             if (curve_area > 0)&(len(df_all_clear_temp[(df_all_clear_temp['pwrat','nanmean']>=0.6*Pwrat_Rate)&(df_all_clear_temp['pwrat','nanmean']<=0.95*Pwrat_Rate)])>50):
                 turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'pitch_control_err'] = 1
                 fig = plt.figure(figsize=(10,8),dpi=100)  
-                plt.title(str(turbine_name))    
+                plt.title(str(turbine_name), color='#ccc')    
                 with plt.style.context('ggplot'):  
                     #plt.plot(biaozhun['wspd'],biaozhun['pwrat'],color='red')          
                     plt.scatter(df_all_clear['pwrat','nanmean'],df_all_clear['pitch1','nanmean'],color='cornflowerblue',s=10,alpha=1)
                     plt.plot(x_test.reshape(-1,1)*Pwrat_Rate,y_pred,color='red',linewidth=2)
                     plt.grid()
                     plt.ylim(-2,25)
-                    plt.xlabel('功率(kW)',fontsize=20)
-                    plt.ylabel('桨距角(°)',fontsize=20)
-                    plt.tick_params(which='both',labelcolor='#869AA7', width=0,color='#869AA7', labelsize=20,gridOn=True,grid_color='#869AA7',direction ='in',right=True)
-                    plt.gca().spines["left"].set_color('#869AA7')
-                    plt.gca().spines["bottom"].set_color('#869AA7')
-                    plt.gca().spines["right"].set_color('#869AA7')
-                    plt.gca().spines["top"].set_color('#869AA7')
+                    plt.xlabel('功率(kW)',fontsize=20, color='#ccc')
+                    plt.ylabel('桨距角(°)',fontsize=20, color='#ccc')
+                    plt.tick_params(which='both',labelcolor='#ccc', width=0,color='#426977', labelsize=20,gridOn=True,grid_color='#426977',direction ='in',right=True)
+                    plt.gca().spines["left"].set_color('#426977')
+                    plt.gca().spines["bottom"].set_color('#426977')
+                    plt.gca().spines["right"].set_color('#426977')
+                    plt.gca().spines["top"].set_color('#426977')
                 fig.savefig(path + '/' +str(turbine_name) + '_pitch_control_err.png',dpi=100, transparent=True, bbox_inches='tight')
                 ########################################################
                 #上传图片到minio
@@ -720,18 +735,18 @@ async def judge_model(algorithms_configs):
                 else:
                     data_temp['group'] = data_temp['kopt_err'].map({1:'cornflowerblue',0:'red'})
                 fig = plt.figure(figsize=(10,8),dpi=100)  
-                plt.title(str(turbine_name))    
+                plt.title(str(turbine_name), color='#ccc')    
                 with plt.style.context('ggplot'):  
                     plt.scatter(data_temp['rotspd','nanmean'],data_temp['pwrat','nanmean'],c=data_temp['group'],s=15)
                     plt.grid()
                     #plt.ylim(-3,25)
-                    plt.xlabel('转速(rpm)',fontsize=20)
-                    plt.ylabel('功率(kW)',fontsize=20)
-                    plt.tick_params(which='both',labelcolor='#869AA7', width=0,color='#869AA7', labelsize=20,gridOn=True,grid_color='#869AA7',direction ='in',right=True)
-                    plt.gca().spines["left"].set_color('#869AA7')
-                    plt.gca().spines["bottom"].set_color('#869AA7')
-                    plt.gca().spines["right"].set_color('#869AA7')
-                    plt.gca().spines["top"].set_color('#869AA7')
+                    plt.xlabel('转速(rpm)',fontsize=20, color='#ccc')
+                    plt.ylabel('功率(kW)',fontsize=20, color='#ccc')
+                    plt.tick_params(which='both',labelcolor='#ccc', width=0,color='#426977', labelsize=20,gridOn=True,grid_color='#426977',direction ='in',right=True)
+                    plt.gca().spines["left"].set_color('#426977')
+                    plt.gca().spines["bottom"].set_color('#426977')
+                    plt.gca().spines["right"].set_color('#426977')
+                    plt.gca().spines["top"].set_color('#426977')
                 fig.savefig(path + '/' +str(turbine_name) + '_转矩kopt控制异常.png',dpi=100, transparent=True, bbox_inches='tight')
                 ########################################################
                 #上传图片到minio
@@ -795,22 +810,22 @@ async def judge_model(algorithms_configs):
             turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'yaw_leiji_err'] = 1
             
         fig, ax = plt.subplots(figsize=(10, 8), dpi=100)
-        plt.title(str(turbine_name),fontsize=20,color='#869AA7') 
+        plt.title(str(turbine_name),fontsize=20,color='#ccc') 
         wdir_temp = df_all_clear[np.abs(df_all_clear['wdir0','nanmean']<=40)]
         #wdir_temp['wdir0','nanmean'].plot(kind = 'kde',label = '密度图',color='black')
         ax.hist(df_all_clear['wdir0','nanmean'],bins=40,alpha=1,density=True,cumulative=False,histtype='bar',color='cornflowerblue',range = (-40,40))
-        ax.set_xlabel('偏航误差角度',fontsize=20, color='#869AA7')
-        ax.set_ylabel('频率分布',fontsize=20, color='#869AA7')
+        ax.set_xlabel('偏航误差角度',fontsize=20, color='#ccc')
+        ax.set_ylabel('频率分布',fontsize=20, color='#ccc')
+        ax.tick_params(which='both',labelcolor='#ccc', width=0,color='#426977', labelsize=20,gridOn=True,grid_color='#426977',direction ='in',right=True)
         ax1 = ax.twinx()
         ax1.plot(leiji['yaw'],leiji['leiji'],'-',color='darkorange',markersize=3,linewidth=1.5)
-        ax1.set_ylabel('偏航误差±10度累计概率',fontsize=20, color='#869AA7')
-        ax.tick_params(which='both',labelcolor='#869AA7', width=0,color='#869AA7', labelsize=20,gridOn=True,grid_color='#869AA7',direction ='in',right=True)
-        ax1.tick_params(which='both',labelcolor='#869AA7', width=0,color='#869AA7', labelsize=20,gridOn=False,grid_color='#869AA7',direction ='in',right=True)
+        ax1.set_ylabel('偏航误差±10度累计概率',fontsize=20, color='#ccc')
+        ax1.tick_params(which='both',labelcolor='#ccc', width=0,color='#426977', labelsize=20,gridOn=False,grid_color='#426977',direction ='in',right=True)
         ax1.set_ylim(0,1)
-        plt.gca().spines["left"].set_color('#869AA7')
-        plt.gca().spines["bottom"].set_color('#869AA7')
-        plt.gca().spines["right"].set_color('#869AA7')
-        plt.gca().spines["top"].set_color('#869AA7')
+        plt.gca().spines["left"].set_color('#426977')
+        plt.gca().spines["bottom"].set_color('#426977')
+        plt.gca().spines["right"].set_color('#426977')
+        plt.gca().spines["top"].set_color('#426977')
         plt.gca().set_xlim(-40,40)
         fig.savefig(path + '/' +str(turbine_name) + '_wdir0.png',dpi=100, transparent=True, bbox_inches='tight')
         ########################################################
@@ -1090,9 +1105,9 @@ async def judge_model(algorithms_configs):
         
         fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
         ax.bar(wind_freq['windbin'],wind_freq['freq'],color='royalblue',bottom = 0,width=0.2)
-        ax.set_xlabel(xlabel='风速(m/s)',fontsize=10)
-        ax.set_ylabel('风频',fontsize=10)
-        ax.tick_params(labelsize=10)   
+        ax.set_xlabel(xlabel='风速(m/s)',fontsize=10, color='#ccc')
+        ax.set_ylabel('风频',fontsize=10, color='#ccc')
+        ax.tick_params(which='both',labelcolor='#ccc', width=0,color='#426977', labelsize=10,gridOn=False,grid_color='#426977',direction ='in',right=True)   
         fig.savefig(os.path.dirname(path) + '/' + 'windfreq.png', transparent=True,dpi=100,bbox_inches='tight')
         ########################################################
         #上传图片到minio
@@ -1121,13 +1136,13 @@ async def judge_model(algorithms_configs):
             plt.plot(wind_ti_alltype['windbin'],wind_ti_alltype['ti'],'-o',color='cornflowerblue',markersize=5)           
             plt.grid()
             #plt.ylim(-2,25)
-            plt.xlabel('风速(m/s)',fontsize=20)
-            plt.ylabel('湍流',fontsize=20)
-            plt.tick_params(which='both',labelcolor='#869AA7', width=0,color='#869AA7', labelsize=20,gridOn=True,grid_color='#869AA7',direction ='in',right=True)
-            plt.gca().spines["left"].set_color('#869AA7')
-            plt.gca().spines["bottom"].set_color('#869AA7')
-            plt.gca().spines["right"].set_color('#869AA7')
-            plt.gca().spines["top"].set_color('#869AA7')
+            plt.xlabel('风速(m/s)',fontsize=20, color='#ccc')
+            plt.ylabel('湍流',fontsize=20, color='#ccc')
+            plt.tick_params(which='both',labelcolor='#ccc', width=0,color='#426977', labelsize=20,gridOn=True,grid_color='#426977',direction ='in',right=True)
+            plt.gca().spines["left"].set_color('#426977')
+            plt.gca().spines["bottom"].set_color('#426977')
+            plt.gca().spines["right"].set_color('#426977')
+            plt.gca().spines["top"].set_color('#426977')
         fig.savefig(os.path.dirname(path) + '/' +'湍流曲线'+'.png',dpi=100, transparent=True, bbox_inches='tight')
         ########################################################
         #上传图片到minio
