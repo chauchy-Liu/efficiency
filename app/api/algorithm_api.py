@@ -16,7 +16,7 @@ from app.api.analyse import analyseData
 import utils.display_util as display_util
 import os
 # from checkout import execute_multi_algorithms
-from algorithms import show_fault_distribute, show_grid_fault_loss, show_grid_limit_loss, show_loss_reason_indicator, show_power_consistence, show_power_curve, show_power_data, show_station_compare, show_stop_loss, show_technology_loss, show_time_compare, show_turbine_fault_loss, show_turbine_limit_loss, show_turbine_type_compare, show_warning
+from algorithms import show_fault_distribute, show_grid_fault_loss, show_grid_limit_loss, show_loss_reason_indicator, show_power_consistence, show_power_curve, show_power_data, show_station_compare, show_stop_loss, show_technology_loss, show_time_compare, show_turbine_fault_loss, show_turbine_limit_loss, show_turbine_type_compare, show_warning, show_word
 import logging
 import traceback
 
@@ -139,7 +139,7 @@ def power_consistence():
 
         startTime = params['target']['startDate']
         endTime = params['target']['endDate']
-        result = show_power_consistence.analyse(farmName, typeName, wtid, startTime, endTime)
+        result, _ = show_power_consistence.analyse(farmName, typeName, wtid, startTime, endTime)
         logger.info(f"功率一致性返回结果：")
         logger.info(f"{result}")
         return result
@@ -264,7 +264,7 @@ def fault_distribute():
             typeName.append(name_dict['name'])
         startTime = params['target']['startDate']
         endTime = params['target']['endDate']
-        result = show_fault_distribute.analyse(farmName, typeName, startTime, endTime)
+        result,_ = show_fault_distribute.analyse(farmName, typeName, startTime, endTime)
         logger.info(f"故障分布返回结果：")
         logger.info(f"{result}")
         return result
@@ -520,6 +520,28 @@ def turbine_type_compare():
         logger.info(f'\033[33m机型对比报错：{e}\033[0m')
         return {}
 
+#生成word
+@api.route('/generate_word', methods=['POST'])
+def generate_word():
+    try:
+        logger.info(f"#####################################word报告####################################")
+        params = request.json
+        logger.info(f"参数：{params}")
+        farmName = params['farm'][-1]['mdmId']
+        # typeName = []
+        # for name_dict in params['farm'][-1]['turbineType']:
+            # typeName.append(name_dict['name'])
+        startTime = params['target']['startDate']
+        endTime = params['target']['endDate']
+        result = show_word.generate_word(farmName, startTime, endTime)
+        logger.info(f"word返回结果：")
+        logger.info(f"{result['word_url']}")
+        return result['word_url']
+    except Exception as e:
+        errorInfomation = traceback.format_exc()
+        logger.info(f'\033[31m{errorInfomation}\033[0m')
+        logger.info(f'\033[33m指标报错：{e}\033[0m')
+        return {}
 
 
 # @api.post('/model/execute')

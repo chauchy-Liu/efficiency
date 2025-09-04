@@ -15,6 +15,8 @@ import sys
 import statistics as st
 from scipy import signal,integrate
 from datetime import datetime
+# from matplotlib import pyplot as plt
+import io
 # from configs.config import wspd, pwrat
 
 def analyse(farmName, typeName:list, startTime, endTime):
@@ -57,14 +59,23 @@ def analyse(farmName, typeName:list, startTime, endTime):
     for type_name, turbine_names in turbine_EnyWspd_dict.items():
         # for turbine_name in turbine_names:
         turbine_EnyWspd_list += turbine_names
-    result = {'reason':{}, 'indicator':{}}
+    ####################################################3
+
+    result = {'reason':{}, 'indicator':{}, 'figure': bytes}
+    eny_loss_all = pd.DataFrame()
+
     #################################
     #机组故障
     fault_loss_show = pd.DataFrame()
     if fault_loss_all.empty == False:
-        fault_loss_all_temp = fault_loss_all[fault_loss_all['type'].isin(turbine_type)]
+        if len(typeName) > 0:
+            fault_loss_all_temp = fault_loss_all[fault_loss_all['type'].isin(turbine_type)]
         fault_loss_all_temp = fault_loss_all_temp.loc[startTime:endTime,:]
         fault_loss_all_temp = fault_loss_all_temp[fault_loss_all_temp['wtid'].isin(turbine_FaultLoss_list)]
+        #---------------------------------------------------------------------
+        fault_loss_all_turbine = fault_loss_all.groupby(fault_loss_all['wtid']).agg({'loss':'sum'})
+        fault_loss_all_turbine['loss_fb'] = fault_loss_all_turbine['loss']/10000.0
+        eny_loss_all = pd.merge(eny_loss_all, fault_loss_all_turbine,left_index=True,right_index=True,how='outer')
         
         for num in range(len(turbine_FaultLoss_list)):
             fault_loss_show_temp = pd.DataFrame()
@@ -88,9 +99,11 @@ def analyse(farmName, typeName:list, startTime, endTime):
     #机组自限电展示
     limturbine_loss_show = pd.DataFrame()
     if limturbine_loss_all.empty == False:
-        limturbine_loss_all_temp = limturbine_loss_all[limturbine_loss_all['type'].isin(typeName)]
+        if len(typeName) > 0:
+            limturbine_loss_all_temp = limturbine_loss_all[limturbine_loss_all['type'].isin(typeName)]
         limturbine_loss_all_temp = limturbine_loss_all_temp.loc[startTime:endTime,:]
         limturbine_loss_all_temp = limturbine_loss_all_temp[limturbine_loss_all_temp['wtid'].isin(turbine_LimturbineLoss_list)]
+        
         
         for num in range(len(turbine_LimturbineLoss_list)):
             limturbine_loss_show_temp = pd.DataFrame()
@@ -107,7 +120,8 @@ def analyse(farmName, typeName:list, startTime, endTime):
     #技术待命展示
     Technology_loss_show = pd.DataFrame()
     if Technology_loss_all.empty == False:
-        Technology_loss_all_temp = Technology_loss_all[Technology_loss_all['type'].isin(typeName)]
+        if len(typeName) > 0:
+            Technology_loss_all_temp = Technology_loss_all[Technology_loss_all['type'].isin(typeName)]
         Technology_loss_all_temp = Technology_loss_all_temp.loc[startTime:endTime,:]
         Technology_loss_all_temp = Technology_loss_all_temp[Technology_loss_all_temp['wtid'].isin(turbine_TechnologyLoss_list)]
         
@@ -132,9 +146,15 @@ def analyse(farmName, typeName:list, startTime, endTime):
     #计划停机展示
     stop_loss_show = pd.DataFrame()
     if stop_loss_all.empty == False:
-        stop_loss_all_temp = stop_loss_all[stop_loss_all['type'].isin(typeName)]
+        if len(typeName) > 0:
+            stop_loss_all_temp = stop_loss_all[stop_loss_all['type'].isin(typeName)]
         stop_loss_all_temp = stop_loss_all_temp.loc[startTime:endTime,:]
         stop_loss_all_temp = stop_loss_all_temp[stop_loss_all_temp['wtid'].isin(turbine_StopLoss_list)]
+        #-------------------------------------------------
+        stop_loss_all_turbine = pd.DataFrame(stop_loss_all.loc[:,'loss'])
+        stop_loss_all_turbine['loss_sp'] = stop_loss_all_turbine['loss']/10000.0
+        eny_loss_all = pd.merge(eny_loss_all, stop_loss_all_turbine,left_index=True,right_index=True,how='outer')
+
         
         for num in range(len(turbine_StopLoss_list)):
             stop_loss_show_temp = pd.DataFrame()
@@ -147,14 +167,20 @@ def analyse(farmName, typeName:list, startTime, endTime):
                 # stop_loss_show_temp.loc[num,'wtid'] = turbine_StopLoss_list[num]
             stop_loss_show_temp.insert(0, 'wtid', turbine_StopLoss_list[num])
             stop_loss_show = pd.concat([stop_loss_show,stop_loss_show_temp])#.append(stop_loss_show_temp) 
+
     #################################
     #电网限电展示
     limgrid_loss_show = pd.DataFrame()
     if limgrid_loss_all.empty == False:
-        limgrid_loss_all_temp = limgrid_loss_all[limgrid_loss_all['type'].isin(turbine_type)]
+        if len(typeName) > 0:
+            limgrid_loss_all_temp = limgrid_loss_all[limgrid_loss_all['type'].isin(turbine_type)]
         limgrid_loss_all_temp = limgrid_loss_all_temp.loc[startTime:endTime,:]
         limgrid_loss_all_temp = limgrid_loss_all_temp[limgrid_loss_all_temp['wtid'].isin(turbine_LimgridLoss_list)]
-        
+        #-----------------------------------------------
+        limgrid_loss_all_turbine = pd.DataFrame(limgrid_loss_all.loc[:,'loss'])
+        limgrid_loss_all_turbine['loss_lg'] = limgrid_loss_all_turbine['loss']/10000.0
+        eny_loss_all = pd.merge(eny_loss_all, limgrid_loss_all_turbine,left_index=True,right_index=True,how='outer')
+
         for num in range(len(turbine_LimgridLoss_list)):
             limgrid_loss_show_temp = pd.DataFrame()
             temp_turbine = limgrid_loss_all_temp[limgrid_loss_all_temp['wtid']==turbine_LimgridLoss_list[num]]
@@ -170,7 +196,8 @@ def analyse(farmName, typeName:list, startTime, endTime):
     #电网故障展示
     faultgrid_loss_show = pd.DataFrame()
     if faultgrid_loss_all.empty == False:
-        faultgrid_loss_all_temp = faultgrid_loss_all[faultgrid_loss_all['type'].isin(turbine_type)]
+        if len(typeName) > 0:
+            faultgrid_loss_all_temp = faultgrid_loss_all[faultgrid_loss_all['type'].isin(turbine_type)]
         faultgrid_loss_all_temp = faultgrid_loss_all_temp.loc[startTime:endTime,:]
         faultgrid_loss_all_temp = faultgrid_loss_all_temp[faultgrid_loss_all_temp['wtid'].isin(turbine_FaultgridLoss_list)]
         
@@ -194,9 +221,15 @@ def analyse(farmName, typeName:list, startTime, endTime):
     ##################################
     #风能
     # if eny_wspd_all.empty == False:
-    eny_wspd_temp = eny_wspd_all[eny_wspd_all['type'].isin(typeName)]
+    if len(typeName) > 0:
+        eny_wspd_temp = eny_wspd_all[eny_wspd_all['type'].isin(typeName)]
     eny_wspd_temp = eny_wspd_temp.loc[startTime:endTime,:]
     eny_wspd_temp = eny_wspd_temp[eny_wspd_temp['wtid'].isin(turbine_EnyWspd_list)]
+    #----------------------------------------------
+    eny_wspd_all_turbine = pd.DataFrame(eny_wspd_all.loc[:,'eny'])
+    eny_wspd_all_turbine['enyactbypw'] = eny_wspd_all_turbine['eny']/10000.0
+    eny_loss_all = pd.merge(eny_loss_all, eny_wspd_all_turbine,left_index=True,right_index=True,how='outer')
+
     #平均风速
     if np.nansum(eny_wspd_temp['count']) != 0:
         result['indicator']['meanWindSpeed'] = '%.4f'%(np.nansum(eny_wspd_temp['wspd'].multiply(eny_wspd_temp['count']))/np.nansum(eny_wspd_temp['count']))
@@ -209,7 +242,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
 
     #####故障损失电量
     if len(fault_loss_show) <= 0:
-            fault_loss_show['loss'] = 0
+        fault_loss_show['loss'] = 0
     if len(limgrid_loss_show) <= 0:
         limgrid_loss_show['loss'] = 0
     if len(faultgrid_loss_show) <= 0:
@@ -268,5 +301,37 @@ def analyse(farmName, typeName:list, startTime, endTime):
         result['indicator']['faultStoreTime'] = '%.1f' %(np.sum(faultgrid_loss_show['time']) / np.sum(faultgrid_loss_show['count']))
     else:
         result['indicator']['faultStoreTime'] = '%.1f' %((np.sum(faultgrid_loss_show['time'])+np.sum(fault_loss_show['time'])) / (np.sum(faultgrid_loss_show['count'])+np.sum(fault_loss_show['count'])))
+
+    # 发电量柱状图
+    buf = io.BytesIO()
+    eny_loss_all = eny_loss_all.fillna(0)
+    if((['loss_fb'] in eny_loss_all.columns.values)==False):
+        eny_loss_all['loss_fb'] = 0.0
+    if((['loss_lg'] in eny_loss_all.columns.values)==False):
+        eny_loss_all['loss_lg'] = 0.0
+    if((['loss_sp'] in eny_loss_all.columns.values)==False):
+        eny_loss_all['loss_sp'] = 0.0
+    # eny_loss_all.to_csv(str(path+'/eny_loss_all.csv'),index=True)
+    
+    fig, ax = plt.subplots(figsize=(8, 4), dpi=200)    
+    x = np.arange(len(eny_loss_all))
+    ax.bar(x,eny_loss_all['enyactbypw'],color='black',bottom = 0,width=0.2,tick_label=eny_loss_all['wtid'])
+    
+    ax.bar(x,eny_loss_all['loss_fb'],color='red',bottom = eny_loss_all['enyactbypw'],width=0.2)
+    ax.bar(x,eny_loss_all['loss_lg'],color='yellow',bottom = eny_loss_all['enyactbypw']+eny_loss_all['loss_fb'],width=0.2)
+    ax.bar(x,eny_loss_all['loss_sp'],color='blue',bottom = eny_loss_all['enyactbypw']+eny_loss_all['loss_fb']+eny_loss_all['loss_lg'],width=0.2)  
+    ax.set_xlabel(xlabel='机位号',fontsize=15)
+    ax.set_ylabel('电量(万kWh)',fontsize=15)
+    ax.legend(('实发电量','机组故障损失','电网限电损失','计划停机损失'),fontsize=8,ncol=5,loc=9)
+    ax1 = ax.twinx()
+    ax1.plot(eny_loss_all.index,eny_loss_all['wspd'],'o-',color='r',markersize=3,linewidth=1.5)
+    ax1.set_ylabel('风速(m/s)',fontsize=15)
+    ax.tick_params(labelsize=12)
+    ax.tick_params(axis='x',rotation=90)
+    ax1.tick_params(labelsize=12)
+    # fig.savefig(path + '/' + 'eny.png',dpi=100,bbox_inches='tight')
+    fig.savefig(buf, format='png', bbox_inches='tight')
+    plt.close(fig)
+    result['figure'] = buf.getvalue()
 
     return result

@@ -1,0 +1,25 @@
+Cython==3.0.10
+Flask==2.0.3
+Flask-Compress==1.13
+joblib==1.4.0
+matplotlib==3.8.4
+numpy==1.26.4
+pandas==2.2.3
+scikit_learn==1.4.2
+scipy==1.13.0
+# statsmodels==0.13.2
+statsmodels==0.14.2
+Flask_Cors==4.0.0
+pycryptodome==3.20.0
+simplejson==3.19.2
+APScheduler==3.10.4
+requests==2.31.0
+Werkzeug==2.0.3
+# mysql-connector-python==8.1.0
+mysql-connector-python==8.3.0
+pyyaml==6.0.1
+# darts==0.28.0
+# tqdm==4.66.2
+# torch==2.2.2
+# xgboost==2.0.3
+minio==7.2.11

@@ -16,6 +16,8 @@ import statistics as st
 from scipy import signal,integrate
 from datetime import datetime
 # from configs.config import wspd, pwrat
+from matplotlib import pyplot as plt
+import io
 
 
 def analyse(farmName, typeName:list, startTime, endTime):
@@ -32,7 +34,8 @@ def analyse(farmName, typeName:list, startTime, endTime):
     if fault_loss_all.empty:
         return result
     fault_loss_show = pd.DataFrame()
-    fault_loss_all_temp = fault_loss_all[fault_loss_all['type'].isin(turbine_type)]
+    if len(turbine_type) > 0:
+        fault_loss_all_temp = fault_loss_all[fault_loss_all['type'].isin(turbine_type)]
     fault_loss_all_temp = fault_loss_all_temp.loc[startTime:endTime,:]
     fault_loss_all_temp = fault_loss_all_temp[fault_loss_all_temp['wtid'].isin(turbine_list)]
     
@@ -70,5 +73,24 @@ def analyse(farmName, typeName:list, startTime, endTime):
         # plt.axes(aspect=1.0)
         # plt.pie(x=myfault['freq'],labels=myfault['fnum'],autopct='%3.1f %%',shadow=False,labeldistance=1.05,startangle=90,pctdistance=0.8,textprops={'fontsize':8,'color':'black'},radius=1.0)
         # fig.savefig(path + '/' + 'fault_syst.png',bbox_inches='tight')
+    #word报告饼状图
+    myfault = pd.DataFrame()
+    buf = io.BytesIO()
+    if len(fault_loss_all)>0:
+        temp = fault_loss_all.pivot_table(['count'],index=['fault_describe'],aggfunc='sum')
+        temp['freq'] = temp['count'] / np.sum(temp['count'])
+        myfault = pd.DataFrame({'fnum':temp.index,'freq':temp['freq'].values})
+        myfault = myfault[(myfault['freq']>=0.025)]
+        new_row = pd.Series({'fnum':'其它','freq':1-np.sum(myfault['freq'])})
+        myfault = myfault.append(new_row,ignore_index=True)
+        myfault = myfault[myfault['freq']>0] 
+        fig = plt.figure(figsize=(5,5),dpi=100)
+        plt.axes(aspect=1.0)
+        plt.pie(x=myfault['freq'],labels=myfault['fnum'],autopct='%3.1f %%',shadow=False,labeldistance=1.05,startangle=90,pctdistance=0.8,textprops={'fontsize':8,'color':'black'},radius=1.0)
+        # fig.savefig(path + '/' + 'fault.png',bbox_inches='tight')
+        plt.savefig(buf, format='png', bbox_inches='tight')
+        plt.close(fig)
 
-    return result
+
+
+    return result, buf.getvalue()

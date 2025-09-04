@@ -12,6 +12,9 @@ from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 from urllib.parse import urlparse, parse_qs
+import requests
+import io
+import re
 
 log = logging.getLogger('mysql_log')
 if not log.handlers:
@@ -72,6 +75,13 @@ def upload(filename:str, algorithms_configs:dict):
         log.info("url替换: "+ylv["url"]+'==>'+ylv['domainName'])
         log.info("替换后的URL: "+file_url)
     return file_url
+
+def download(file_url)-> bytes:
+    response = requests.get(file_url)
+    imageContent = response.content
+    #加载道内存
+    imageStream = io.BytesIO(imageContent)
+    return imageStream.getvalue()
 
 #################################mysql#################################
 create_theory_wind_power_table_query = f'''
@@ -296,6 +306,8 @@ create_navigation_bias_direction_picture_table_query = f'''
         minio_url text comment '图片存储minio地址',
         bucket_name text comment '桶名',
         file_name text comment '图片名',
+        yaw_duifeng_err float comment '偏航对风误差', 
+        yaw_duifeng_loss float comment '偏航对风损失',
         del_flag tinyint default 0 comment '删除数据标志位'
     ) comment='偏航对风图';
 '''
@@ -310,6 +322,7 @@ create_navigation_bias_control_picture_table_query = f'''
         minio_url text comment '图片存储minio地址',
         bucket_name text comment '桶名',
         file_name text comment '图片名',
+        yaw_leiji_err int comment '偏航累积误差',
         del_flag tinyint default 0 comment '删除数据标志位'
     ) comment='偏航控制图';
 '''
@@ -324,6 +337,9 @@ create_pitch_angle_picture_table_query = f'''
         minio_url text comment '图片存储minio地址',
         bucket_name text comment '桶名',
         file_name text comment '图片名',
+        file_name_compare text comment '对比图片名',
+        minio_url_compare text comment '对比图片存储minio地址',
+        pitch_min_loss float comment '最小桨距角功率损失',
         del_flag tinyint default 0 comment '删除数据标志位'
     ) comment='最小桨距角图';
 '''
@@ -341,6 +357,20 @@ create_pitch_action_picture_table_query = f'''
         del_flag tinyint default 0 comment '删除数据标志位'
     ) comment='变桨动作图';
 '''
+create_pitch_unbalance_picture_table_query = f'''
+    create table pitch_unbalance_picture (
+        id bigint auto_increment primary key comment '主键', 
+        execute_time datetime not null comment '生成图片的执行时间',
+        farm_name varchar(100) not null comment '风场名',
+        farm_id varchar(100) not null comment '风场ID',
+        type_name varchar(100) not null comment '风机机型',
+        wtid varchar(100) not null comment '风机号名',
+        minio_url text comment '图片存储minio地址',
+        bucket_name text comment '桶名',
+        file_name text comment '图片名',
+        del_flag tinyint default 0 comment '删除数据标志位'
+    ) comment='变桨不平衡图';
+'''
 create_torque_control_picture_table_query = f'''
     create table torque_control_picture (
         id bigint auto_increment primary key comment '主键', 
@@ -355,9 +385,960 @@ create_torque_control_picture_table_query = f'''
         del_flag tinyint default 0 comment '删除数据标志位'
     ) comment='转矩控制图';
 '''
+create_device_picture_table_query = f'''
+    create table device_picture (
+        id bigint auto_increment primary key comment '主键', 
+        execute_time datetime not null comment '生成图片的执行时间',
+        farm_name varchar(100) not null comment '风场名',
+        farm_id varchar(100) not null comment '风场ID',
+        type_name varchar(100) not null comment '风机机型',
+        wtid varchar(100) not null comment '风机号名',
+        device varchar(100) not null comment '大部件名',
+        minio_url text comment '图片存储minio地址',
+        bucket_name text comment '桶名',
+        file_name text comment '图片名',
+        del_flag tinyint default 0 comment '删除数据标志位'
+    ) comment='大部件异常图';
+'''
+
+########################################################
+#创建word相关表
+########################################################
+create_wind_resource_table_query = f'''
+    create table wind_resource (
+        id bigint auto_increment primary key comment '主键', 
+        execute_time datetime not null comment '生成风资源的执行时间',
+        farm_name varchar(100) not null comment '风场名',
+        farm_id varchar(100) not null comment '风场ID',
+        windbin float comment '风仓',
+        freq float comment '风频',
+        count int comment '频数',
+        wind_max float comment '最大风速',
+        wind_mean float comment '平均风速',
+        mean_rho float comment '平均空气密度',
+        max_speed_month int comment '最大风速月份',
+        turbulence float comment '湍流强度',
+        turbulence_flag15 int comment '是否使用了15m/s的湍流强度',
+        del_flag tinyint default 0 comment '删除数据标志位'
+    ) comment='风资源表';
+'''
+create_power_curve_picture_table_query = f'''
+    create table power_curve_picture (
+        id bigint auto_increment primary key comment '主键', 
+        execute_time datetime not null comment '生成图片的执行时间',
+        farm_name varchar(100) not null comment '风场名',
+        farm_id varchar(100) not null comment '风场ID',
+        type_name varchar(100) not null comment '风机机型',
+        minio_url text comment '图片存储minio地址',
+        bucket_name text comment '桶名',
+        file_name text comment '图片名',
+        del_flag tinyint default 0 comment '删除数据标志位'
+    ) comment='功率曲线图';
+'''
+create_cp_picture_table_query = f'''
+    create table cp_picture (
+        id bigint auto_increment primary key comment '主键', 
+        execute_time datetime not null comment '生成图片的执行时间',
+        farm_name varchar(100) not null comment '风场名',
+        farm_id varchar(100) not null comment '风场ID',
+        type_name varchar(100) not null comment '风机机型',
+        minio_url text comment '图片存储minio地址',
+        bucket_name text comment '桶名',
+        file_name text comment '图片名',
+        del_flag tinyint default 0 comment '删除数据标志位'
+    ) comment='CP能量利用率曲线图';
+'''
+create_zuobiao_picture_table_query = f'''
+    create table zuobiao_picture (
+        id bigint auto_increment primary key comment '主键', 
+        execute_time datetime not null comment '生成图片的执行时间',
+        farm_name varchar(100) not null comment '风场名',
+        farm_id varchar(100) not null comment '风场ID',
+        type_name varchar(100) not null comment '风机机型',
+        minio_url text comment '图片存储minio地址',
+        bucket_name text comment '桶名',
+        file_name text comment '图片名',
+        del_flag tinyint default 0 comment '删除数据标志位'
+    ) comment='全场机组坐标分布图';
+'''
+create_fault_pie_picture_table_query = f'''
+    create table fault_pie_picture (
+        id bigint auto_increment primary key comment '主键', 
+        execute_time datetime not null comment '生成图片的执行时间',
+        farm_name varchar(100) not null comment '风场名',
+        farm_id varchar(100) not null comment '风场ID',
+        type_name varchar(100) not null comment '风机机型',
+        minio_url text comment '图片存储minio地址',
+        bucket_name text comment '桶名',
+        file_name text comment '图片名',
+        del_flag tinyint default 0 comment '删除数据标志位'
+    ) comment='故障分布图';
+'''
+create_farmInfo_table_query = f'''
+    create table farmInfo (
+        id bigint auto_increment primary key comment '主键', 
+        execute_time datetime not null comment '生成记录的执行时间',
+        farm_name varchar(100) not null comment '风场名',
+        farm_id varchar(100) not null comment '风场ID',
+        company varchar(100) not null comment '二级公司',
+        address text comment '风场地址',
+        capacity text comment '容量',
+        turbine_num text comment '风机数量',
+        turbine_type text comment '风机类型',
+        wind_resource text comment '风资源',
+        operate_time text comment '并网时间',
+        rccID text comment '生产运营中心',
+        path_farm text comment '本地存储路径',
+        minio_dir text comment 'minio存储目录',
+        wtid text comment '风机号',
+        del_flag tinyint default 0 comment '删除数据标志位'
+    ) comment='风场信息';
+'''
+create_word_table_query = f'''
+    create table word (
+        id bigint auto_increment primary key comment '主键', 
+        execute_time datetime not null comment '生成图片的执行时间',
+        farm_name varchar(100) not null comment '风场名',
+        farm_id varchar(100) not null comment '风场ID',
+        type_name varchar(100) not null comment '风机机型',
+        minio_url text comment '图片存储minio地址',
+        bucket_name text comment '桶名',
+        file_name text comment '图片名',
+        del_flag tinyint default 0 comment '删除数据标志位'
+    ) comment='word文档';
+'''
+
 ####################################################33
 #提取数据
 ####################################################33
+def selectFarmInfo(farmName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"####################################提取farmInfo数据############################")
+    query = "SELECT \
+        execute_time, \
+        farm_name, \
+        farm_id, \
+        company, \
+        address, \
+        capacity, \
+        turbine_num, \
+        turbine_type, \
+        wind_resource, \
+        operate_time, \
+        rccID, \
+        path_farm, \
+        minio_dir, \
+        wtid \
+        from farmInfo where farm_name=%s and execute_time = (select max(execute_time) from farmInfo where execute_time <= %s)"
+    data_query = (farmName, end_time)
+    log.info(f'sql语句：{query}')
+    log.info(f'sql数据：{data_query}')
+    cursor.execute(query, data_query)
+    queryResult = cursor.fetchone()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        execute_time = queryResult[0]
+        farm_name = queryResult[1]
+        farm_id = queryResult[2]
+        company = queryResult[3]
+        address = queryResult[4]
+        capacity = queryResult[5]
+        turbine_num = queryResult[6]
+        turbine_type = queryResult[7]
+        wind_resource = queryResult[8]
+        operate_time = queryResult[9]
+        rccID = queryResult[10]
+        path_farm = queryResult[11]
+        minio_dir = queryResult[12]
+        wtid = eval(queryResult[13])
+    return {
+            'execute_time': execute_time,
+            'farm_name': farm_name,
+            'farm_id': farm_id,
+            'company': company,
+            'address': address,
+            'capacity': capacity,
+            'turbine_num': turbine_num,
+            'turbine_type': turbine_type,
+            'wind_resource': wind_resource,
+            'operate_time': operate_time,
+            'rccID': rccID,
+            'path_farm': path_farm,
+            'minio_dir': minio_dir,
+            'wtid': wtid
+           }
+
+def selectWindResourceWord(farmName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"####################################提取wind_resource数据############################")
+    data = pd.DataFrame()
+    obtain_query = "SELECT \
+            execute_time, \
+            farm_name, \
+            farm_id, \
+            windbin, \
+            freq, \
+            count, \
+            wind_max, \
+            wind_mean, \
+            mean_rho, \
+            max_speed_month, \
+            turbulence, \
+            turbulence_flag15 \
+            from wind_resource \
+            where farm_name=%s AND execute_time = (select max(execute_time) from wind_resource where execute_time <= %s) \
+        "
+    data_to_obtain = (farmName, end_time)
+    log.info(f'sql语句：{obtain_query}')
+    log.info(f'sql数据：{data_to_obtain}')
+    cursor.execute(obtain_query, data_to_obtain)
+    queryResult = cursor.fetchall()
+    if queryResult == None or len(queryResult) <= 0:
+        pass #return pd.DataFrame()
+    else:
+        for i, lineValue in enumerate(queryResult):
+            # localtime = pd.to_datetime(lineValue[0], errors='coerce')
+            #nan验证
+            lineValue = list(lineValue)
+            if lineValue[3] == nan:
+                lineValue[3] = np.nan
+            if lineValue[4] == nan:
+                lineValue[4] = np.nan
+            if lineValue[5] == nan:
+                lineValue[5] = np.nan
+            if lineValue[6] == nan:
+                lineValue[6] = np.nan
+            if lineValue[7] == nan:
+                lineValue[7] = np.nan
+            if lineValue[8] == nan:
+                lineValue[8] = np.nan
+            if lineValue[9] == nan:
+                lineValue[9] = np.nan
+            if lineValue[10] == nan:
+                lineValue[10] = np.nan
+            if lineValue[11] == nan:
+                lineValue[11] = np.nan
+            data.loc[i, ['windbin', 'freq', 'count', 'wind_max', 'wind_mean', 'mean_rho', 'max_speed_month', 'turbulence', 'turbulence_flag15']] = [lineValue[3], lineValue[4], lineValue[5], lineValue[6], lineValue[7], lineValue[8], lineValue[9], lineValue[10], lineValue[11]]
+    return data
+
+def selectAllWindFrequencyPicture(farmName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"##################################提取wind_frequency_picture数据####################")
+    query = "SELECT \
+        execute_time, \
+        farm_name, \
+        farm_id, \
+        type_name, \
+        minio_url, \
+        bucket_name, \
+        file_name, \
+        del_flag \
+        from wind_frequency_picture \
+        where farm_name=%s and type_name=all and execute_time = (select max(execute_time) from wind_frequency_picture where execute_time  <= %s)\
+    "
+    data_query = (farmName, end_time)
+    log.info(f'sql语句：{query}')
+    log.info(f'sql数据：{data_query}')
+    cursor.execute(query)
+    queryResult = cursor.fetchone()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        execute_time = queryResult[0]
+        farm_name = queryResult[1]
+        type_name = queryResult[3]
+        file_name = queryResult[6]
+        minio_url = queryResult[4]
+        log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 图片名: {file_name} , 图片URL：{minio_url}")
+        
+    return download(minio_url)
+
+def selectWindFrequencyPicture(farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"##################################提取wind_frequency_picture数据####################")
+    query = "SELECT \
+        execute_time, \
+        farm_name, \
+        farm_id, \
+        type_name, \
+        minio_url, \
+        bucket_name, \
+        file_name, \
+        del_flag \
+        from wind_frequency_picture \
+        where farm_name=%s and type_name=%s and execute_time = (select max(execute_time) from wind_frequency_picture where execute_time %s)\
+    "
+    data_query = (farmName, typeName, end_time)
+    log.info(f'sql语句：{query}')
+    log.info(f'sql数据：{data_query}')
+    cursor.execute(query)
+    queryResult = cursor.fetchone()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        execute_time = queryResult[0]
+        farm_name = queryResult[1]
+        type_name = queryResult[3]
+        file_name = queryResult[6]
+        minio_url = queryResult[4]
+        log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 图片名: {file_name} , 图片URL：{minio_url}")
+        
+    return download(minio_url)
+
+def selectWindDirectionPicture(farmName, typeName, wtid, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"##################################提取wind_direction_picture数据####################")
+    query = "SELECT \
+        execute_time, \
+        farm_name, \
+        farm_id, \
+        type_name, \
+        minio_url, \
+        bucket_name, \
+        file_name, \
+        wtid, \
+        del_flag \
+        from wind_direction_picture \
+        where farm_name=%s and type_name=%s and witd=%s and execute_time = (select max(execute_time) from wind_direction_picture where execute_time <= %s)\
+    "
+    data_query = (farmName, typeName, wtid, end_time)
+    log.info(f'sql语句：{query}')
+    log.info(f'sql数据：{data_query}')
+    cursor.execute(query)
+    queryResult = cursor.fetchone()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        execute_time = queryResult[0]
+        farm_name = queryResult[1]
+        type_name = queryResult[3]
+        file_name = queryResult[6]
+        minio_url = queryResult[4]
+        wtid = queryResult[7]
+        log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 风机名：{wtid}, 图片名: {file_name} , 图片URL：{minio_url}")
+        
+    return download(minio_url)
+
+def selectAllAirDensityPicture(farmName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"##################################提取air_density_picture数据####################")
+    query = "SELECT \
+        execute_time, \
+        farm_name, \
+        farm_id, \
+        type_name, \
+        minio_url, \
+        bucket_name, \
+        file_name, \
+        del_flag \
+        from air_density_picture \
+        where farm_name=%s and type_name=all and execute_time = (select max(execute_time) from air_density_picture where execute_time  <= %s)\
+    "
+    data_query = (farmName, end_time)
+    log.info(f'sql语句：{query}')
+    log.info(f'sql数据：{data_query}')
+    cursor.execute(query)
+    queryResult = cursor.fetchone()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        execute_time = queryResult[0]
+        farm_name = queryResult[1]
+        type_name = queryResult[3]
+        file_name = queryResult[6]
+        minio_url = queryResult[4]
+        log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 图片名: {file_name} , 图片URL：{minio_url}")
+        
+    return download(minio_url)
+
+def selectAirDensityPicture(farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"##################################提取air_density_picture数据####################")
+    query = "SELECT \
+        execute_time, \
+        farm_name, \
+        farm_id, \
+        type_name, \
+        minio_url, \
+        bucket_name, \
+        file_name, \
+        del_flag \
+        from air_density_picture \
+        where farm_name=%s and type_name=%s and execute_time = (select max(execute_time) from air_density_picture where execute_time <= %s)\
+    "
+    data_query = (farmName, typeName, end_time)
+    log.info(f'sql语句：{query}')
+    log.info(f'sql数据：{data_query}')
+    cursor.execute(query)
+    queryResult = cursor.fetchone()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        execute_time = queryResult[0]
+        farm_name = queryResult[1]
+        type_name = queryResult[3]
+        file_name = queryResult[6]
+        minio_url = queryResult[4]
+        log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 图片名: {file_name} , 图片URL：{minio_url}")
+        
+    return download(minio_url)
+
+def selectAllTurbulencePicture(farmName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"##################################提取turbulence_picture数据####################")
+    query = "SELECT \
+        execute_time, \
+        farm_name, \
+        farm_id, \
+        type_name, \
+        minio_url, \
+        bucket_name, \
+        file_name, \
+        del_flag \
+        from turbulence_picture \
+        where farm_name=%s and type_name=all and execute_time = (select max(execute_time) from turbulence_picture where execute_time <= %s)\
+    "
+    data_query = (farmName, end_time)
+    log.info(f'sql语句：{query}')
+    log.info(f'sql数据：{data_query}')
+    cursor.execute(query)
+    queryResult = cursor.fetchone()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        execute_time = queryResult[0]
+        farm_name = queryResult[1]
+        type_name = queryResult[3]
+        file_name = queryResult[6]
+        minio_url = queryResult[4]
+        log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 图片名: {file_name} , 图片URL：{minio_url}")
+        
+    return download(minio_url)
+
+def selectTurbulencePicture(farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"##################################提取turbulence_picture数据####################")
+    query = "SELECT \
+        execute_time, \
+        farm_name, \
+        farm_id, \
+        type_name, \
+        minio_url, \
+        bucket_name, \
+        file_name, \
+        del_flag \
+        from turbulence_picture \
+        where farm_name=%s and type_name=%s and execute_time = (select max(execute_time) from turbulence_picture where execute_time <= %s)\
+    "
+    data_query = (farmName, typeName, end_time)
+    log.info(f'sql语句：{query}')
+    log.info(f'sql数据：{data_query}')
+    cursor.execute(query)
+    queryResult = cursor.fetchone()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        execute_time = queryResult[0]
+        farm_name = queryResult[1]
+        type_name = queryResult[3]
+        file_name = queryResult[6]
+        minio_url = queryResult[4]
+        log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 图片名: {file_name} , 图片URL：{minio_url}")
+        
+    return download(minio_url)
+
+def selectNavigationBiasDirectionPicture(farmName, typeName, wtid, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"##################################提取navigation_bias_directon_picture数据####################")
+    query = "SELECT \
+        execute_time, \
+        farm_name, \
+        farm_id, \
+        type_name, \
+        minio_url, \
+        bucket_name, \
+        file_name, \
+        wtid, \
+        yaw_duifeng_err, \
+        yaw_duifeng_loss \
+        from navigation_bias_directon_picture \
+        where farm_name=%s and type_name=%s and witd=%s and execute_time = (select max(execute_time) from navigation_bias_directon_picture where execute_time between %s and %s)\
+    "
+    data_query = (farmName, typeName, wtid, start_time, end_time)
+    log.info(f'sql语句：{query}')
+    log.info(f'sql数据：{data_query}')
+    cursor.execute(query)
+    queryResult = cursor.fetchone()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        execute_time = queryResult[0]
+        farm_name = queryResult[1]
+        type_name = queryResult[3]
+        file_name = queryResult[6]
+        minio_url = queryResult[4]
+        wtid = queryResult[7]
+        yaw_duifeng_err = queryResult[8]
+        yaw_duifeng_loss = queryResult[9]
+        log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 风机名：{wtid}, 图片名: {file_name} , 图片URL：{minio_url}, 偏航对风误差：{yaw_duifeng_err}, 偏航对风损失：{yaw_duifeng_loss}")
+        
+    return wtid, download(minio_url), yaw_duifeng_err, yaw_duifeng_loss
+
+
+def selectNavigationBiasControlPicture(farmName, typeName, wtid, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"##################################提取navigation_bias_control_picture数据####################")
+    query = "SELECT \
+        execute_time, \
+        farm_name, \
+        farm_id, \
+        type_name, \
+        minio_url, \
+        bucket_name, \
+        file_name, \
+        wtid, \
+        yaw_leiji_err, \
+        del_flag \
+        from navigation_bias_control_picture \
+        where farm_name=%s and type_name=%s and witd=%s and execute_time = (select max(execute_time) from navigation_bias_control_picture where execute_time  between %s and %s)\
+    "
+    data_query = (farmName, typeName, wtid, start_time, end_time)
+    log.info(f'sql语句：{query}')
+    log.info(f'sql数据：{data_query}')
+    cursor.execute(query)
+    queryResult = cursor.fetchone()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        execute_time = queryResult[0]
+        farm_name = queryResult[1]
+        type_name = queryResult[3]
+        file_name = queryResult[6]
+        minio_url = queryResult[4]
+        wtid = queryResult[7]
+        yaw_leiji_err = queryResult[8]
+        log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 风机名：{wtid}, 图片名: {file_name} , 图片URL：{minio_url}, 偏航累积误差：{yaw_leiji_err}")
+        
+    return wtid, download(minio_url), yaw_leiji_err
+
+def selectPitchAnglePicture(farmName, typeName, wtid, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"##################################提取pitch_angle_picture数据####################")
+    query = "SELECT \
+        execute_time, \
+        farm_name, \
+        farm_id, \
+        type_name, \
+        minio_url, \
+        bucket_name, \
+        file_name, \
+        wtid, \
+        file_name_compare, \
+        minio_url_compare, \
+        pitch_min_loss, \
+        del_flag \
+        from pitch_angle_picture \
+        where farm_name=%s and type_name=%s and witd=%s and execute_time = (select max(execute_time) from pitch_angle_picture where execute_time between %s and %s)\
+    "
+    data_query = (farmName, typeName, wtid, start_time, end_time)
+    log.info(f'sql语句：{query}')
+    log.info(f'sql数据：{data_query}')
+    cursor.execute(query)
+    queryResult = cursor.fetchone()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        execute_time = queryResult[0]
+        farm_name = queryResult[1]
+        type_name = queryResult[3]
+        file_name = queryResult[6]
+        minio_url = queryResult[4]
+        wtid = queryResult[7]
+        file_name_compare = queryResult[8]
+        minio_url_compare = queryResult[9]
+        pitch_min_loss = queryResult[10]
+        log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 风机名：{wtid}, 图片名: {file_name} , 图片URL：{minio_url}, 对比图片名: {file_name_compare}, 对比图片URL：{minio_url_compare}, 最小偏航损失：{pitch_min_loss}")
+        
+    return wtid, download(minio_url), download(minio_url_compare), pitch_min_loss
+
+def selectPitchActionPicture(farmName, typeName, wtid, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"##################################提取pitch_action_picture数据####################")
+    query = "SELECT \
+        execute_time, \
+        farm_name, \
+        farm_id, \
+        type_name, \
+        minio_url, \
+        bucket_name, \
+        file_name, \
+        wtid, \
+        del_flag \
+        from pitch_action_picture \
+        where farm_name=%s and type_name=%s and witd=%s and execute_time = (select max(execute_time) from pitch_action_picture where execute_time between %s and %s)\
+    "
+    data_query = (farmName, typeName, wtid, start_time, end_time)
+    log.info(f'sql语句：{query}')
+    log.info(f'sql数据：{data_query}')
+    cursor.execute(query)
+    queryResult = cursor.fetchone()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        execute_time = queryResult[0]
+        farm_name = queryResult[1]
+        type_name = queryResult[3]
+        file_name = queryResult[6]
+        minio_url = queryResult[4]
+        wtid = queryResult[7]
+        log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 风机名：{wtid}, 图片名: {file_name} , 图片URL：{minio_url}")
+        
+    return wtid, download(minio_url)
+def selectPitchUnbalancePicture(farmName, typeName, wtid, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"##################################提取pitch_unbalance_picture数据####################")
+    query = "SELECT \
+        execute_time, \
+        farm_name, \
+        farm_id, \
+        type_name, \
+        minio_url, \
+        bucket_name, \
+        file_name, \
+        wtid, \
+        del_flag \
+        from pitch_unbalance_picture \
+        where farm_name=%s and type_name=%s and witd=%s and execute_time = (select max(execute_time) from pitch_unbalance_picture where execute_time between %s and %s)\
+    "
+    data_query = (farmName, typeName, wtid, start_time, end_time)
+    log.info(f'sql语句：{query}')
+    log.info(f'sql数据：{data_query}')
+    cursor.execute(query)
+    queryResult = cursor.fetchone()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        execute_time = queryResult[0]
+        farm_name = queryResult[1]
+        type_name = queryResult[3]
+        file_name = queryResult[6]
+        minio_url = queryResult[4]
+        wtid = queryResult[7]
+        log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 风机名：{wtid}, 图片名: {file_name} , 图片URL：{minio_url}")
+        
+    return wtid, download(minio_url)
+def selectTorqueControlPicture(farmName, typeName, wtid, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"##################################提取torque_control_picture数据####################")
+    query = "SELECT \
+        execute_time, \
+        farm_name, \
+        farm_id, \
+        type_name, \
+        minio_url, \
+        bucket_name, \
+        file_name, \
+        wtid, \
+        del_flag \
+        from torque_control_picture \
+        where farm_name=%s and type_name=%s and witd=%s and execute_time = (select max(execute_time) from torque_control_picture where execute_time between %s and %s)\
+    "
+    data_query = (farmName, typeName, wtid, start_time, end_time)
+    log.info(f'sql语句：{query}')
+    log.info(f'sql数据：{data_query}')
+    cursor.execute(query)
+    queryResult = cursor.fetchone()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        execute_time = queryResult[0]
+        farm_name = queryResult[1]
+        type_name = queryResult[3]
+        file_name = queryResult[6]
+        minio_url = queryResult[4]
+        wtid = queryResult[7]
+        log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 风机名：{wtid}, 图片名: {file_name} , 图片URL：{minio_url}")
+        
+    return wtid, download(minio_url)
+
+def selectAllZuobiaoPicture(farmName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"##################################提取zuobiao_picture数据####################")
+    query = "SELECT \
+        execute_time, \
+        farm_name, \
+        farm_id, \
+        type_name, \
+        minio_url, \
+        bucket_name, \
+        file_name, \
+        del_flag \
+        from zuobiao_picture \
+        where farm_name=%s and type_name=all and execute_time = (select max(execute_time) from zuobiao_picture where execute_time <= %s)\
+    "
+    data_query = (farmName, end_time)
+    log.info(f'sql语句：{query}')
+    log.info(f'sql数据：{data_query}')
+    cursor.execute(query)
+    queryResult = cursor.fetchone()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        execute_time = queryResult[0]
+        farm_name = queryResult[1]
+        type_name = queryResult[3]
+        file_name = queryResult[6]
+        minio_url = queryResult[4]
+        log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 图片名: {file_name} , 图片URL：{minio_url}")
+        
+    return download(minio_url)
+
+def selectPowerCurvePicture(farmName, typeName, fileName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"##################################提取power_curve_picture数据####################")
+    query = "SELECT \
+        execute_time, \
+        farm_name, \
+        farm_id, \
+        type_name, \
+        minio_url, \
+        bucket_name, \
+        file_name, \
+        del_flag \
+        from power_curve_picture \
+        where farm_name=%s and type_name=%s and file_name like %s and execute_time = (select max(execute_time) from power_curve_picture where execute_time <= %s)\
+    "
+    data_query = (farmName, typeName, '%'+fileName+'%', end_time)
+    log.info(f'sql语句：{query}')
+    log.info(f'sql数据：{data_query}')
+    cursor.execute(query)
+    queryResult = cursor.fetchone()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        execute_time = queryResult[0]
+        farm_name = queryResult[1]
+        type_name = queryResult[3]
+        file_name = queryResult[6]
+        minio_url = queryResult[4]
+        log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 图片名: {file_name} , 图片URL：{minio_url}")
+        
+    return download(minio_url)
+
+def selectCPPicture(farmName, typeName, fileName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"##################################提取cp_picture数据####################")
+    query = "SELECT \
+        execute_time, \
+        farm_name, \
+        farm_id, \
+        type_name, \
+        minio_url, \
+        bucket_name, \
+        file_name, \
+        del_flag \
+        from cp_picture \
+        where farm_name=%s and type_name=%s and file_name like %s and execute_time = (select max(execute_time) from cp_picture where execute_time <= %s)\
+    "
+    data_query = (farmName, typeName, '%'+fileName+'%', end_time)
+    log.info(f'sql语句：{query}')
+    log.info(f'sql数据：{data_query}')
+    cursor.execute(query)
+    queryResult = cursor.fetchone()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        execute_time = queryResult[0]
+        farm_name = queryResult[1]
+        type_name = queryResult[3]
+        file_name = queryResult[6]
+        minio_url = queryResult[4]
+        log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 图片名: {file_name} , 图片URL：{minio_url}")
+        
+    return download(minio_url)
+
+def selectDevicePicture(farmName, typeName, wtid, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
+    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"##################################提取device_picture数据####################")
+    query = "SELECT \
+        execute_time, \
+        farm_name, \
+        farm_id, \
+        type_name, \
+        minio_url, \
+        bucket_name, \
+        file_name, \
+        wtid, \
+        device \
+        from device_picture \
+        where farm_name=%s and type_name=%s and witd=%s and execute_time = (select max(execute_time) from device_picture where execute_time <= %s)\
+    "
+    data_query = (farmName, typeName, wtid, end_time)
+    log.info(f'sql语句：{query}')
+    log.info(f'sql数据：{data_query}')
+    cursor.execute(query)
+    queryResult = cursor.fetchone()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        execute_time = queryResult[0]
+        farm_name = queryResult[1]
+        type_name = queryResult[3]
+        file_name = queryResult[6]
+        minio_url = queryResult[4]
+        wtid = queryResult[7]
+        device = queryResult[8]
+        log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 风机名：{wtid}, 设备：{device}, 图片名: {file_name} , 图片URL：{minio_url}")
+        
+    return wtid, device, download(minio_url)
+
+####################################################################3
+
+def selectFaultCode(turbingType: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    log.info(f"##################################提取turbineTypeToFaultCodeMap数据####################")
+    fileName = None
+    query = "SELECT \
+        typeName, \
+        primeIndex, \
+        secondIndex, \
+        thirdIndex, \
+        fileName \
+        from turbineTypeToFaultCodeMap \
+    "
+    log.info(f'sql语句：{query}')
+    cursor.execute(query)
+    queryResult = cursor.fetchall()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        for i, lineValue in enumerate(queryResult):
+            if lineValue[0] != None and re.search(lineValue[0], turbingType, re.IGNORECASE):
+                if lineValue[1] != None and lineValue[1] in turbingType:
+                    if lineValue[2] != None and lineValue[2] in turbingType:
+                        if lineValue[3] != None and lineValue[3] in turbingType:
+                            fileName = lineValue[-1]
+                            break
+                        else:
+                            if lineValue[3] != None:
+                                continue
+                            else: 
+                                fileName = lineValue[-1]
+                                break
+                    else:
+                        if lineValue[2] != None:
+                            continue
+                        else: 
+                            fileName = lineValue[-1]
+                            break
+                else:
+                    if lineValue[1] != None:
+                        continue
+                    else: 
+                        fileName = lineValue[-1]
+                        break
+            else:
+                continue
+    
+    return fileName
+#功率限限停
 def selectZeroWrop(farmName, start_time, end_time):
     data = pd.DataFrame()
     conn = get_connection_zero()
@@ -2856,7 +3837,7 @@ def insertTurbulencePicture(algorithms_configs, url_path):
     cursor.execute(insert_query, data_to_insert)
     conn.commit()
     cursor.close()
-def insertNavigationBiasDirectionPicture(algorithms_configs, url_path, turbine_name):
+def insertNavigationBiasDirectionPicture(algorithms_configs, url_path, turbine_name, yaw_duifeng_err, yaw_duifeng_loss):
     urlList = urlparse(url_path).path.split('/')
     bucket_name = urlList[1]
     file_name = os.path.join(urlList[2],urlList[3])
@@ -2883,15 +3864,17 @@ def insertNavigationBiasDirectionPicture(algorithms_configs, url_path, turbine_n
                         wtid, \
                         file_name, \
                         bucket_name, \
-                        minio_url \
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
-    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], turbine_name, file_name, bucket_name, url_path)
+                        minio_url, \
+                        yaw_duifeng_err, \
+                        yaw_duifeng_loss \
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], turbine_name, file_name, bucket_name, url_path, yaw_duifeng_err, yaw_duifeng_loss)
     log.info(f'sql语句：{insert_query}')
     log.info(f'sql数据：{data_to_insert}')
     cursor.execute(insert_query, data_to_insert)
     conn.commit()
     cursor.close()
-def insertNavigationBiasControlPicture(algorithms_configs, url_path, turbine_name):
+def insertNavigationBiasControlPicture(algorithms_configs, url_path, turbine_name, yaw_leiji_err):
     urlList = urlparse(url_path).path.split('/')
     bucket_name = urlList[1]
     file_name = os.path.join(urlList[2],urlList[3])
@@ -2918,9 +3901,10 @@ def insertNavigationBiasControlPicture(algorithms_configs, url_path, turbine_nam
                         wtid, \
                         file_name, \
                         bucket_name, \
-                        minio_url \
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
-    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], turbine_name, file_name, bucket_name, url_path)
+                        minio_url, \
+                        yaw_leiji_err \
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], turbine_name, file_name, bucket_name, url_path, float(yaw_leiji_err.values[0]))
     log.info(f'sql语句：{insert_query}')
     log.info(f'sql数据：{data_to_insert}')
     cursor.execute(insert_query, data_to_insert)
@@ -2961,6 +3945,37 @@ def insertPitchAnglePicture(algorithms_configs, url_path, turbine_name):
     cursor.execute(insert_query, data_to_insert)
     conn.commit()
     cursor.close()
+def updatePitchAnglePicture(algorithms_configs, url_path, turbine_name, pitch_min_loss):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
+    conn = get_connection()
+    cursor = conn.cursor()
+    #查询表名
+    check_table_query = f"show tables like 'pitch_angle_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_pitch_angle_picture_table_query}')
+        cursor.execute(create_pitch_angle_picture_table_query)
+    #更新数据
+    log.info(f"#########################pitch_angle_picture表更新数据#########################")
+    update_query = "UPDATE pitch_angle_picture SET \
+                        file_name_compare = %s, \
+                        minio_url_compare = %s, \
+                        pitch_min_loss = %s  \
+                    WHERE execute_time=%s and farm_name=%s and type_name=%s and wtid=%s"
+    data_to_insert = (file_name, url_path, float(pitch_min_loss.values[0]), algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['typeName'], turbine_name)
+    log.info(f'sql语句：{update_query}')
+    log.info(f'sql数据：{data_to_insert}')
+    cursor.execute(update_query, data_to_insert)
+    conn.commit()
+    cursor.close()
 def insertPitchActionPicture(algorithms_configs, url_path, turbine_name):
     urlList = urlparse(url_path).path.split('/')
     bucket_name = urlList[1]
@@ -2982,6 +3997,41 @@ def insertPitchActionPicture(algorithms_configs, url_path, turbine_name):
     #插入数据
     log.info(f"#########################pitch_action_picture表插入数据#########################")
     insert_query = "INSERT INTO pitch_action_picture (execute_time, \
+                        farm_name, \
+                        farm_id, \
+                        type_name, \
+                        wtid, \
+                        file_name, \
+                        bucket_name, \
+                        minio_url \
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], turbine_name, file_name, bucket_name, url_path)
+    log.info(f'sql语句：{insert_query}')
+    log.info(f'sql数据：{data_to_insert}')
+    cursor.execute(insert_query, data_to_insert)
+    conn.commit()
+    cursor.close()
+def insertPitchUnbalancePicture(algorithms_configs, url_path, turbine_name):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
+    conn = get_connection()
+    cursor = conn.cursor()
+    #查询表名
+    check_table_query = f"show tables like 'pitch_unbalance_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_pitch_unbalance_picture_table_query}')
+        cursor.execute(create_pitch_unbalance_picture_table_query)
+    #插入数据
+    log.info(f"#########################pitch_unbalance_picture表插入数据#########################")
+    insert_query = "INSERT INTO pitch_unbalance_picture (execute_time, \
                         farm_name, \
                         farm_id, \
                         type_name, \
@@ -3031,6 +4081,360 @@ def insertTorqueControlPicture(algorithms_configs, url_path, turbine_name):
     cursor.execute(insert_query, data_to_insert)
     conn.commit()
     cursor.close()
+
+
+def insertDevicePicture(algorithms_configs, url_path, turbine_name, device_name):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
+    conn = get_connection()
+    cursor = conn.cursor()
+    #查询表名
+    check_table_query = f"show tables like 'device_picture_table_query';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_device_picture_table_query}')
+        cursor.execute(create_device_picture_table_query)
+    #插入数据
+    log.info(f"#########################device_picture_table_query表插入数据#########################")
+    insert_query = "INSERT INTO device_picture_table_query (execute_time, \
+                        farm_name, \
+                        farm_id, \
+                        type_name, \
+                        wtid, \
+                        device, \
+                        file_name, \
+                        bucket_name, \
+                        minio_url \
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], turbine_name, device_name, file_name, bucket_name, url_path)
+    log.info(f'sql语句：{insert_query}')
+    log.info(f'sql数据：{data_to_insert}')
+    cursor.execute(insert_query, data_to_insert)
+    conn.commit()
+    cursor.close()
+
+
+##########################################################
+#插入word相关表
+##########################################################
+def insertFarmInfo(algorithms_configs, path_farm):
+    conn = get_connection()
+    cursor = conn.cursor()
+    #查询表名
+    check_table_query = f"show tables like 'farmInfo';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_farmInfo_table_query}')
+        cursor.execute(create_farmInfo_table_query)
+    #插入数据
+    log.info(f"#########################farmInfo表插入数据#########################")
+    
+    insert_query = "INSERT INTO farmInfo (execute_time, \
+                        farm_name, \
+                        farm_id, \
+                        company, \
+                        address, \
+                        capacity, \
+                        turbine_num, \
+                        turbine_type, \
+                        wind_resource, \
+                        operate_time, \
+                        rccID, \
+                        path_farm, \
+                        minio_dir \
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = [algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['company'], algorithms_configs['address'], algorithms_configs['capacity'], algorithms_configs['turbineNum'], algorithms_configs['turbineType'], algorithms_configs['windResource'], algorithms_configs['operateTime'], algorithms_configs['rccID'], path_farm, algorithms_configs['minio_dir']]
+    for i in range(len(data_to_insert)):
+        if str(data_to_insert[i]) == 'nan':
+            data_to_insert[i] = None
+    log.info(f'sql语句：{insert_query}')
+    log.info(f'sql数据：{data_to_insert}')
+    cursor.execute(insert_query, data_to_insert)
+    conn.commit()
+    cursor.close()
+
+def addWtidToFarmInfo(algorithms_configs, wtidNew):
+    conn = get_connection()
+    cursor = conn.cursor()
+    #修改数据
+    log.info(f"#########################farmInfo表修改wtid数据#########################")
+    query = "SELECT \
+        wtid \
+        from farmInfo where farm_name=%s and execute_time = %s"
+    data_query = (algorithms_configs["farmName"], algorithms_configs["jobTime"])
+    log.info(f'sql语句：{query}')
+    log.info(f'sql数据：{data_query}')
+    cursor.execute(query, data_query)
+    queryResult = cursor.fetchone()
+    if queryResult == None or len(queryResult) <= 0:
+        return None
+    else:
+        if queryResult[0] != None:
+            wtidOld = eval(queryResult[0])
+        else:
+            wtidOld = {}
+    #合并wtid
+    wtid = {**wtidOld, **wtidNew}
+    update_query = "UPDATE farmInfo SET wtid = %s WHERE farm_name = %s and execute_time = %s"
+    data_to_update = (str(wtid), algorithms_configs['farmName'], algorithms_configs['jobTime'])
+    log.info(f'sql语句：{update_query}')
+    log.info(f'sql数据：{data_to_update}')
+    cursor.execute(update_query, data_to_update)
+    conn.commit()
+    cursor.close()
+
+def insertWindResourceWord(algorithms_configs, windFreq, windMax, wind_mean):
+    conn = get_connection()
+    cursor = conn.cursor()
+    #查询表名
+    check_table_query = f"show tables like 'wind_resource';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_wind_resource_table_query}')
+        cursor.execute(create_wind_resource_table_query)
+    #插入数据
+    log.info(f"#########################wind_resource表插入数据#########################")
+    for index, row in windFreq.iterrows():
+        insert_query = "INSERT INTO wind_resource (execute_time, \
+                            farm_name, \
+                            farm_id, \
+                            windbin, \
+                            freq, \
+                            count, \
+                            wind_max, \
+                            wind_mean \
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+        data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], row['windbin'], row['freq'], row['count'], windMax, wind_mean)
+        log.info(f'sql语句：{insert_query}')
+        log.info(f'sql数据：{data_to_insert}')
+        cursor.execute(insert_query, data_to_insert)
+    conn.commit()
+    cursor.close()
+
+def updateWindResourceWord(algorithms_configs, mean_rho, max_speed_month, turbulence, turbulence_flag15):
+    conn = get_connection()
+    cursor = conn.cursor()
+    #修改数据
+    log.info(f"#########################wind_resource表修改wtid数据#########################")
+    # query = "SELECT \
+    #     mean_rho, \
+    #     max_speed_month \
+    #     from wind_resource where farm_name=%s and execute_time = %s"
+    # data_query = (algorithms_configs["farmName"], algorithms_configs["jobTime"])
+    # log.info(f'sql语句：{query}')
+    # log.info(f'sql数据：{data_query}')
+    # cursor.execute(query, data_query)
+    # queryResult = cursor.fetchone()
+    # if queryResult == None or len(queryResult) <= 0:
+    #     return None
+    # else:
+    #     if queryResult[0] != None:
+    #         mean_rho_ = eval(queryResult[0])
+    #     else:
+    #         mean_rho = ""
+    # wtid = {**wtidOld, **wtidNew}
+    update_query = "UPDATE wind_resource SET mean_rho = %s, max_speed_month = %s, turbulence = %s, turbulence_flag15 = %s WHERE farm_name = %s and execute_time = %s"
+    data_to_update = (mean_rho, max_speed_month, turbulence, turbulence_flag15,  algorithms_configs['farmName'], algorithms_configs['jobTime'])
+    log.info(f'sql语句：{update_query}')
+    log.info(f'sql数据：{data_to_update}')
+    cursor.execute(update_query, data_to_update)
+    conn.commit()
+    cursor.close()
+
+def insertPowerCurvePicture(algorithms_configs, url_path):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
+    conn = get_connection()
+    cursor = conn.cursor()
+    #查询表名
+    check_table_query = f"show tables like 'power_curve_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_power_curve_picture_table_query}')
+        cursor.execute(create_power_curve_picture_table_query)
+    #插入数据
+    log.info(f"#########################power_curve_picture表插入数据#########################")
+    insert_query = "INSERT INTO power_curve_picture (execute_time, \
+                        farm_name, \
+                        farm_id, \
+                        type_name, \
+                        file_name, \
+                        bucket_name, \
+                        minio_url \
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], file_name, bucket_name, url_path)
+    log.info(f'sql语句：{insert_query}')
+    log.info(f'sql数据：{data_to_insert}')
+    cursor.execute(insert_query, data_to_insert)
+    conn.commit()
+    cursor.close()
+def insertCPPicture(algorithms_configs, url_path):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
+    conn = get_connection()
+    cursor = conn.cursor()
+    #查询表名
+    check_table_query = f"show tables like 'cp_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_cp_picture_table_query}')
+        cursor.execute(create_cp_picture_table_query)
+    #插入数据
+    log.info(f"#########################cp_picture表插入数据#########################")
+    insert_query = "INSERT INTO cp_picture (execute_time, \
+                        farm_name, \
+                        farm_id, \
+                        type_name, \
+                        file_name, \
+                        bucket_name, \
+                        minio_url \
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], file_name, bucket_name, url_path)
+    log.info(f'sql语句：{insert_query}')
+    log.info(f'sql数据：{data_to_insert}')
+    cursor.execute(insert_query, data_to_insert)
+    conn.commit()
+    cursor.close()
+def insertAllZuobiaoPicture(algorithms_configs, url_path):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
+    conn = get_connection()
+    cursor = conn.cursor()
+    #查询表名
+    check_table_query = f"show tables like 'zuobiao_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_zuobiao_picture_table_query}')
+        cursor.execute(create_zuobiao_picture_table_query)
+    #插入数据
+    log.info(f"#########################zuobiao_picture表插入数据#########################")
+    insert_query = "INSERT INTO zuobiao_picture (execute_time, \
+                        farm_name, \
+                        farm_id, \
+                        type_name, \
+                        file_name, \
+                        bucket_name, \
+                        minio_url \
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], 'all', file_name, bucket_name, url_path)
+    log.info(f'sql语句：{insert_query}')
+    log.info(f'sql数据：{data_to_insert}')
+    cursor.execute(insert_query, data_to_insert)
+    conn.commit()
+    cursor.close()
+def insertFaultPiePicture(algorithms_configs, url_path):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
+    conn = get_connection()
+    cursor = conn.cursor()
+    #查询表名
+    check_table_query = f"show tables like 'fault_pie_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_fault_pie_picture_table_query}')
+        cursor.execute(create_fault_pie_picture_table_query)
+    #插入数据
+    log.info(f"#########################fault_pie_picture表插入数据#########################")
+    insert_query = "INSERT INTO fault_pie_picture (execute_time, \
+                        farm_name, \
+                        farm_id, \
+                        type_name, \
+                        file_name, \
+                        bucket_name, \
+                        minio_url \
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (algorithms_configs['jobTime'], algorithms_configs['farmName'], algorithms_configs['farmId'], algorithms_configs['typeName'], file_name, bucket_name, url_path)
+    log.info(f'sql语句：{insert_query}')
+    log.info(f'sql数据：{data_to_insert}')
+    cursor.execute(insert_query, data_to_insert)
+    conn.commit()
+    cursor.close()
+def insertWord(farmInfo, url_path):
+    urlList = urlparse(url_path).path.split('/')
+    bucket_name = urlList[1]
+    file_name = os.path.join(urlList[2],urlList[3])
+    conn = get_connection()
+    cursor = conn.cursor()
+    #查询表名
+    check_table_query = f"show tables like 'word';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_word_table_query}')
+        cursor.execute(create_word_table_query)
+    #插入数据
+    log.info(f"#########################word表插入数据#########################")
+    insert_query = "INSERT INTO word (execute_time, \
+                        farm_name, \
+                        farm_id, \
+                        type_name, \
+                        file_name, \
+                        bucket_name, \
+                        minio_url \
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (farmInfo['execute_time'], farmInfo['farm_name'], farmInfo['farm_id'], 'all', file_name, bucket_name, url_path)
+    log.info(f'sql语句：{insert_query}')
+    log.info(f'sql数据：{data_to_insert}')
+    cursor.execute(insert_query, data_to_insert)
+    conn.commit()
+    cursor.close()
+
+
+
+
+
 
 #########################################################
 def removeElementFromList(originList, exceptList):

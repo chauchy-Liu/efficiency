@@ -24,6 +24,7 @@ from sklearn.ensemble import GradientBoostingRegressor
 import xgboost as xgb
 from sklearn.metrics import accuracy_score
 from utils.display_util import get_os
+from configs.config import algConfig
 
 mpl.interactive(False)
 plt.switch_backend('agg')
@@ -921,27 +922,76 @@ def Turbine_Fault_Loss(data,turbine_name,pw_df_temp,fault_code,state_code):
         fault_loss = fault_loss[fault_loss['count']>=0]
     return fault_loss
     
-
+####限电停机时刻补充，只能通过厂家限功率状态位补充，如果没有厂家限功率状态，根据统一状态码修改程序statey=80表示限功率
+def Grid_limit_stop(data,limpw_state,state,n_hours): 
+    data = data.sort_index()
+    df = data.copy()
+    df['limpw_state'] = df['limpw','mymode']
+    #df.loc[(df['limpw','mymode']==limpw_state)|(df['fault','mymode']!=0)|((df['limpw','mymode']!=limpw_state)&(df['state','mymode']==state)),'limpw_state'] = 0
+    trigger_times = df[df['limpw_state']!=limpw_state].index.tolist()
     
-###单机电网限电损失(不包括限功率停机，只有限电降功率运行)
-def Grid_Limit_Loss(data,turbine_name,pw_df_temp,fault_code,state_code): 
+    # 步骤1：找到第一个limpw=0的索引
+    if len(trigger_times)<=0:
+        return df  # 没有触发点直接返回
+    else:        
+        for trigger_time in trigger_times:
+            start_time = trigger_time - pd.Timedelta(hours=n_hours)
+            window_data = df.loc[start_time:trigger_time]
+            
+            ###排除出发点自身，仅检查之前的数据
+            window_data = window_data.loc[window_data.index < trigger_time]
+            
+            if len(window_data)>=3:                
+            # 步骤2：检查前n行条件
+                condition_met = (
+                    (window_data['limpw','mymode'] == limpw_state).all() and
+                    (window_data['state','mymode'] == state).all() and
+                    ((window_data['fault','mymode'] == 0)|(window_data['fault','mymode'] == 309001)).all() and  ###远景机组正常发电故障码为309001
+                    (df.loc[trigger_time,('state','nanmean')]!=state)  ###触发时刻机组状态发生变化，否则正常发电时限功率解除也会被重新标记为限功率
+                )
+            else:
+                condition_met = False
+            
+            # 步骤3：条件满足时执行修改
+            if condition_met:
+                # 获取初始状态值
+                initial_state = df.loc[trigger_time, ('state','mymode')]
+                initial_fault = df.loc[trigger_time, ('fault','mymode')]
+                
+                # 创建变化标记（从触发点开始后续的变化点）
+                change_mask = (df['state','mymode'] != initial_state) | (df['fault','mymode'] != initial_fault)
+                post_trigger = change_mask.loc[trigger_time:]
+                
+                # 找到第一个变化点的位置
+                if post_trigger.any():
+                    end_idx = post_trigger.idxmax()
+                else:
+                    end_idx = df.index[-1] + pd.Timedelta(second=60)  # 没有变化则修改到最后
+                
+                # 应用修改
+                modify_mask = (df.index >= trigger_time)&(df.index < end_idx)&(df['limpw_state']!=limpw_state)
+                df.loc[modify_mask, 'limpw_state'] = limpw_state
+        
+        df['limpw','mymode'] = df['limpw_state']
+    
+    return df
+    
+###单机电网限电损失(不包括限功率停机，只有限电降功率运行),如果执行Grid_limit_stop则可包括限功率停机，但数据中需要有厂家限功率状态位
+def Grid_Limit_Loss(data,turbine_name,pw_df_temp,fault_code,limpw_state): 
     limgrid_loss = pd.DataFrame()    
     data_limgrid = pd.DataFrame()
     
-    data_limgrid = data[data['limpw','mymode']==4] #4：限电, 5:正常, 应填：4
-    #列分级
-    columns = []
-    for elem in pw_df_temp.columns.to_list():
-        if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
-            pass
-        else:
-            columns.append((elem, ''))
-    if len(columns) > 0:
-        pw_df_temp.columns = pd.MultiIndex.from_tuples(columns)
+    data_limgrid = data.dropna(axis=0,subset=[('fault','mymode')])
     data_limgrid.reset_index(level=0,inplace=True)
     data_limgrid = pd.merge(data_limgrid,pw_df_temp,how='left',on='windbin')
     data_limgrid.set_index(('localtime',''),inplace= True)  
 
+    data_limgrid['fnum'] = data_limgrid['fault','mymode']
+    data_limgrid.reset_index(level=0,inplace=True)
+    data_limgrid = pd.merge(data_limgrid,fault_code,how='left',on='fnum')
+    data_limgrid.set_index(('localtime',''),inplace= True)
+    
+    data_limgrid = data_limgrid[(data_limgrid['statety','mymode']==80)|((data_limgrid['type']=='电网限电')|(data_limgrid['statel','mymode']==90001))|(data_limgrid['limpw','mymode']==limpw_state)]###修改马集
     
     if len(data_limgrid) > 0:      
         #limgrid_loss.loc[num,'turbine'] = turbine_name
@@ -951,48 +1001,63 @@ def Grid_Limit_Loss(data,turbine_name,pw_df_temp,fault_code,state_code):
         limgrid_loss.loc[turbine_name,'time'] = len(data_limgrid)/6.0
         limgrid_loss.loc[turbine_name,'wspd'] = np.nanmean(data_limgrid['wspd','nanmean'])
     limgrid_loss['wtid'] = limgrid_loss.index
+
     return limgrid_loss
 
-############
+    
+###单机电网限电损失(不包括限功率停机，只有限电降功率运行)
+# def Grid_Limit_Loss(data,turbine_name,pw_df_temp,fault_code,state_code): 
+#     limgrid_loss = pd.DataFrame()    
+#     data_limgrid = pd.DataFrame()
+    
+#     data_limgrid = data[data['limpw','mymode']==4] #4：限电, 5:正常, 应填：4
+#     #列分级
+#     columns = []
+#     for elem in pw_df_temp.columns.to_list():
+#         if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
+#             pass
+#         else:
+#             columns.append((elem, ''))
+#     if len(columns) > 0:
+#         pw_df_temp.columns = pd.MultiIndex.from_tuples(columns)
+#     data_limgrid.reset_index(level=0,inplace=True)
+#     data_limgrid = pd.merge(data_limgrid,pw_df_temp,how='left',on='windbin')
+#     data_limgrid.set_index(('localtime',''),inplace= True)  
+
+    
+#     if len(data_limgrid) > 0:      
+#         #limgrid_loss.loc[num,'turbine'] = turbine_name
+#         limgrid_loss.loc[turbine_name,'loss'] = np.nansum(data_limgrid[turbine_name] - data_limgrid['pwrat','nanmean'])/6.0
+#         if limgrid_loss.loc[turbine_name,'loss']<=0:
+#             limgrid_loss.loc[turbine_name,'loss'] = 0.1
+#         limgrid_loss.loc[turbine_name,'time'] = len(data_limgrid)/6.0
+#         limgrid_loss.loc[turbine_name,'wspd'] = np.nanmean(data_limgrid['wspd','nanmean'])
+#     limgrid_loss['wtid'] = limgrid_loss.index
+#     return limgrid_loss
+
 ###单机计划停机损失
-def Stop_Loss(data,turbine_name,pw_df_temp,state_code):     
+def Stop_Loss(data,turbine_name,pw_df_temp,fault_code,limpw_state):     
     stop_loss = pd.DataFrame()
     data_stop = pd.DataFrame()
     temp = pw_df_temp[pw_df_temp['pwrat']>=10.0]
     
     #fault_type = fault_code[(fault_code['type']=='服务状态')|(fault_code['type']=='用户停机')|(fault_code['type']=='计划停机')]
-    data_stop = data.dropna(axis=0,subset=[('state','mymode')])
-    #列分级
-    columns = []
-    for elem in pw_df_temp.columns.to_list():
-        if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
-            pass
-        else:
-            columns.append((elem, ''))
-    if len(columns) > 0:
-        pw_df_temp.columns = pd.MultiIndex.from_tuples(columns)
+    data_stop = data.dropna(axis=0,subset=[('fault','mymode')])
     data_stop.reset_index(level=0,inplace=True)
     data_stop = pd.merge(data_stop,pw_df_temp,how='left',on='windbin')
     data_stop.set_index(('localtime',''),inplace= True)
 
-    data_stop['snum'] = data_stop['state','mymode']
-    #列分级
-    columns = []
-    for elem in state_code.columns.to_list():
-        if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
-            pass
-        else:
-            columns.append((elem, ''))
-    if len(columns) > 0:
-        state_code.columns = pd.MultiIndex.from_tuples(columns)
+    data_stop['fnum'] = data_stop['fault','mymode']
     data_stop.reset_index(level=0,inplace=True)
-    data_stop = pd.merge(data_stop,state_code,how='left',on='snum')
+    data_stop = pd.merge(data_stop,fault_code,how='left',on='fnum')
     data_stop.set_index(('localtime',''),inplace= True)
     
-    data_stop = data_stop[(data_stop['state_type']=='服务状态')|(data_stop['state_type']=='用户停机')|   ##机组故障码计划停机信息
-                          ((data_stop['fault','nanmean']==0)&(data_stop['pitch1','nanmean']>=85)
-                          &(data_stop['wspd','nanmean']>=np.min(temp['windbin']))&(data_stop['pwrat','nanmean']<10.0))]  ###其它自行判断的计划停机信息
-    data_stop = data_stop[data_stop['limpw','mymode']!=4] #非限电
+    data_stop = data_stop[((data_stop['statety','mymode']==10)|(data_stop['statety','mymode']==20)|          ##统一状态计划停机信息
+                          (data_stop['type']=='服务状态')|(data_stop['type']=='用户停机')|(data_stop['type']=='计划停机')|   ##机组故障码计划停机信息
+                          ((data_stop['fault','nanmean']==0)&(data_stop['pitch1','nanmean']>=85)))
+                          &(data_stop['wspd','nanmean']>=np.min(temp['windbin'])+1.0)&(data_stop['pwrat','nanmean']<10.0)
+                          &(data_stop['limpw','mymode']!=limpw_state)]  ###其它自行判断的计划停机信息
+    
     if len(data_stop) > 0:
         #stop_loss.loc[turbine_name,'turbine'] = turbine_name
         stop_loss.loc[turbine_name,'loss'] = np.nansum(data_stop[turbine_name])/6.0
@@ -1001,6 +1066,55 @@ def Stop_Loss(data,turbine_name,pw_df_temp,state_code):
         stop_loss.loc[turbine_name,'exltmp'] = np.nanmean(data_stop['exltmp','nanmean'])
     stop_loss['wtid'] = stop_loss.index
     return stop_loss
+
+############
+###单机计划停机损失
+# def Stop_Loss(data,turbine_name,pw_df_temp,state_code):     
+#     stop_loss = pd.DataFrame()
+#     data_stop = pd.DataFrame()
+#     temp = pw_df_temp[pw_df_temp['pwrat']>=10.0]
+    
+#     #fault_type = fault_code[(fault_code['type']=='服务状态')|(fault_code['type']=='用户停机')|(fault_code['type']=='计划停机')]
+#     data_stop = data.dropna(axis=0,subset=[('state','mymode')])
+#     #列分级
+#     columns = []
+#     for elem in pw_df_temp.columns.to_list():
+#         if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
+#             pass
+#         else:
+#             columns.append((elem, ''))
+#     if len(columns) > 0:
+#         pw_df_temp.columns = pd.MultiIndex.from_tuples(columns)
+#     data_stop.reset_index(level=0,inplace=True)
+#     data_stop = pd.merge(data_stop,pw_df_temp,how='left',on='windbin')
+#     data_stop.set_index(('localtime',''),inplace= True)
+
+#     data_stop['snum'] = data_stop['state','mymode']
+#     #列分级
+#     columns = []
+#     for elem in state_code.columns.to_list():
+#         if '(' in str(elem) and ',' in str(elem) and ')' in str(elem):
+#             pass
+#         else:
+#             columns.append((elem, ''))
+#     if len(columns) > 0:
+#         state_code.columns = pd.MultiIndex.from_tuples(columns)
+#     data_stop.reset_index(level=0,inplace=True)
+#     data_stop = pd.merge(data_stop,state_code,how='left',on='snum')
+#     data_stop.set_index(('localtime',''),inplace= True)
+    
+#     data_stop = data_stop[(data_stop['state_type']=='服务状态')|(data_stop['state_type']=='用户停机')|   ##机组故障码计划停机信息
+#                           ((data_stop['fault','nanmean']==0)&(data_stop['pitch1','nanmean']>=85)
+#                           &(data_stop['wspd','nanmean']>=np.min(temp['windbin']))&(data_stop['pwrat','nanmean']<10.0))]  ###其它自行判断的计划停机信息
+#     data_stop = data_stop[data_stop['limpw','mymode']!=4] #非限电
+#     if len(data_stop) > 0:
+#         #stop_loss.loc[turbine_name,'turbine'] = turbine_name
+#         stop_loss.loc[turbine_name,'loss'] = np.nansum(data_stop[turbine_name])/6.0
+#         stop_loss.loc[turbine_name,'time'] = len(data_stop)/6.0
+#         stop_loss.loc[turbine_name,'wspd'] = np.nanmean(data_stop['wspd','nanmean'])
+#         stop_loss.loc[turbine_name,'exltmp'] = np.nanmean(data_stop['exltmp','nanmean'])
+#     stop_loss['wtid'] = stop_loss.index
+#     return stop_loss
     
 
 
@@ -1154,9 +1268,9 @@ def Turbine_Technology_Loss(data,turbine_name,pw_df_temp,fault_code,state_code):
 
 
 ##单机自限电损失输入
-def Turbine_Limit_Loss(data,turbine_name,pw_df_temp,Pitch_Min,Pwrat_Rate,Rotspd_Connect,state): 
+def Turbine_Limit_Loss(data,turbine_name,pw_df_temp,Pitch_Min,Pwrat_Rate,Rotspd_Connect,state, statetyNormal): 
     limturbine_loss = pd.DataFrame()
-    data_limt = data[(data['limpw','nanmean']==5)&(data['state','nanmean']==state)] #4：限电, 5:正常, 应填：5
+    data_limt = data[(data['limpw','nanmean']==statetyNormal)&(data['state','nanmean']==state)] #4：限电, 5:正常, 应填：5
     #列分级
     columns = []
     for elem in pw_df_temp.columns.to_list():
@@ -1497,18 +1611,30 @@ def abnormal_detect_low(data,turbine_camp,altitude,hub_high,rotor_radius,turbine
         data_temp['kopt'] = 1000.0*data_temp['pwrat_nanmean'] / (data_temp['rotspd_nanmean']*0.10471)**3
         
         data_all = pd.concat([data_all,data_temp])#.append(data_temp)
-    data_all.loc[data_all['labelfen_']==2,'labelfen_'] = 1
-    data_all.loc[data_all['labelfen_']==4,'labelfen_'] = 3
+    data_all.loc[data_all['labelfen_']==2,'labelfen_'] = 1 #额定转速
+    data_all.loc[data_all['labelfen_']==4,'labelfen_'] = 3 #额定功率
     labelfen = np.unique(data_all['labelfen_'])
+    abnormal_data = pd.DataFrame(columns=['wtid', 'device', 'picture'])
+    # abnormal_data.columns = ['wtid', 'device', 'picture']
+    labelfen = np.sort(labelfen)[::-1]
     for num in range(len(labelfen)):
         data_all_2 = data_all[data_all['labelfen_']==labelfen[num]] 
-                   
         wtid = data_all_2['wtid_']
         data_all_2 = data_all_2.dropna(axis=1,thresh=int(len(data_all_2)*0.1))#某列非空值数量小于总数的10%剔除该列
        
         columns_temp = data_all_2.columns
-        for col in range(len(columns_temp)):               
+        for col in range(len(columns_temp)):
             if ((np.char.find(columns_temp[col],'tmp')!=-1)|(np.char.find(columns_temp[col],'acc')!=-1)|(np.char.find(columns_temp[col],'cur')!=-1)|(np.char.find(columns_temp[col],'kopt')!=-1)):
+                columnLevel0List = columns_temp[col].split('_')
+                columnLevel0 = ''
+                #去掉最后一个nanmean
+                for labelIndex in range(len(columnLevel0List)-1):
+                    if columnLevel0 == '':
+                        columnLevel0 += columnLevel0 + columnLevel0List[labelIndex]
+                    else:
+                        columnLevel0 += columnLevel0 + '_' + columnLevel0List[labelIndex]
+                if len(columnLevel0List) == 1:
+                    columnLevel0 = columns_temp[col]
                 #print(columns_temp[col])
                 #column = str('\'' + columns[col]+'\''+','+'\''+'nanmean'+'\'')                    
                 fig  = plt.figure(figsize=(10,8),dpi=100)  
@@ -1516,38 +1642,159 @@ def abnormal_detect_low(data,turbine_camp,altitude,hub_high,rotor_radius,turbine
                 with plt.style.context('ggplot'):  
                     temp0 = data_all_2[(data_all_2['wtid_']==turbine_camp[0])]
                     plt.scatter(temp0['pwrat_nanmean'],temp0[columns_temp[col]],color='red',marker='o',s=10,alpha=1,label=turbine_camp[0])
+                    #xMeanPwrat0 = np.mean(temp0['pwrat_nanmean'])
+                    yMeanPwrat0 = np.mean(temp0[columns_temp[col]])
+                    #xStdPwrat0 = np.std(temp0['pwrat_nanmean'])
+                    yStdPwrat0 = np.std(temp0[columns_temp[col]])
+                    
                     temp0 = data_all_2[(data_all_2['wtid_']==turbine_camp[1])]
                     plt.scatter(temp0['pwrat_nanmean'],temp0[columns_temp[col]],color='limegreen',marker='o',s=10,alpha=1,label=turbine_camp[1])
+                    #xMeanPwrat1 = np.mean(temp0['pwrat_nanmean'])
+                    yMeanPwrat1 = np.mean(temp0[columns_temp[col]])
+                    #xStdPwrat1 = np.std(temp0['pwrat_nanmean'])
+                    yStdPwrat1 = np.std(temp0[columns_temp[col]])
+                    
+                    
                     temp0 = data_all_2[(data_all_2['wtid_']==turbine_camp[2])]
                     plt.scatter(temp0['pwrat_nanmean'],temp0[columns_temp[col]],color='dodgerblue',marker='o',s=10,alpha=1,label=turbine_camp[2])
+                    #xMeanPwrat2 = np.mean(temp0['pwrat_nanmean'])
+                    yMeanPwrat2 = np.mean(temp0[columns_temp[col]])
+                    #xStdPwrat2 = np.std(temp0['pwrat_nanmean'])
+                    yStdPwrat2 = np.std(temp0[columns_temp[col]])
+                    
                     plt.grid()
                     #plt.xlim(0,25)
-                    plt.xlabel('active power',fontsize=14)
-                    plt.ylabel(columns_temp[col],fontsize=14)
-                    plt.legend(loc=0,fontsize=14) 
-                plt.savefig(path + '/' +str(str(wtids_ses)+'_分段'+str(num+1)+'_'+str(columns_temp[col])+'_功率.png'), bbox_inches='tight', dpi=100)
+                    plt.xlabel('功率',fontsize=14, color='#ccc')
+                    plt.ylabel(algConfig['record_pwrt_picture']['ai_chinese_name'][columnLevel0],fontsize=14, color='#ccc')
+                    plt.tick_params(which='both',labelcolor='#ccc', width=0,color='#426977', labelsize=20,gridOn=True,grid_color='#426977',direction ='in',right=True)
+                    plt.legend(loc=4,fontsize=14) 
+                    plt.gca().spines["left"].set_color('#426977')
+                    plt.gca().spines["bottom"].set_color('#426977')
+                    plt.gca().spines["right"].set_color('#426977')
+                    plt.gca().spines["top"].set_color('#426977')
+                plt.savefig(path + '/' +str(str(wtids_ses)+'_分段'+str(num+1)+'_'+str(columns_temp[col])+'_功率.png'), transparent=True, bbox_inches='tight', dpi=100)
                 
-                fig  = plt.figure(figsize=(10,8),dpi=100)  
+                fig  = plt.figure(figsize=(10,8),dpi=100)
                 plt.title(str(turbine_name))    
                 with plt.style.context('ggplot'):  
                     temp0 = data_all_2[(data_all_2['wtid_']==turbine_camp[0])]
                     plt.scatter(temp0['rotspd_nanmean'],temp0[columns_temp[col]],color='red',marker='o',s=10,alpha=1,label=turbine_camp[0])
+                    #xMeanRotspd0 = np.mean(temp0['pwrat_nanmean'])
+                    yMeanRotspd0 = np.mean(temp0[columns_temp[col]])
+                    #xStdRotspd0 = np.std(temp0['pwrat_nanmean'])
+                    yStdRotspd0 = np.std(temp0[columns_temp[col]])
+                    
                     temp0 = data_all_2[(data_all_2['wtid_']==turbine_camp[1])]
                     plt.scatter(temp0['rotspd_nanmean'],temp0[columns_temp[col]],color='limegreen',marker='o',s=10,alpha=1,label=turbine_camp[1])
+                    #xMeanRotspd1 = np.mean(temp0['pwrat_nanmean'])
+                    yMeanRotspd1 = np.mean(temp0[columns_temp[col]])
+                    #xStdRotspd1 = np.std(temp0['pwrat_nanmean'])
+                    yStdRotspd1 = np.std(temp0[columns_temp[col]])
+                    
                     temp0 = data_all_2[(data_all_2['wtid_']==turbine_camp[2])]
                     plt.scatter(temp0['rotspd_nanmean'],temp0[columns_temp[col]],color='dodgerblue',marker='o',s=10,alpha=1,label=turbine_camp[2])
+                    #xMeanRotspd2 = np.mean(temp0['pwrat_nanmean'])
+                    yMeanRotspd2 = np.mean(temp0[columns_temp[col]])
+                    #xStdRotspd2 = np.std(temp0['pwrat_nanmean'])
+                    yStdRotspd2 = np.std(temp0[columns_temp[col]])
+                    
                     plt.grid()
                     #plt.xlim(0,25)
-                    plt.xlabel('generator speed',fontsize=14)
-                    plt.ylabel(columns_temp[col],fontsize=14)
-                    plt.legend(loc=0,fontsize=14) 
-                plt.savefig(path + '/' +str(str(wtids_ses)+'_分段'+str(num+1)+'_'+str(columns_temp[col])+'_转速.png'), bbox_inches='tight', dpi=100)
+                    plt.xlabel('转速',fontsize=14, color='#ccc')
+                    plt.ylabel(algConfig['record_pwrt_picture']['ai_chinese_name'][columnLevel0],fontsize=14, color='#ccc')
+                    plt.tick_params(which='both',labelcolor='#ccc', width=0,color='#426977', labelsize=20,gridOn=True,grid_color='#426977',direction ='in',right=True)
+                    plt.legend(loc=4,fontsize=14) 
+                    plt.gca().spines["left"].set_color('#426977')
+                    plt.gca().spines["bottom"].set_color('#426977')
+                    plt.gca().spines["right"].set_color('#426977')
+                    plt.gca().spines["top"].set_color('#426977')
+                plt.savefig(path + '/' +str(str(wtids_ses)+'_分段'+str(num+1)+'_'+str(columns_temp[col])+'_转速.png'), transparent=True, bbox_inches='tight', dpi=100)
 
-
-
-
-
-    
+                abnormal_turbine = None
+                flag = None
+                multiStd = 3
+                ############################################
+                #功率图
+                ############################################
+                #y中心点排序
+                arrMeanPwrat = np.array([yMeanPwrat0, yMeanPwrat1, yMeanPwrat2])
+                arrStdPwrat = np.array([yStdPwrat0, yStdPwrat1, yStdPwrat2])
+                sortIndexMeanPwrat = np.argsort(arrMeanPwrat)
+                #y交集大小，没有交集时负数表示，负数越大距离越远
+                interTopMid = (arrMeanPwrat[sortIndexMeanPwrat[1]]+multiStd*arrStdPwrat[sortIndexMeanPwrat[1]]) - (arrMeanPwrat[sortIndexMeanPwrat[2]]-multiStd*arrStdPwrat[sortIndexMeanPwrat[2]])
+                interTopBottom = (arrMeanPwrat[sortIndexMeanPwrat[0]]+multiStd*arrStdPwrat[sortIndexMeanPwrat[0]]) - (arrMeanPwrat[sortIndexMeanPwrat[2]]-multiStd*arrStdPwrat[sortIndexMeanPwrat[2]])
+                interMidBottom = (arrMeanPwrat[sortIndexMeanPwrat[0]]+multiStd*arrStdPwrat[sortIndexMeanPwrat[0]]) - (arrMeanPwrat[sortIndexMeanPwrat[1]]-multiStd*arrStdPwrat[sortIndexMeanPwrat[1]])
+                
+                #判断是否存在故障，即交集存在负数, 前提假设std都相似
+                if ((interTopMid<0 and interTopBottom<0) or (interMidBottom<0 and interTopMid<0) or (interMidBottom<0 and interTopBottom<0)):
+                    #找负数最小的两个交集后，两个交集共有的机子就是故障机
+                    arrDist = np.array([interTopMid, interTopBottom, interMidBottom])
+                    sortDistIndex = np.argsort(arrDist)
+                    if sortDistIndex[0] == 0 and sortDistIndex[1] == 1:
+                        abnormal_turbine = turbine_camp[sortIndexMeanPwrat[2]]
+                    elif sortDistIndex[0] == 0 and sortDistIndex[1] == 2:
+                        abnormal_turbine = turbine_camp[sortIndexMeanPwrat[1]]
+                    elif sortDistIndex[0] == 1 and sortDistIndex[1] == 2:
+                        abnormal_turbine = turbine_camp[sortIndexMeanPwrat[0]]
+                    elif sortDistIndex[0] == 1 and sortDistIndex[1] == 0:
+                        abnormal_turbine = turbine_camp[sortIndexMeanPwrat[2]]
+                    elif sortDistIndex[0] == 2 and sortDistIndex[1] == 0:
+                        abnormal_turbine = turbine_camp[sortIndexMeanPwrat[1]]
+                    elif sortDistIndex[0] == 2 and sortDistIndex[1] == 1:
+                        abnormal_turbine = turbine_camp[sortIndexMeanPwrat[0]]
+                    flag = True
+                ############################################
+                #转速图
+                ############################################ 
+                if abnormal_turbine == None:
+                    #y中心点排序
+                    arrMeanRotspd = np.array([yMeanRotspd0, yMeanRotspd1, yMeanRotspd2])
+                    arrStdRotspd = np.array([yStdRotspd0, yStdRotspd1, yStdRotspd2])
+                    sortIndexMeanRotspd = np.argsort(arrMeanRotspd)
+                    #y交集大小，没有交集时负数表示，负数越大距离越远
+                    interTopMid = (arrMeanRotspd[sortIndexMeanRotspd[1]]+multiStd*arrStdRotspd[sortIndexMeanRotspd[1]]) - (arrMeanRotspd[sortIndexMeanRotspd[2]]-multiStd*arrStdRotspd[sortIndexMeanRotspd[2]])
+                    interTopBottom = (arrMeanRotspd[sortIndexMeanRotspd[0]]+multiStd*arrStdRotspd[sortIndexMeanRotspd[0]]) - (arrMeanRotspd[sortIndexMeanRotspd[2]]-multiStd*arrStdRotspd[sortIndexMeanRotspd[2]])
+                    interMidBottom = (arrMeanRotspd[sortIndexMeanRotspd[0]]+multiStd*arrStdRotspd[sortIndexMeanRotspd[0]]) - (arrMeanRotspd[sortIndexMeanRotspd[1]]-multiStd*arrStdRotspd[sortIndexMeanRotspd[1]])
+                    
+                    #判断是否存在故障，即交集存在负数, 前提假设std都相似
+                    if ((interTopMid<0 and interTopBottom<0) or (interMidBottom<0 and interTopMid<0) or (interMidBottom<0 and interTopBottom<0)):
+                        #找负数最小的两个交集后，两个交集共有的机子就是故障机
+                        arrDist = np.array([interTopMid, interTopBottom, interMidBottom])
+                        sortDistIndex = np.argsort(arrDist)
+                        if sortDistIndex[0] == 0 and sortDistIndex[1] == 1:
+                            abnormal_turbine = turbine_camp[sortIndexMeanRotspd[2]]
+                        elif sortDistIndex[0] == 0 and sortDistIndex[1] == 2:
+                            abnormal_turbine = turbine_camp[sortIndexMeanRotspd[1]]
+                        elif sortDistIndex[0] == 1 and sortDistIndex[1] == 2:
+                            abnormal_turbine = turbine_camp[sortIndexMeanRotspd[0]]
+                        elif sortDistIndex[0] == 1 and sortDistIndex[1] == 0:
+                            abnormal_turbine = turbine_camp[sortIndexMeanRotspd[2]]
+                        elif sortDistIndex[0] == 2 and sortDistIndex[1] == 0:
+                            abnormal_turbine = turbine_camp[sortIndexMeanRotspd[1]]
+                        elif sortDistIndex[0] == 2 and sortDistIndex[1] == 1:
+                            abnormal_turbine = turbine_camp[sortIndexMeanRotspd[0]]
+                        flag = False
+                ###############################
+                #记录部件故障
+                ###############################
+                if abnormal_turbine != None and flag == True:
+                    condition = (abnormal_data['wtid']==abnormal_turbine) & (abnormal_data['device'] == columnLevel0)
+                    if abnormal_data.loc[condition].shape[0] == 0:
+                        tmp = pd.DataFrame()
+                        tmp['wtid'] = abnormal_turbine
+                        tmp['device'] = columnLevel0
+                        tmp['picture'] = path + '/' +str(str(wtids_ses)+'_分段'+str(num+1)+'_'+str(columns_temp[col])+'_功率.png')
+                        pd.concat([abnormal_data, tmp]) 
+                elif abnormal_turbine != None and flag == False:
+                    condition = (abnormal_data['wtid']==abnormal_turbine) & (abnormal_data['device'] == columnLevel0)
+                    if abnormal_data.loc[condition].shape[0] == 0:
+                        tmp = pd.DataFrame()
+                        tmp['wtid'] = abnormal_turbine
+                        tmp['device'] = columnLevel0
+                        tmp['picture'] = path + '/' +str(str(wtids_ses)+'_分段'+str(num+1)+'_'+str(columns_temp[col])+'_转速.png')
+                        pd.concat([abnormal_data, tmp]) #loc[abnormal_turbine, columnLevel0] = path + '/' +str(str(wtids_ses)+'_分段'+str(num+1)+'_'+str(columns_temp[col])+'_功率.png')
+                    
+    return abnormal_data
     
     
     

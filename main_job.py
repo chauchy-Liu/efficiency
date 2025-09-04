@@ -5,7 +5,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import algorithms
 # from data.get_data import getData, getWindTurbines, getDataForMultiAlgorithms
 from data.get_data_async import getWindTurbinesNode, getWindTurbines, getDataForMultiAlgorithms, getWindFarm, getWindTurbinesIntel, getWindFarmIntel
-from configs.config import Wind_Farm, EXCEPT_MODLES, extraModelName, scheduleConfig, turbineConfig, algConfig, Wind_Farm_Name, Platform
+from configs.config import Wind_Farms, EXCEPT_MODLES, extraModelName, scheduleConfig, turbineConfig, algConfig, Platform
 from utils import time_util, display_util
 import datetime
 import importlib
@@ -14,7 +14,7 @@ import logging
 from logging_config import init_loggers
 import asyncio
 from datetime import datetime
-from db.db import insertTheoryWindPower #UpdateTubineNum, UpdateAlgorithmInfo, UpdateResult, get_connection, InsertAlgorithmHead, InsertAlgorithmDetail, UpdateAlgorithmHead, ResetTubineNum, ReviewTubineNum, CheckThreshold
+from db.db import insertTheoryWindPower, insertFarmInfo, addWtidToFarmInfo #UpdateTubineNum, UpdateAlgorithmInfo, UpdateResult, get_connection, InsertAlgorithmHead, InsertAlgorithmDetail, UpdateAlgorithmHead, ResetTubineNum, ReviewTubineNum, CheckThreshold
 import os
 import traceback
 from collections import ChainMap
@@ -23,26 +23,27 @@ from copy import deepcopy
 import warnings
 import gc
 import numpy as np
-import faultcode.faultcode_SANY as faultcode_SANY
-import faultcode.faultcode_GW as faultcode_GW
-import faultcode.faultcode_MINYANG_GANSU_QINGSHUI as faultcode_MINYANG_GANSU_QINGSHUI 
-import faultcode.faultcode_MINYANG_GANSU_TONGWEI as faultcode_MINYANG_GANSU_TONGWEI
-import faultcode.faultcode_MINYANG as faultcode_MINYANG
-import faultcode.faultcode_ENOS as faultcode_ENOS
-import faultcode.faultcode_ZHONGCHE as faultcode_ZHONGCHE
-import faultcode.faultcode_hadian as faultcode_hadian
-import faultcode.faultcode_YUNDA as faultcode_YUNDA
-import faultcode.faultcode_HZ as faultcode_HZ
-import faultcode.faultcode_FD as faultcode_FD
-import faultcode.faultcode_UP as faultcode_UP
-import faultcode.faultcode_TZ as faultcode_TZ
-import faultcode.faultcode_XUJI as faultcode_XUJI
+import re
+# import faultcode.faultcode_SE15645 as faultcode_SE15645
+# import faultcode.faultcode_GW140__3_57 as faultcode_GW140__3_57
+# import faultcode.faultcode_MINYANG_GANSU_QINGSHUI as faultcode_MINYANG_GANSU_QINGSHUI 
+# import faultcode.faultcode_MINYANG_GANSU_TONGWEI as faultcode_MINYANG_GANSU_TONGWEI
+# import faultcode.faultcode_MY6_25 as faultcode_MY6_25
+# import faultcode.faultcode_ENOS141__3_2 as faultcode_ENOS141__3_2
+# import faultcode.faultcode_ZHONGCHE as faultcode_ZHONGCHE
+# import faultcode.faultcode_hadian as faultcode_hadian
+# import faultcode.faultcode_YUNDA as faultcode_YUNDA
+# import faultcode.faultcode_HZ as faultcode_HZ
+# import faultcode.faultcode_FD as faultcode_FD
+# import faultcode.faultcode_UP as faultcode_UP
+# import faultcode.faultcode_TZ as faultcode_TZ
+# import faultcode.faultcode_XUJI as faultcode_XUJI
 # from data.get_data_async import Df_all_all_alltype, Df_all_m_all_alltype, zuobiao_all, Df_all_all, Df_all_m_all, yaw_time, turbine_err_all, turbine_param_all
 import time
 import data.efficiency_function as turbine_efficiency_function
 import data.get_data_async as get_data_async
 import pickle, gzip
-
+from db.db import selectFaultCode
 
 warnings.simplefilter(action='ignore')
 # warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -89,7 +90,7 @@ async def execute_multi_algorithms(names: list, execute_time=''):
         "Turbine_attr_type" : None,
         "path": None,
         "minio_dir": str(time.time()).replace(".", "_"),
-        "jobTime": datetime.now().strftime('%Y-%m-%d 00:00:00'),
+        "jobTime": datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S'), #datetime.now(), #.strftime('%Y-%m-%d 00:00:00'), datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')
         "algName": None
     }
     try:
@@ -135,11 +136,14 @@ async def execute_multi_algorithms(names: list, execute_time=''):
         for name in final_names:
             multi_algorithms.append(importlib.import_module('.' + name, package='algorithms'))
             name_convice = multi_algorithms[-1].__name__.split('.')[-1]
-            if "pianhang_duifeng_buzheng" == name_convice:
+            if "record_loss_indicator" == name_convice:
                 endTime = datetime.strptime(datetime.now().strftime('%Y-%m-%d 00:00:00'), '%Y-%m-%d %H:%M:%S')
             else:
-                endTime = datetime.strptime(datetime.now().strftime('%Y-%m-%d 00:00:00'), '%Y-%m-%d %H:%M:%S')
+                # 运行
+                # endTime = datetime.strptime(datetime.now().strftime('%Y-%m-%d 00:00:00'), '%Y-%m-%d %H:%M:%S')
                 # endTime = datetime.strptime('2024-12-22 11:14:13', '%Y-%m-%d %H:%M:%S')#datetime.now()#.strftime('%Y-%m-%d %H:%M:%S')
+                # 调试
+                endTime = datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')#datetime.now()
             startTime = endTime - pd.to_timedelta(multi_algorithms[-1].time_duration)
             multi_algorithms_config[name_convice] = {
                 'startTime':startTime, 
@@ -151,7 +155,10 @@ async def execute_multi_algorithms(names: list, execute_time=''):
                 "tyDiPoints":deepcopy(multi_algorithms[-1].ty_di_points),
                 "generalPoints":deepcopy(multi_algorithms[-1].general_points), 
                 "privatePoints":deepcopy(multi_algorithms[-1].private_points),
-                "executeTime": execute_time
+                "executeTime": execute_time,
+                "pointNum": algConfig[name_convice]["pointNum"],
+                "timeSlice": algConfig[name_convice]["timeSlice"],
+                "customMergeFlag": algConfig[name_convice]["customMergeFlag"]
             }
         
         # 多模型执行
@@ -226,19 +233,31 @@ async def _do_execute(multi_algorithms, algorithms_configs, mainLog): #startTime
         algorithmLogs[name].info("+++++++++++++++++++++++++++++++++++++++++++新任务++++++++++++++++++++++++++++++++++++++++++")
         algorithmLogs[name].info("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
     # 获取风场
+    # for Wind_Farm in Wind_Farms:
     if Platform == "ZhongTai":
-        WindFarm_attr = await getWindFarm(Wind_Farm)
+        WindFarm_attr = await getWindFarm(Wind_Farms)
     elif Platform == "WuLianWang":
         WindFarm_attr = await getWindFarmIntel()
+    # 遍历风场 ###################################################################################
+    mainLog.info(f"# 遍历风场 ###################################################################################")
     for farm_index, farm_item in WindFarm_attr.iterrows():
         if Platform == "ZhongTai":
-            algorithms_configs['farmId'] = Wind_Farm
+            algorithms_configs['farmId'] = farm_item['mdmId']
             # algorithms_configs['farmName'] = Wind_Farm_Name
-            algorithms_configs['farmName'] = WindFarm_attr.loc[0,'风电场名']
-            path_farm = str('result/')+str(WindFarm_attr.loc[0,'二级公司'])+'/'+str(WindFarm_attr.loc[0,'风电场名'])
+            algorithms_configs['farmName'] = farm_item['风电场名']#WindFarm_attr.loc[0,'风电场名']
+            algorithms_configs['company'] = farm_item['二级公司']#WindFarm_attr.loc[0,'二级公司']
+            algorithms_configs['address'] = farm_item['地址']#WindFarm_attr.loc[0,'地址']
+            algorithms_configs['capacity'] = farm_item['容量']#WindFarm_attr.loc[0,'容量']
+            algorithms_configs['windResource'] = farm_item['风资源']#WindFarm_attr.loc[0,'风资源']
+            algorithms_configs['turbineNum'] = farm_item['风机台数']#WindFarm_attr.loc[0,'风机台数']
+            algorithms_configs['turbineType'] = farm_item['机型']#WindFarm_attr.loc[0,'机型']
+            algorithms_configs['rccID'] = farm_item['生产运营中心']
+            algorithms_configs['operateTime'] = farm_item['并网日期']#WindFarm_attr.loc[0,'并网日期']
+            path_farm = str('result/')+str(farm_item['二级公司'])+'/'+str(farm_item['风电场名'])#WindFarm_attr.loc[0,'二级公司'] . WindFarm_attr.loc[0,'风电场名']
             if os.path.exists(path_farm)==False:
                 os.makedirs(path_farm)
-            WindFarm_attr.to_csv(str(path_farm+'/WindFarm.csv'),index=True, encoding='utf-8') 
+            # WindFarm_attr.to_csv(str(path_farm+'/WindFarm.csv'),index=True, encoding='utf-8') 
+            farm_item.to_csv(str(path_farm+'/WindFarm.csv'),index=True, encoding='utf-8') 
         elif Platform == "WuLianWang":
             algorithms_configs['farmId'] = farm_item['orgId']
             algorithms_configs['farmName'] = farm_item['风电场名']
@@ -246,9 +265,11 @@ async def _do_execute(multi_algorithms, algorithms_configs, mainLog): #startTime
             if os.path.exists(path_farm)==False:
                 os.makedirs(path_farm)
             farm_item.to_csv(str(path_farm+'/WindFarm.csv'),index=True, encoding='utf-8') 
+        mainLog.info(f"# {farm_index+1}/{WindFarm_attr.shape[0]}: {algorithms_configs['farmName']} ###################################################################################")
+        insertFarmInfo(algorithms_configs, path_farm)
         #  获取所有风机
         if Platform == "ZhongTai":
-            Turbine_attr = await getWindTurbines(Wind_Farm)
+            Turbine_attr = await getWindTurbines(farm_item['mdmId']) #Wind_Farm
         elif Platform == "WuLianWang":
             Turbine_attr = await getWindTurbinesIntel(farm_item['orgId'])
 
@@ -256,6 +277,9 @@ async def _do_execute(multi_algorithms, algorithms_configs, mainLog): #startTime
         algorithms_configs['Df_all_all_alltype'] = pd.DataFrame()
         algorithms_configs['Df_all_m_all_alltype'] = pd.DataFrame()
         algorithms_configs['zuobiao_all'] = pd.DataFrame()
+        # 遍历所有机型 #################################################################################
+        mainLog.info(f"# 遍历所有机型 #################################################################################")
+        algorithms_configs["Turbine_attr_type_filted"] = pd.DataFrame()
         for i_type in range(len(np.unique(Turbine_attr['turbineTypeID']))):
             algorithms_configs['Turbine_attr_type'] = Turbine_attr[Turbine_attr['turbineTypeID'] == np.unique(Turbine_attr['turbineTypeID'])[i_type]]
             algorithms_configs['typeProcess'] = i_type
@@ -273,67 +297,94 @@ async def _do_execute(multi_algorithms, algorithms_configs, mainLog): #startTime
             algorithms_configs['turbineTypeID'] = str(np.unique(Turbine_attr['turbineTypeID'])[i_type])
             algorithms_configs['ManufacturerID'] = str(np.unique(Turbine_attr['turbineTypeID'])[i_type])[:2]
             algorithms_configs['typeName'] = str(np.unique(Turbine_attr['turbineTypeID'])[i_type])
-            if algorithms_configs['ManufacturerID']=='GW':#金风5，哈电6，三一64，远景5，明阳3,海装32,运达6,中车0
-                algorithms_configs['state'] = 5 
-                algorithms_configs['fault_code'] = faultcode_GW.fault
-            elif algorithms_configs['ManufacturerID']=='XE':#哈电6
-                algorithms_configs['state'] = 6
-                algorithms_configs['fault_code'] = faultcode_hadian.fault
-            elif (algorithms_configs['ManufacturerID']=='SE'):#三一64,吉电三骏120
-                algorithms_configs['state'] = 64
-                algorithms_configs['fault_code'] = faultcode_SANY.fault
-            elif (algorithms_configs['ManufacturerID']=='SI'):#三一64,吉电三骏120
-                algorithms_configs['state'] = 120
-                algorithms_configs['fault_code'] = faultcode_SANY.fault
-            elif algorithms_configs['ManufacturerID']=='EN':#远景5,21
-                algorithms_configs['state'] = 5
-                algorithms_configs['fault_code'] = faultcode_ENOS.fault
-            # elif (algorithms_configs['ManufacturerID']=='MY'):
+            
+            algorithms_configs["Turbine_attr_type_filted"] = pd.concat([algorithms_configs["Turbine_attr_type_filted"], algorithms_configs['Turbine_attr_type']])
+            mainLog.info(f"# {i_type+1}/{len(np.unique(Turbine_attr['turbineTypeID']))}: {algorithms_configs['turbineTypeID']}/{algorithms_configs['farmName']} ###################################################################################")
+            # 查找机型表中的故障文件
+            faultCodeFile = selectFaultCode(algorithms_configs['turbineTypeID'])
+            if faultCodeFile == None:
+                mainLog.info("没有在turbineTypeToFaultCodeMap表中找到机型: "+algorithms_configs['turbineTypeID'])
+                continue
+            else: 
+                if ".py" in faultCodeFile:
+                    faultCodeFile = faultCodeFile.split(".")[0]
+                faultCode = importlib.import_module('.' + faultCodeFile, package='faultcode')
+            algorithms_configs['faultCodeFile'] = faultCodeFile #faultCode
+            algorithms_configs['state'] = faultCode.state_
+            algorithms_configs['statetyNorm'] = faultCode.stateNormal
+            algorithms_configs['limpw_state'] = faultCode.limpw_state
+            algorithms_configs['fault_code'] = faultCode.fault
+            algorithms_configs['state_code'] = faultCode.state
+            algorithms_configs['wspdTheory'] = faultCode.wspd
+            algorithms_configs['pwratTheory'] = faultCode.pwrat
+            algorithms_configs['Rotspd_Connect'] = faultCode.Rotspd_Connect
+            algorithms_configs['Rotspd_Rate'] = faultCode.Rotspd_Rate
+            algorithms_configs['Pitch_Min'] = faultCode.Pitch_Min
+
+            # 筛选机型
+            if (algorithms_configs['ManufacturerID'] not in turbineConfig["turbineTypeList"] and algorithms_configs['ManufacturerID'].upper() not in turbineConfig["turbineTypeList"] and algorithms_configs['ManufacturerID'].lower() not in turbineConfig["turbineTypeList"]) or algorithms_configs['fault_code'].empty == True:
+                continue
+            # if algorithms_configs['ManufacturerID'].upper()=='GW':#金风5，哈电6，三一64，远景5，明阳3,海装32,运达6,中车0
+            #     algorithms_configs['state'] = 5 
+            #     algorithms_configs['fault_code'] = faultcode_GW140__3_57.fault
+            # elif algorithms_configs['ManufacturerID'].upper() =='XE':#哈电6
+            #     algorithms_configs['state'] = 6
+            #     algorithms_configs['fault_code'] = faultcode_hadian.fault
+            # elif (algorithms_configs['ManufacturerID'].upper()=='SE'):#三一64,吉电三骏120
+            #     algorithms_configs['state'] = 64
+            #     algorithms_configs['fault_code'] = faultcode_SE15645.fault
+            # elif (algorithms_configs['ManufacturerID'].upper()=='SI'):#三一64,吉电三骏120
+            #     algorithms_configs['state'] = 120
+            #     algorithms_configs['fault_code'] = faultcode_SE15645.fault
+            # elif algorithms_configs['ManufacturerID'].upper()=='EN':#远景5,21
+            #     algorithms_configs['state'] = 5
+            #     algorithms_configs['fault_code'] = faultcode_ENOS141__3_2.fault
+            # # elif (algorithms_configs['ManufacturerID']=='MY'):
+            # #     algorithms_configs['state'] = 14
+            # #     algorithms_configs['fault_code'] = faultcode_MINYANG.fault
+            # elif (algorithms_configs['ManufacturerID'].upper()=='MY'):#明阳3,MySE8.5-230为14
+            #     #'''
+            #     algorithms_configs['state'] = 3
+            #     algorithms_configs['fault_code'] = faultcode_MINYANG_GANSU_QINGSHUI.fault
+            #     algorithms_configs['state_code'] = faultcode_MINYANG_GANSU_QINGSHUI.state
+            #     '''
+            #     algorithms_configs['state'] = 3
+            #     algorithms_configs['fault_code'] = faultcode_MINYANG_GANSU_TONGWEI.fault
+            #     algorithms_configs['state_code'] = faultcode_MINYANG_GANSU_TONGWEI.state
+            #     '''
+            #     algorithms_configs['wspdTheory'] = faultcode_MINYANG_GANSU_QINGSHUI.wspd
+            #     algorithms_configs['pwratTheory'] = faultcode_MINYANG_GANSU_QINGSHUI.pwrat
+            #     algorithms_configs['Rotspd_Connect'] = faultcode_MINYANG_GANSU_QINGSHUI.Rotspd_Connect
+            #     algorithms_configs['Rotspd_Rate'] = faultcode_MINYANG_GANSU_QINGSHUI.Rotspd_Rate
+            #     algorithms_configs['Pitch_Min'] = faultcode_MINYANG_GANSU_QINGSHUI.Pitch_Min
+            # elif (algorithms_configs['ManufacturerID'].upper()=='H1')|(algorithms_configs['ManufacturerID']=='HZ'):#海装32
+            #     algorithms_configs['state'] = 32
+            #     algorithms_configs['fault_code'] = faultcode_HZ.fault
+            # elif algorithms_configs['ManufacturerID'].upper()=='WD':#运达6
+            #     algorithms_configs['state'] = 6
+            #     algorithms_configs['fault_code'] = faultcode_YUNDA.fault
+            # elif algorithms_configs['ManufacturerID'].upper()=='WT':#中车0，10MW为8
+            #     #state = 1
+            #     #fault_code = faultcode_ZHONGCHE.fault
+            #     algorithms_configs['state'] = 14##许继机组
+            #     algorithms_configs['fault_code'] = faultcode_XUJI.fault
+            # elif algorithms_configs['ManufacturerID'].upper()=='FD':#中车0
+            #     algorithms_configs['state'] = 2
+            #     algorithms_configs['fault_code'] = faultcode_FD.fault
+            # elif algorithms_configs['ManufacturerID'].upper()=='UP':#中车0
+            #     algorithms_configs['state'] = 5
+            #     algorithms_configs['fault_code'] = faultcode_UP.fault
+            # elif (algorithms_configs['ManufacturerID'].upper()=='W2')|(algorithms_configs['ManufacturerID']=='W3')|(algorithms_configs['ManufacturerID']=='W4')|(algorithms_configs['ManufacturerID']=='EW'):#上气
+            #     algorithms_configs['state'] = 8
+            #     algorithms_configs['fault_code'] = faultcode_HZ.fault
+            # elif algorithms_configs['ManufacturerID'].upper()=='XW':#中车0
             #     algorithms_configs['state'] = 14
-            #     algorithms_configs['fault_code'] = faultcode_MINYANG.fault
-            elif (algorithms_configs['ManufacturerID'].upper()=='MY'):#明阳3,MySE8.5-230为14
-                #'''
-                algorithms_configs['state'] = 3
-                algorithms_configs['fault_code'] = faultcode_MINYANG_GANSU_QINGSHUI.fault
-                algorithms_configs['state_code'] = faultcode_MINYANG_GANSU_QINGSHUI.state
-                '''
-                algorithms_configs['state'] = 3
-                algorithms_configs['fault_code'] = faultcode_MINYANG_GANSU_TONGWEI.fault
-                algorithms_configs['state_code'] = faultcode_MINYANG_GANSU_TONGWEI.state
-                '''
-                algorithms_configs['wspdTheory'] = faultcode_MINYANG_GANSU_QINGSHUI.wspd
-                algorithms_configs['pwratTheory'] = faultcode_MINYANG_GANSU_QINGSHUI.pwrat
-                algorithms_configs['Rotspd_Connect'] = faultcode_MINYANG_GANSU_QINGSHUI.Rotspd_Connect
-                algorithms_configs['Rotspd_Rate'] = faultcode_MINYANG_GANSU_QINGSHUI.Rotspd_Rate
-                algorithms_configs['Pitch_Min'] = faultcode_MINYANG_GANSU_QINGSHUI.Pitch_Min
-            elif (algorithms_configs['ManufacturerID']=='H1')|(algorithms_configs['ManufacturerID']=='HZ'):#海装32
-                algorithms_configs['state'] = 32
-                algorithms_configs['fault_code'] = faultcode_HZ.fault
-            elif algorithms_configs['ManufacturerID']=='WD':#运达6
-                algorithms_configs['state'] = 6
-                algorithms_configs['fault_code'] = faultcode_YUNDA.fault
-            elif algorithms_configs['ManufacturerID']=='WT':#中车0，10MW为8
-                #state = 1
-                #fault_code = faultcode_ZHONGCHE.fault
-                algorithms_configs['state'] = 14##许继机组
-                algorithms_configs['fault_code'] = faultcode_XUJI.fault
-            elif algorithms_configs['ManufacturerID']=='FD':#中车0
-                algorithms_configs['state'] = 2
-                algorithms_configs['fault_code'] = faultcode_FD.fault
-            elif algorithms_configs['ManufacturerID']=='UP':#中车0
-                algorithms_configs['state'] = 5
-                algorithms_configs['fault_code'] = faultcode_UP.fault
-            elif (algorithms_configs['ManufacturerID']=='W2')|(algorithms_configs['ManufacturerID']=='W3')|(algorithms_configs['ManufacturerID']=='W4')|(algorithms_configs['ManufacturerID']=='EW'):#上气
-                algorithms_configs['state'] = 8
-                algorithms_configs['fault_code'] = faultcode_HZ.fault
-            elif algorithms_configs['ManufacturerID']=='XW':#中车0
-                algorithms_configs['state'] = 14
-                algorithms_configs['fault_code'] = faultcode_UP.fault
-            elif algorithms_configs['ManufacturerID']=='TZ':#中车0
-                algorithms_configs['state'] = 13
-                algorithms_configs['fault_code'] = faultcode_TZ.fault
-            else:
-                pass
+            #     algorithms_configs['fault_code'] = faultcode_UP.fault
+            # elif algorithms_configs['ManufacturerID'].upper()=='TZ':#中车0
+            #     algorithms_configs['state'] = 13
+            #     algorithms_configs['fault_code'] = faultcode_TZ.fault
+            # else:
+            #     pass
                 
             #存理论曲线
             insertTheoryWindPower(algorithms_configs)
@@ -392,8 +443,12 @@ async def algorithms_turbines_stream(mainLog, algorithmLogs, multi_algorithms, a
             turbineNameList.append(key)
     else:
         turbineNameList = turbineConfig['turbineNameList'] #["16#"]#
-    if turbineNameList != None and len(turbineNameList) > 0:
+    if turbineNameList != None and isinstance(turbineNameList, list) and len(turbineNameList) > 0:
         algorithms_configs['Turbine_attr_type'] = algorithms_configs['Turbine_attr_type'][algorithms_configs['Turbine_attr_type']["name"].isin(turbineNameList)]
+    elif turbineNameList != None and isinstance(turbineNameList, int):
+        algorithms_configs['Turbine_attr_type'] = algorithms_configs['Turbine_attr_type'].iloc[:turbineNameList, :]
+    
+
     # df_wind_turbine = df_wind_turbine.iloc[0:3]
     # df_wind_turbine = df_wind_turbine.iloc[[2]]
 
@@ -406,7 +461,7 @@ async def algorithms_turbines_stream(mainLog, algorithmLogs, multi_algorithms, a
 
     
     mainLog.info(f'开始执行算法{multi_algorithms}') #，执行时间范围{startTime}-{endTime}
-    mainLog.info(f'获取风场{Wind_Farm}的风机数量为'+str(algorithms_configs['Turbine_attr_type'].shape[0]))
+    mainLog.info(f'获取风场'+str(algorithms_configs['farmId'])+'的风机数量为'+str(algorithms_configs['Turbine_attr_type'].shape[0]))
     if Platform == "ZhongTai":
         assetIds = algorithms_configs['Turbine_attr_type']['mdmId']
     elif Platform == "WuLianWang":
@@ -484,6 +539,7 @@ async def algorithms_turbines_stream(mainLog, algorithmLogs, multi_algorithms, a
         #算法名
         name = algorithm.__name__.split('.')[-1]
         algorithms_configs['algName'] = name
+        
         algorithm_index += 1
         mainLog.info(f'===================================开始准备{name}预警模型，模型已完成的数量进度{algorithm_index}/{len(multi_algorithms)}==============================================')
         data_df = {'data_df':pd.DataFrame()}
@@ -610,13 +666,16 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
         days = str(date).split('-')[2]
         if days[0] == '0':
             days = days[1]
-        # if name != 'Efficiency_ana_V3' or (name == 'Efficiency_ana_V3' and days == '1') or (name == 'Efficiency_ana_V3' and not os.path.exists('Efficiency_ana_V3.pkl.gz')):
-        algorithmData = await getDataForMultiAlgorithms({name:algorithms_configs[name]}, algorithms_configs['state']) #mainLog, algorithmLogs, 
-        # else:
-        #     if algorithms_configs[name]['PrepareTurbines'] == True:
-        #         algorithmData = {name: pd.read_pickle('Efficiency_ana_V3.pkl.gz')}
-        #     else:
-        #         algorithmData = {name: pd.DataFrame()}
+        if not os.path.exists(os.path.join(algorithms_configs['path'],'Efficiency_ana_V3.pkl')) or not algConfig[name]["saveData"]: #name != 'Efficiency_ana_V3' or (name == 'Efficiency_ana_V3' and days == '1') or (name == 'Efficiency_ana_V3' and )
+            algorithmData = await getDataForMultiAlgorithms({name:algorithms_configs[name]}, algorithms_configs['state']) #mainLog, algorithmLogs, 
+        else:
+            # if algorithms_configs[name]['PrepareTurbines'] == True:
+            # algorithmData = {name: pd.read_pickle('Efficiency_ana_V3.pkl.gz')}
+            with open(os.path.join(algorithms_configs['path'],'Efficiency_ana_V3.pkl'), 'rb') as f:
+                algorithms_configs = pickle.load(f)
+                algorithms_configs["Df_all_m_all"].to_csv(os.path.join(algorithms_configs['path'],"Df_all_m_all.csv"), index=True)
+            # else:
+                # algorithmData = {name: pd.DataFrame()}
     except Exception as e:
         errorInfomation = traceback.format_exc()
         mainLog.info(f'\033[31m{errorInfomation}\033[0m')
@@ -645,9 +704,10 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
         #任务id映射
         # idMaps[name] = str(taskId)
     #提取算法对应的数据
-    if name in algorithmData.keys():
-        # 清洗数据
-        get_data_async.wash_data(algorithmData[name], algorithms_configs)
+    if not os.path.exists(os.path.join(algorithms_configs['path'],'Efficiency_ana_V3.pkl')) or not algConfig[name]["saveData"]:
+        if name in algorithmData.keys():
+            # 清洗数据
+            get_data_async.wash_data(algorithmData[name], algorithms_configs)
         # data_df['data_df'] = pd.concat([data_df['data_df'], algorithmData[name]])
     # else:
         # data_df['data_df'] = pd.concat([data_df['data_df'], pd.DataFrame()])
@@ -678,7 +738,10 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
         
         return None# continue
     # if (algorithms_configs[name]['PrepareTurbines'] == True and days==1 and name == 'Efficiency_ana_V3') or (algorithms_configs[name]['PrepareTurbines'] == True and not os.path.exists('Efficiency_ana_V3.pkl.gz') and name == 'Efficiency_ana_V3'):
+    if  not os.path.exists(os.path.join(algorithms_configs['path'],'Efficiency_ana_V3.pkl')) and algConfig[name]["saveData"]:
         # data_df.to_pickle('Efficiency_ana_V3.pkl.gz', compression='gzip')
+        with open(os.path.join(algorithms_configs['path'],'Efficiency_ana_V3.pkl'), 'wb') as f:
+            pickle.dump(algorithms_configs, f)
     try:
         #检查某算法测点数据范围是否二次调整
         remove_points = []
@@ -696,6 +759,9 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
         assert algorithms_configs['Df_all_all'].empty==False, "获取"+str(algorithms_configs["farmName"])+"风场的"+str(algorithms_configs["turbineTypeID"])+"的历史数据为空"
         #参数确定
         get_data_async.define_parameters(algorithms_configs, name)
+        #风机号添加入风场信息表中
+        wtidDict = {algorithms_configs["typeName"]: algorithms_configs["wtids"].tolist()}
+        addWtidToFarmInfo(algorithms_configs, wtidDict)
         # #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # #调试record_pwrt_picture专用语句，其他情况注释该语句为了调试记录和加载数据
         # if not os.path.exists('Efficiency_ana_V3.pkl.gz') and name == 'record_pwrt_picture':

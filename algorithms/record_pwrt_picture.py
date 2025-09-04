@@ -8,7 +8,7 @@ import asyncio
 from datetime import datetime as datetime
 from configs.config import algConfig
 import data.efficiency_function as turbine_efficiency_function
-from db.db import insertWindDirectionPicture, upload, insertPwTurbineAll, insertPwTimeAll, insertWindFrequencyPicture, insertAirDensityPicture,insertTurbulencePicture,insertNavigationBiasDirectionPicture,insertNavigationBiasControlPicture,insertPitchAnglePicture,insertPitchActionPicture,insertTorqueControlPicture, insertAllWindFrequencyPicture, insertAllAirDensityPicture,insertAllTurbulencePicture
+from db.db import insertWindDirectionPicture, upload, insertPwTurbineAll, insertPwTimeAll, insertWindFrequencyPicture, insertAirDensityPicture,insertTurbulencePicture,insertNavigationBiasDirectionPicture,insertNavigationBiasControlPicture,insertPitchAnglePicture,insertPitchActionPicture,insertTorqueControlPicture, insertAllWindFrequencyPicture, insertAllAirDensityPicture,insertAllTurbulencePicture,insertDevicePicture, insertWindResourceWord, insertPowerCurvePicture, insertCPPicture, insertAllZuobiaoPicture, updateWindResourceWord, updatePitchAnglePicture
 from matplotlib import pyplot as plt
 from pylab import mpl
 import sys
@@ -16,6 +16,9 @@ import statistics as st
 from scipy import signal,integrate
 import os
 from utils.display_util import get_os
+import data.generate_word as generate_word
+import importlib
+import traceback
 
 mpl.interactive(False)
 plt.switch_backend('agg')
@@ -48,6 +51,7 @@ resample_interval = algConfig['record_pwrt_picture']['resample_interval']
 error_data_time_duration = algConfig['record_pwrt_picture']['error_data_time_duration']
 need_all_turbines = algConfig['record_pwrt_picture']['need_all_turbines']
 store_file = algConfig['record_pwrt_picture']['store_file']
+
 async def judge_model(algorithms_configs):
     algorithms_configs['zuobiao'] = pd.DataFrame()
     algorithms_configs['pw_df_alltime'] = pd.DataFrame()
@@ -78,6 +82,7 @@ async def judge_model(algorithms_configs):
     wind_ti_all = pd.DataFrame()
     wind_ti_all['windbin'] = windbin
     # zuobiao_all = algorithms_configs['zuobiao_all']
+    faultCode = importlib.import_module('.' + algorithms_configs['faultCodeFile'], package='faultcode')
     #######################################
     for num in range(len(Turbine_attr_type)): 
         turbine_name = wtids[num]            
@@ -156,6 +161,76 @@ async def judge_model(algorithms_configs):
     #mysql记录
     insertPwTimeAll(pw_df_alltime, algorithms_configs)
     ################################################################3
+    #为word生成功率曲线图
+    #########绘制功率曲线 
+    turbine_num = 16
+    pnum = len(wtids)//turbine_num
+    rem = len(wtids)%turbine_num
+    if pnum > 0: 
+        if rem > 0:
+            pnum_new = pnum + 1
+        else:
+            pnum_new = pnum
+        rem_pw = turbine_num
+        for j_pw in range(pnum_new):
+            camp20 = plt.get_cmap('tab20')
+            fig = plt.figure(figsize=(10,8),dpi=100)  
+            #plt.title(str(turbine_name))    
+            with plt.style.context('ggplot'):  
+                #plt.plot(biaozhun['wspd'],biaozhun['pwrat'],color='red')          
+                plt.plot(pw_df_alltime['windbin'],pw_df_alltime['pwrat'],'-o',color='black',markersize=8,label='全场平均')
+                if j_pw >= pnum:
+                    rem_pw = rem
+                for i in range(rem_pw):
+                    plt.plot(pw_df_alltime['windbin'],pw_df_alltime[wtids[i+j_pw*turbine_num]],'-o',color=camp20(i),markersize=5,label=wtids[i+j_pw*turbine_num])
+                    
+                plt.grid()
+                #plt.ylim(-2,25)
+                plt.xlabel('风速',fontsize=20)
+                plt.ylabel('功率',fontsize=20)
+                plt.legend(loc=4,fontsize=14)
+                plt.tick_params(which='both',labelcolor='#869AA7', width=0,color='#869AA7', labelsize=20,gridOn=True,grid_color='#869AA7',direction ='in',right=True)
+                plt.gca().spines["left"].set_color('#869AA7')
+                plt.gca().spines["bottom"].set_color('#869AA7')
+                plt.gca().spines["right"].set_color('#869AA7')
+                plt.gca().spines["top"].set_color('#869AA7')
+            fig.savefig(path + '/' +'功率曲线'+str(j_pw) +'.png',dpi=100, transparent=True, bbox_inches='tight')
+            ########################################################
+            #上传图片到minio
+            picture_path = path + '/' +'功率曲线'+str(j_pw) +'.png'
+            url_picture = upload(picture_path, algorithms_configs)
+            #mysql记录
+            insertPowerCurvePicture(algorithms_configs, url_picture)
+    else: 
+        camp20 = plt.get_cmap('tab20')
+        fig = plt.figure(figsize=(10,8),dpi=100)  
+        #plt.title(str(turbine_name))    
+        with plt.style.context('ggplot'):  
+            #plt.plot(biaozhun['wspd'],biaozhun['pwrat'],color='red')          
+            plt.plot(pw_df_alltime['windbin'],pw_df_alltime['pwrat'],'-o',color='black',markersize=8,label='全场平均')
+            for i in range(rem):
+                plt.plot(pw_df_alltime['windbin'],pw_df_alltime[wtids[i]],'-o',color=camp20(i),markersize=5,label=wtids[i])
+                
+            plt.grid()
+            #plt.ylim(-2,25)
+            plt.xlabel('风速',fontsize=20)
+            plt.ylabel('功率',fontsize=20)
+            plt.legend(loc=4,fontsize=14)
+            plt.tick_params(which='both',labelcolor='#869AA7', width=0,color='#869AA7', labelsize=20,gridOn=True,grid_color='#869AA7',direction ='in',right=True)
+            plt.gca().spines["left"].set_color('#869AA7')
+            plt.gca().spines["bottom"].set_color('#869AA7')
+            plt.gca().spines["right"].set_color('#869AA7')
+            plt.gca().spines["top"].set_color('#869AA7')
+        fig.savefig(path + '/' +'功率曲线'+str(pnum+1) +'.png',dpi=100,transparent=True, bbox_inches='tight')
+        ########################################################
+        #上传图片到minio
+        picture_path = path + '/' +'功率曲线'+str(pnum+1) +'.png'
+        url_picture = upload(picture_path, algorithms_configs)
+        #mysql记录
+        insertPowerCurvePicture(algorithms_configs, url_picture)
+
+
+
     # zuobiao.insert(0,'type',np.unique(Turbine_attr['turbineTypeID'])[i_type])
     zuobiao.insert(0,'type',algorithms_configs['typeName'])
     ###某机型风频绘制, 输出内容：风资源2
@@ -188,16 +263,30 @@ async def judge_model(algorithms_configs):
     url_picture = upload(picture_path, algorithms_configs)
     #mysql记录
     insertWindFrequencyPicture(algorithms_configs, url_picture)
+
     ########################################################
     #某机型月平均空气密度及风速，输出内容：风资源3
     altitude_farm= np.nanmean(zuobiao['Z'])
     month_data, picture_path = turbine_efficiency_function.monthdata(Df_all_m_all,altitude_farm,path)
-    algorithms_configs['zuobiao_all'] = pd.concat([algorithms_configs['zuobiao_all'], zuobiao])#.append(zuobiao)#全场1min数据
+    
+    
     ########################################################
     #上传图片到minio
     url_picture = upload(picture_path, algorithms_configs)
     #mysql记录
     insertAirDensityPicture(algorithms_configs, url_picture)
+    ########################################################
+    #发电量计算
+    eny = pd.DataFrame()
+    for i in range(len(wtids)):
+        temp = Df_all_m_all[Df_all_m_all['wtid']==wtids[i]]
+        #计算实际发电量
+        eny.loc[i,'wtid'] = wtids[i]
+        eny.loc[i,'enyactbypw'] = np.sum(temp[(temp['pwrat','nanmean']>0)&(temp['pwrat','nanmean']<30000)]['pwrat','nanmean']/6.0)/10000
+        eny.loc[i,'wspd'] = np.mean(temp[(temp['wspd','nanmean']>0)&(temp['wspd','nanmean']<50)]['wspd','nanmean'])
+    
+    zuobiao = pd.merge(zuobiao,eny,how='inner',on='wtid')
+    algorithms_configs['zuobiao_all'] = pd.concat([algorithms_configs['zuobiao_all'], zuobiao])#.append(zuobiao)#全场1min数据
     ########################################################
     ###某机型湍流强度计算，输出内容：风资源4
     wind_ti_all = turbine_efficiency_function.wind_ti(Df_all_m_all, windbin, 6)        
@@ -255,109 +344,112 @@ async def judge_model(algorithms_configs):
         dirbin1 = np.arange(-35.1,35.1,0.2) 
         windbin1 = np.arange(3.75,7.75,0.5)
         windbin2 = np.arange(4.0,7.5,0.5)
+
         
-        ###远景机组,计算处也得修改
-        if ManufacturerID=='EN':
-            #Df_all['wdir0'] = signal.medfilt(Df_all['wdir0'],5)
-            Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-            Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],0.5,5,11,0.1,1,1)
-            #Df_all['wdir0'] = signal.medfilt(Df_all['wdir'],5)
-            #Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']           
+        Df_all, Df_all_m = faultCode.filter1(Df_all, Df_all_m)
         
-        ##金风机组机组####,计算处也得修改
-        if ManufacturerID=='GW':
-            if((['wdir0'] in Df_all.columns.values)==False)&((['wdir25'] in Df_all.columns.values)==True):
-                Df_all['wdir0'] = Df_all['wdir25'] - 180.0
-                Df_all_m['wdir0','nanmean'] = Df_all_m['wdir25','nanmean'] - 180.0
-            elif((['wdir0'] in Df_all.columns.values)==False)&((['wdir'] in Df_all.columns.values)==True):
-                Df_all['wdir0'] = Df_all['wdir'] - 180.0
-                Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-                Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],0.2,1,11,0.1,1,1)#1:低通滤波器，2：中值滤波，3：wiener滤波，4：巴特沃斯滤波器
-                Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean'] - 180.0  
-            elif((['wdir0'] in Df_all.columns.values)==False)&((['wdir'] in Df_all.columns.values)==False)&((['wdirs'] in Df_all.columns.values)==True):
-                Df_all['wdir0'] = signal.medfilt(Df_all['wdirs'],5)
-                Df_all_m['wdir0','nanmean'] = Df_all_m['wdirs','nanmean']
-            elif((['wdir0'] in Df_all.columns.values)==False)&((['wdir'] in Df_all.columns.values)==False)&((['wdirs'] in Df_all.columns.values)==False):
-                Df_all['wdir0'] = 0.0
-                Df_all_m['wdir0','nanmean'] = 0.0
-            else:
-                Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],0.5,1,11,0.1,1,1)
-                #Df_all['wdir00'] = Df_all['wdir25']-180.0
-                #Df_all['wdir0'] = signal.medfilt(Df_all['wdir00'],1)  
+        # ###远景机组,计算处也得修改
+        # if ManufacturerID=='EN':
+        #     #Df_all['wdir0'] = signal.medfilt(Df_all['wdir0'],5)
+        #     Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+        #     Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],0.5,5,11,0.1,1,1)
+        #     #Df_all['wdir0'] = signal.medfilt(Df_all['wdir'],5)
+        #     #Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']           
+        
+        # ##金风机组机组####,计算处也得修改
+        # if ManufacturerID=='GW':
+        #     if((['wdir0'] in Df_all.columns.values)==False)&((['wdir25'] in Df_all.columns.values)==True):
+        #         Df_all['wdir0'] = Df_all['wdir25'] - 180.0
+        #         Df_all_m['wdir0','nanmean'] = Df_all_m['wdir25','nanmean'] - 180.0
+        #     elif((['wdir0'] in Df_all.columns.values)==False)&((['wdir'] in Df_all.columns.values)==True):
+        #         Df_all['wdir0'] = Df_all['wdir'] - 180.0
+        #         Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+        #         Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],0.2,1,11,0.1,1,1)#1:低通滤波器，2：中值滤波，3：wiener滤波，4：巴特沃斯滤波器
+        #         Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean'] - 180.0  
+        #     elif((['wdir0'] in Df_all.columns.values)==False)&((['wdir'] in Df_all.columns.values)==False)&((['wdirs'] in Df_all.columns.values)==True):
+        #         Df_all['wdir0'] = signal.medfilt(Df_all['wdirs'],5)
+        #         Df_all_m['wdir0','nanmean'] = Df_all_m['wdirs','nanmean']
+        #     elif((['wdir0'] in Df_all.columns.values)==False)&((['wdir'] in Df_all.columns.values)==False)&((['wdirs'] in Df_all.columns.values)==False):
+        #         Df_all['wdir0'] = 0.0
+        #         Df_all_m['wdir0','nanmean'] = 0.0
+        #     else:
+        #         Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],0.5,1,11,0.1,1,1)
+        #         #Df_all['wdir00'] = Df_all['wdir25']-180.0
+        #         #Df_all['wdir0'] = signal.medfilt(Df_all['wdir00'],1)  
             
         
-        ##明阳机组####,计算处也得修改
-        if (ManufacturerID=='MY')|(ManufacturerID=='My'):
-            #Df_all['wdir'] = Df_all['wdir'].fillna(method='ffill')
-            Df_all['wdir0'] = Df_all['wdir']
-            #Df_all['wdir0'] = Df_all['wdir'] - Df_all['yaw']
-            Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-            #Df_all['wdir0'] = Df_all['wdir']
-            Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],0.2,5,11,0.5,1,1)#1:低通滤波器，2：中值滤波，3：wiener滤波，4：巴特沃斯滤波器
-            Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']
-            #Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean'] - Df_all_m['yaw','nanmean']
+        # ##明阳机组####,计算处也得修改
+        # if (ManufacturerID=='MY')|(ManufacturerID=='My'):
+        #     #Df_all['wdir'] = Df_all['wdir'].fillna(method='ffill')
+        #     Df_all['wdir0'] = Df_all['wdir']
+        #     #Df_all['wdir0'] = Df_all['wdir'] - Df_all['yaw']
+        #     Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+        #     #Df_all['wdir0'] = Df_all['wdir']
+        #     Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],0.2,5,11,0.5,1,1)#1:低通滤波器，2：中值滤波，3：wiener滤波，4：巴特沃斯滤波器
+        #     Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']
+        #     #Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean'] - Df_all_m['yaw','nanmean']
                     
-        #####三一机组、湘电机组,计算处也得修改
-        if (ManufacturerID=='SE')|(ManufacturerID=='SI')|(ManufacturerID=='XE'):
-            if((['wdir0'] in Df_all.columns.values)==False):
-                Df_all['wdir0'] = Df_all['wdir'] - Df_all['yaw']
-                Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-                Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean'] - Df_all_m['yaw','nanmean']
-            else:
-                Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-            Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],0.5,5,11,0.5,1,1)
+        # #####三一机组、湘电机组,计算处也得修改
+        # if (ManufacturerID=='SE')|(ManufacturerID=='SI')|(ManufacturerID=='XE'):
+        #     if((['wdir0'] in Df_all.columns.values)==False):
+        #         Df_all['wdir0'] = Df_all['wdir'] - Df_all['yaw']
+        #         Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+        #         Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean'] - Df_all_m['yaw','nanmean']
+        #     else:
+        #         Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+        #     Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],0.5,5,11,0.5,1,1)
             
-            #Df_all['wdir0'] = Df_all['wdir'] - 180.0
-            #Df_all['wdir0'] = signal.medfilt(Df_all['wdir0'],5)
-            #Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean'] - 180.0  
+        #     #Df_all['wdir0'] = Df_all['wdir'] - 180.0
+        #     #Df_all['wdir0'] = signal.medfilt(Df_all['wdir0'],5)
+        #     #Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean'] - 180.0  
         
-        ###海装机组、运达机组,计算处也得修改
-        if (ManufacturerID=='H1')|(ManufacturerID=='HZ')|(ManufacturerID=='WD'):
-            #Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-            Df_all['wdir'] = Df_all['wdir'].fillna(0)
-            Df_all['wdir0'] = Df_all['wdir'] - 180.0
-            Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],0.2,5,11,0.5,1,1)
-            Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean'] - 180.0
+        # ###海装机组、运达机组,计算处也得修改
+        # if (ManufacturerID=='H1')|(ManufacturerID=='HZ')|(ManufacturerID=='WD'):
+        #     #Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+        #     Df_all['wdir'] = Df_all['wdir'].fillna(0)
+        #     Df_all['wdir0'] = Df_all['wdir'] - 180.0
+        #     Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],0.2,5,11,0.5,1,1)
+        #     Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean'] - 180.0
         
-        ###中车机组,计算处也得修改
-        if ManufacturerID=='WT':
-            if((['wdir0'] in Df_all.columns.values)==False):
-                Df_all['wdir0'] = Df_all['wdir'].fillna(0)
-                Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']
-            else:
-                Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-            Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],0.2,5,11,0.5,1,1)   #许继不滤波            
+        # ###中车机组,计算处也得修改
+        # if ManufacturerID=='WT':
+        #     if((['wdir0'] in Df_all.columns.values)==False):
+        #         Df_all['wdir0'] = Df_all['wdir'].fillna(0)
+        #         Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']
+        #     else:
+        #         Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+        #     Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],0.2,5,11,0.5,1,1)   #许继不滤波            
         
-        ###东气机组,计算处也得修改
-        if ManufacturerID=='FD':
-            Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-            Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],0.2,5,11,0.5,1,1)
-            Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']
+        # ###东气机组,计算处也得修改
+        # if ManufacturerID=='FD':
+        #     Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+        #     Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],0.2,5,11,0.5,1,1)
+        #     Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']
             
-        ###联合动力机组,计算处也得修改
-        if ManufacturerID=='UP':
-            Df_all['wdir'] = Df_all['wdir'].fillna(0)
-            Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],0.2,5,11,0.5,1,1)
-            Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']
+        # ###联合动力机组,计算处也得修改
+        # if ManufacturerID=='UP':
+        #     Df_all['wdir'] = Df_all['wdir'].fillna(0)
+        #     Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],0.2,5,11,0.5,1,1)
+        #     Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']
         
-        ###上气机组,计算处也得修改
-        if (ManufacturerID=='W2')|(ManufacturerID=='W23')|(ManufacturerID=='W4'):
-            Df_all['wdir'] = Df_all['wdir'].fillna(0)
-            Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],0.2,5,11,0.5,1,1)
-            Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']
-            ###联合动力机组,计算处也得修改
-        if ManufacturerID=='XW':
-            Df_all['wdir'] = Df_all['wdir'].fillna(0)
-            Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],0.2,5,11,0.5,1,1)
-            Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']
+        # ###上气机组,计算处也得修改
+        # if (ManufacturerID=='W2')|(ManufacturerID=='W23')|(ManufacturerID=='W4'):
+        #     Df_all['wdir'] = Df_all['wdir'].fillna(0)
+        #     Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],0.2,5,11,0.5,1,1)
+        #     Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']
+        #     ###联合动力机组,计算处也得修改
+        # if ManufacturerID=='XW':
+        #     Df_all['wdir'] = Df_all['wdir'].fillna(0)
+        #     Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],0.2,5,11,0.5,1,1)
+        #     Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']
             
-            ###太重机组,计算处也得修改
-        if ManufacturerID=='TZ':
-            Df_all['wdir0'] = Df_all['wdir'] - 180.0
-            Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-            Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean'] - 180.0
-            #Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],0.2,5,11,0.5,1,1)
-            #Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']
+        #     ###太重机组,计算处也得修改
+        # if ManufacturerID=='TZ':
+        #     Df_all['wdir0'] = Df_all['wdir'] - 180.0
+        #     Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+        #     Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean'] - 180.0
+        #     #Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],0.2,5,11,0.5,1,1)
+        #     #Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']
                 
             
         
@@ -655,6 +747,13 @@ async def judge_model(algorithms_configs):
                 plt.gca().spines["right"].set_color('#869AA7')
                 plt.gca().spines["top"].set_color('#869AA7')
             fig.savefig(path + '/' +str(turbine_name) + '_pitch_balance_err.png',dpi=100, transparent=True, bbox_inches='tight')
+            ########################################################
+            #上传图片到minio
+            picture_path = path + '/' +str(turbine_name) + '_pitch_balance_err.png'
+            url_picture = upload(picture_path, algorithms_configs)
+            #mysql记录
+            insertPitchAnglePicture(algorithms_configs, url_picture, turbine_name)
+            ########################################################
 
         
         #最小桨距角异常data=all，输出内容：变桨控制分析：最小桨距角异常
@@ -833,7 +932,7 @@ async def judge_model(algorithms_configs):
         picture_path = path + '/' +str(turbine_name) + '_wdir0.png'
         url_picture = upload(picture_path, algorithms_configs)
         #mysql记录
-        insertNavigationBiasControlPicture(algorithms_configs, url_picture, turbine_name)
+        insertNavigationBiasControlPicture(algorithms_configs, url_picture, turbine_name, turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'yaw_leiji_err'])
         ########################################################
         #偏航对风误差计算，额定功率异常不计算, 输出内容：控制分析：偏航对风误差偏大
         if (turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'power_rate_err'].values == 0):
@@ -869,97 +968,94 @@ async def judge_model(algorithms_configs):
                     if err_result == -999999:
                         Df_all = Df_all_all[Df_all_all['wtid'] == turbine_name]
 
-                        ###远景机组
-                        if ManufacturerID=='EN':
-                            #Df_all['wdir0'] = signal.medfilt(Df_all['wdir0'],5)
-                            Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-                            Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
-                            #Df_all['wdir0'] = signal.medfilt(Df_all['wdir'],5)
-                            #Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']           
+                        Df_all, Df_all_m = faultCode.filter2(Df_all, Df_all_m, medfilt_num, filter1st_tao, choose_num)
 
-                        ##金风机组机组####
-                        if ManufacturerID=='GW':
-                            if((['wdir0'] in Df_all.columns.values)==False)&((['wdir25'] in Df_all.columns.values)==True):
-                                Df_all['wdir0'] = Df_all['wdir25'] - 180.0
-                                Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-                                Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
-                            elif((['wdir0'] in Df_all.columns.values)==False)&((['wdir'] in Df_all.columns.values)==True):
-                                Df_all['wdir0'] = Df_all['wdir'] - 180.0
-                                Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-                                Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)#1:低通滤波器，2：中值滤波，3：wiener滤波，4：巴特沃斯滤波器
-                            elif((['wdir0'] in Df_all.columns.values)==False)&((['wdir'] in Df_all.columns.values)==False)&((['wdirs'] in Df_all.columns.values)==True):
-                                Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdirs'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
-                            elif((['wdir0'] in Df_all.columns.values)==False)&((['wdir'] in Df_all.columns.values)==False)&((['wdirs'] in Df_all.columns.values)==False):
-                                Df_all['wdir0'] = 0.0
-                            else:
-                                Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdirs'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
+                        # ###远景机组
+                        # if ManufacturerID=='EN':
+                        #     #Df_all['wdir0'] = signal.medfilt(Df_all['wdir0'],5)
+                        #     Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+                        #     Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
+                        #     #Df_all['wdir0'] = signal.medfilt(Df_all['wdir'],5)
+                        #     #Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']           
+
+                        # ##金风机组机组####
+                        # if ManufacturerID=='GW':
+                        #     if((['wdir0'] in Df_all.columns.values)==False)&((['wdir25'] in Df_all.columns.values)==True):
+                        #         Df_all['wdir0'] = Df_all['wdir25'] - 180.0
+                        #         Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+                        #         Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
+                        #     elif((['wdir0'] in Df_all.columns.values)==False)&((['wdir'] in Df_all.columns.values)==True):
+                        #         Df_all['wdir0'] = Df_all['wdir'] - 180.0
+                        #         Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+                        #         Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)#1:低通滤波器，2：中值滤波，3：wiener滤波，4：巴特沃斯滤波器
+                        #     elif((['wdir0'] in Df_all.columns.values)==False)&((['wdir'] in Df_all.columns.values)==False)&((['wdirs'] in Df_all.columns.values)==True):
+                        #         Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdirs'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
+                        #     elif((['wdir0'] in Df_all.columns.values)==False)&((['wdir'] in Df_all.columns.values)==False)&((['wdirs'] in Df_all.columns.values)==False):
+                        #         Df_all['wdir0'] = 0.0
+                        #     else:
+                        #         Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdirs'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
                             
-                        ##明阳机组####
-                        if (ManufacturerID=='MY')|(ManufacturerID=='My'):
-                            #Df_all['wdir'] = Df_all['wdir'].fillna(0)
-                            #Df_all['wdir0'] = Df_all['wdir'] - Df_all['yaw']
-                            Df_all['wdir0'] = Df_all['wdir']
-                            Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-                            Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],filter1st_tao,medfilt_num,11,0.5,1,choose_num)#1:低通滤波器，2：中值滤波，3：wiener滤波，4：巴特沃斯滤波器
-                            Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']
+                        # ##明阳机组####
+                        # if (ManufacturerID=='MY')|(ManufacturerID=='My'):
+                        #     #Df_all['wdir'] = Df_all['wdir'].fillna(0)
+                        #     #Df_all['wdir0'] = Df_all['wdir'] - Df_all['yaw']
+                        #     Df_all['wdir0'] = Df_all['wdir']
+                        #     Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+                        #     Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],filter1st_tao,medfilt_num,11,0.5,1,choose_num)#1:低通滤波器，2：中值滤波，3：wiener滤波，4：巴特沃斯滤波器
+                        #     Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']
                                     
-                        #####三一机组、湘电机组
-                        if (ManufacturerID=='SE')|(ManufacturerID=='SI')|(ManufacturerID=='XE'):
-                            if((['wdir0'] in Df_all.columns.values)==False):
-                                Df_all['wdir0'] = Df_all['wdir'] - Df_all['yaw']
-                                Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-                            else:
-                                Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+                        # #####三一机组、湘电机组
+                        # if (ManufacturerID=='SE')|(ManufacturerID=='SI')|(ManufacturerID=='XE'):
+                        #     if((['wdir0'] in Df_all.columns.values)==False):
+                        #         Df_all['wdir0'] = Df_all['wdir'] - Df_all['yaw']
+                        #         Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+                        #     else:
+                        #         Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
                                 
-                            Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdirs'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
+                        #     Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdirs'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
 
-                        ###海装机组、运达机组
-                        if (ManufacturerID=='H1')|(ManufacturerID=='HZ')|(ManufacturerID=='WD'):
-                            Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-                            Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
+                        # ###海装机组、运达机组
+                        # if (ManufacturerID=='H1')|(ManufacturerID=='HZ')|(ManufacturerID=='WD'):
+                        #     Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+                        #     Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
 
-                        ###中车机组
-                        if ManufacturerID=='WT':
-                            if((['wdir0'] in Df_all.columns.values)==False):
-                                #Df_all['wdir0'] = Df_all['wdir'] - Df_all['yaw']
-                                Df_all['wdir0'] = Df_all['wdir'].fillna(0)
-                            else:
-                                Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+                        # ###中车机组
+                        # if ManufacturerID=='WT':
+                        #     if((['wdir0'] in Df_all.columns.values)==False):
+                        #         #Df_all['wdir0'] = Df_all['wdir'] - Df_all['yaw']
+                        #         Df_all['wdir0'] = Df_all['wdir'].fillna(0)
+                        #     else:
+                        #         Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
                                 
-                            Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
+                        #     Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
 
-                        ###东气机组
-                        if ManufacturerID=='FD':
-                            Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-                            Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
+                        # ###东气机组
+                        # if ManufacturerID=='FD':
+                        #     Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+                        #     Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
                             
-                        ###联合动力机组
-                        if ManufacturerID=='FD':
-                            Df_all['wdir'] = Df_all['wdir'].fillna(0)
-                            Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
+                        # ###联合动力机组
+                        # if ManufacturerID=='FD':
+                        #     Df_all['wdir'] = Df_all['wdir'].fillna(0)
+                        #     Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
                             
-                        ###太重机组
-                        if ManufacturerID=='FD':
-                            Df_all['wdir0'] = Df_all['wdir'] - 180.0
-                            Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-                            Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
+                        # ###太重机组
+                        # if ManufacturerID=='FD':
+                        #     Df_all['wdir0'] = Df_all['wdir'] - 180.0
+                        #     Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+                        #     Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
                             
-                        ###上气机组,计算处也得修改
-                        if (ManufacturerID=='W2')|(ManufacturerID=='W23')|(ManufacturerID=='W4'):
-                            Df_all['wdir'] = Df_all['wdir'].fillna(0)
-                            Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
+                        # ###上气机组,计算处也得修改
+                        # if (ManufacturerID=='W2')|(ManufacturerID=='W23')|(ManufacturerID=='W4'):
+                        #     Df_all['wdir'] = Df_all['wdir'].fillna(0)
+                        #     Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
                             
                         res_df = turbine_efficiency_function.data_clear(Df_all,Pwrat_Rate,Rotspd_Rate,Rotspd_Connect,rotor_radius,altitude,state)#剔除数据后数据量太少无法有效拟合
                         if len(res_df)<100:
                             res_df = Df_all
                         #res_df = data
                         err_result,picture_path = turbine_efficiency_function.winddir_err_before_new(res_df,dirbin,windbin2,dirbin1,windbin1,path,turbine_name,request_num)
-                        ########################################################
-                        #上传图片到minio
-                        url_picture = upload(picture_path, algorithms_configs)
-                        #mysql记录
-                        insertNavigationBiasDirectionPicture(algorithms_configs, url_picture, turbine_name)
-                        ########################################################    
+                        
                         medfilt_num = medfilt_num + 2                                                       
                         if request_num >=5:
                             choose_num = 1
@@ -973,9 +1069,16 @@ async def judge_model(algorithms_configs):
                 err_result_all.loc[num,'turbine'] = turbine_name
                 err_result_all.loc[num,'yawerr'] = err_result
                 err_result_all.loc[num,'loss'] = (1 - np.cos(3.14159*err_result/180.0)**2)*0.75
-                if np.abs(err_result)>=5.0:
+                ########################################################
+                #上传图片到minio
+                url_picture = upload(picture_path, algorithms_configs)
+                #mysql记录
+                insertNavigationBiasDirectionPicture(algorithms_configs, url_picture, turbine_name, err_result, err_result_all.loc[num,'loss'])
+                ########################################################
+                if np.abs(err_result)>5.0 and np.abs(err_result)<999:
                     turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'yaw_duifeng_err'] = err_result
                     turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'yaw_duifeng_loss'] = err_result_all.loc[num,'loss']
+                        
             except Exception:
                 err_result_all.loc[num,'turbine'] = turbine_name
                 err_result_all.loc[num,'yawerr'] = -999999
@@ -1042,7 +1145,109 @@ async def judge_model(algorithms_configs):
             #Df_all_m_clear = Df_all_m
             #df_all_clear = Df_all_m
             #print(str(turbine_name)+'数据异常！！！！！！！！！！！！！！')
+    ###############################################
+    #word报告最小桨距角的对比图
+    ##########################################
+    for num in range(len(wtids)):
+        turbine_name = wtids[num]
+        #最小桨距角异常损失计算
+        if turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'pitch_min_err'].values == 1:
             
+            Df_all_m = Df_all_m_all[Df_all_m_all['wtid'] == turbine_name]
+            
+            #########无叶片2、3角度，防止报错
+            if((['pitch2','nanmean'] in Df_all_m.columns.values)==False):
+                Df_all_m['pitch2','nanmean'] = Df_all_m['pitch1','nanmean']
+            if((['pitch3','nanmean'] in Df_all_m.columns.values)==False):
+                Df_all_m['pitch3','nanmean'] = Df_all_m['pitch1','nanmean']
+                
+            #10min数据清洗
+            try:
+                Df_all_m_clear = turbine_efficiency_function.data_min_clear(Df_all_m,state,Rotspd_Connect,Rotspd_Rate,Pwrat_Rate,Pitch_Min,neighbors_num=20,threshold=3)
+                df_all_clear = Df_all_m_clear[Df_all_m_clear['clear'] <= 7]#最小桨距角异常特殊为7
+            except Exception:
+                Df_all_m_clear = Df_all_m
+                Df_all_m_clear['clear'] = 2
+                Df_all_m_clear['pitchlim'] = 0
+                df_all_clear = Df_all_m_clear
+            
+            if len(df_all_clear)<100:
+                Df_all_m_clear = Df_all_m
+                Df_all_m_clear['clear'] = 2
+                Df_all_m_clear['pitchlim'] = 0
+                df_all_clear = Df_all_m_clear
+            
+            zuobiao_temp = zuobiao.loc[:,['wtid','X','Y']]
+            zuobiao_temp['x_temp'] = zuobiao.loc[zuobiao['wtid']==turbine_name,'X'].values[0]
+            zuobiao_temp['y_temp'] = zuobiao.loc[zuobiao['wtid']==turbine_name,'Y'].values[0]
+            zuobiao_temp['juli'] = np.sqrt((zuobiao_temp['x_temp'] - zuobiao_temp['X'])**2+(zuobiao_temp['y_temp'] - zuobiao_temp['Y'])**2)
+            turbine_err_all_temp = turbine_err_all[(turbine_err_all['pitch_min_err']==0)&((turbine_err_all['power_rate_err']==0))]
+            if len(turbine_err_all_temp)>0:                    
+                zuobiao_temp = zuobiao_temp[zuobiao_temp['wtid'].isin(turbine_err_all_temp['wtid'])]
+                turbine_camp = zuobiao_temp.loc[zuobiao_temp['juli']==np.min(zuobiao_temp['juli']),'wtid'].values[0]
+                pw_df_temp = pw_df_alltime.loc[:,['windbin',turbine_camp,turbine_name]]
+                df_all_clear['windbin'] = pd.cut(df_all_clear['wspd','nanmean'],windbinreg,labels=windbin)
+                df_all_clear.reset_index(level=0,inplace=True)
+                df_all_clear = pd.merge(df_all_clear,pw_df_temp,how='left',on='windbin')
+                df_all_clear.set_index(('localtime',''),inplace= True)
+                
+                temp = df_all_clear[(df_all_clear[turbine_camp]>df_all_clear[turbine_name])&(df_all_clear[turbine_camp]>df_all_clear['pwrat','nanmean'])]
+                if len(temp)>0:
+                    turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'pitch_min_loss'] = 0.6*np.nansum(temp[turbine_camp]-temp['pwrat','nanmean'])/np.nansum(Df_all_m['pwrat','nanmean'])
+                else:
+                    turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'pitch_min_loss'] = -999999
+                    
+            else:
+                turbine_camp = zuobiao_temp.loc[zuobiao_temp['juli']==np.min(zuobiao_temp['juli']),'wtid'].values[0]               
+                pw_df_temp = pw_df_alltime.loc[:,['windbin','pwrat',turbine_name]]
+                
+                df_all_clear['windbin'] = pd.cut(df_all_clear['wspd','nanmean'],windbinreg,labels=windbin)
+                df_all_clear.reset_index(level=0,inplace=True)
+                df_all_clear = pd.merge(df_all_clear,pw_df_temp,how='left',on='windbin')
+                df_all_clear.set_index(('localtime',''),inplace= True)
+                
+                temp = df_all_clear[(df_all_clear['pwrat']>df_all_clear[turbine_name])&(df_all_clear['pwrat']>df_all_clear['pwrat','nanmean'])]
+                if len(temp)>0:
+                    turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'pitch_min_loss'] = 0.6*np.nansum(temp['pwrat']-temp['pwrat','nanmean'])/np.nansum(Df_all_m['pwrat','nanmean'])
+                else:
+                    turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'pitch_min_loss'] = -999999
+            
+            
+            fig, ax = plt.subplots(figsize=(10, 8), dpi=100)
+            plt.title(str(turbine_name),fontsize=20,color='#869AA7') 
+            ax.scatter(df_all_clear['wspd','nanmean'],df_all_clear['pitch1','nanmean'],color='green',s=10,label='桨距角1') 
+            ax.scatter(df_all_clear['wspd','nanmean'],df_all_clear['pitch2','nanmean'],color='yellow',s=10,label='桨距角2') 
+            ax.scatter(df_all_clear['wspd','nanmean'],df_all_clear['pitch3','nanmean'],color='red',s=10,label='桨距角3') 
+            ax.set_xlabel('风速(m/s)',fontsize=20, color='#869AA7')
+            ax.set_ylabel('桨距角(°)',fontsize=20, color='#869AA7')
+            ax.set_xlim(0.001,20)
+            ax.set_ylim(-3,20)
+            ax.legend(loc=2,fontsize=15)
+            ax1 = ax.twinx()
+            ax1.plot(pw_df_temp['windbin'],pw_df_temp[turbine_camp],'-',color='darkorange',markersize=3,linewidth=1.5,label=str(turbine_camp+'功率曲线'))
+            ax1.plot(pw_df_temp['windbin'],pw_df_temp[turbine_name],'-',color='black',markersize=3,linewidth=1.5,label=str(turbine_name+'功率曲线'))
+            ax1.scatter(df_all_clear['wspd','nanmean'],df_all_clear['pwrat','nanmean'],color='cornflowerblue',s=10,label=str(turbine_name+'功率散点'))
+            ax1.set_ylabel('功率(kW)',fontsize=20, color='#869AA7')
+            ax.tick_params(which='both',labelcolor='#869AA7', width=0,color='#869AA7', labelsize=20,gridOn=True,grid_color='#869AA7',direction ='in',right=True)
+            ax1.tick_params(which='both',labelcolor='#869AA7', width=0,color='#869AA7', labelsize=20,gridOn=False,grid_color='#869AA7',direction ='in',right=True)
+            ax1.set_ylim(0,Pwrat_Rate*1.05)
+            ax1.legend(loc=1,fontsize=15)
+            plt.gca().spines["left"].set_color('#869AA7')
+            plt.gca().spines["bottom"].set_color('#869AA7')
+            plt.gca().spines["right"].set_color('#869AA7')
+            plt.gca().spines["top"].set_color('#869AA7')
+            plt.gca().set_xlim(0.001,20)
+            fig.savefig(path + '/' +str(turbine_name) + '_pitch_min_err.png',dpi=100, transparent=True, bbox_inches='tight')
+            ######################################################
+            #为word生成最小桨距角对比图
+            ########################################################
+            #上传图片到minio
+            picture_path = path + '/' +str(turbine_name) + '_pitch_min_err.png'
+            url_picture = upload(picture_path, algorithms_configs)
+            #mysql记录
+            updatePitchAnglePicture(algorithms_configs, url_picture, turbine_name, turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'pitch_min_loss'])
+
+
     #########绘制各机组CP曲线 
     turbine_num = 16
     pnum = len(wtids)//turbine_num
@@ -1070,6 +1275,15 @@ async def judge_model(algorithms_configs):
                 plt.gca().spines["right"].set_color('#869AA7')
                 plt.gca().spines["top"].set_color('#869AA7')
             fig.savefig(path + '/' +'Cp曲线'+str(j_pw) +'.png',dpi=100, transparent=True, bbox_inches='tight')
+            ######################################################
+            #为word生成cp曲线图
+            ########################################################
+            #上传图片到minio
+            picture_path = path + '/' +'Cp曲线'+str(j_pw) +'.png'
+            url_picture = upload(picture_path, algorithms_configs)
+            #mysql记录
+            insertCPPicture(algorithms_configs, url_picture)
+            
     else: 
         camp20 = plt.get_cmap('tab20')
         fig = plt.figure(figsize=(10,8),dpi=100)  
@@ -1090,6 +1304,53 @@ async def judge_model(algorithms_configs):
             plt.gca().spines["right"].set_color('#869AA7')
             plt.gca().spines["top"].set_color('#869AA7')
         fig.savefig(path + '/' +'Cp曲线'+str(pnum+1) +'.png',dpi=100,transparent=True, bbox_inches='tight')
+        ######################################################
+        #为word生成cp曲线图
+        ########################################################
+        #上传图片到minio
+        picture_path = path + '/' +'Cp曲线'+str(pnum+1) +'.png'
+        url_picture = upload(picture_path, algorithms_configs)
+        #mysql记录
+        insertCPPicture(algorithms_configs, url_picture)
+    
+    ##################################################################################
+    #单一机型， 大部件异常
+    ##################################################################################
+    if len(wtids)>=3:
+        #wtids = np.array(['#01', '#02', '#03', '#05', '#06', '#07', '#09', '#13'],dtype=object)
+        abnormal_detect_all = pd.DataFrame()
+        trubine_juli = pd.DataFrame()
+        for i in range(len(wtids)):
+            for j in range(len(wtids)):
+                trubine_juli.loc[wtids[i],wtids[j]] = np.sqrt((zuobiao.loc[zuobiao['wtid']==wtids[i],'X'].values[0] - zuobiao.loc[zuobiao['wtid']==wtids[j],'X'].values[0])**2+(zuobiao.loc[zuobiao['wtid']==wtids[i],'Y'].values[0] - zuobiao.loc[zuobiao['wtid']==wtids[j],'Y'].values[0])**2)
+        
+        wtids_select = np.array([])
+        for i in range(len(wtids)):
+            try:
+                if wtids[i] in wtids_select:
+                    pass
+                    #print(wtids[i])
+                else:
+                    turbine_camp = trubine_juli[wtids[i]].nsmallest(3).index.values
+                    wtids_select = np.concatenate((wtids_select,turbine_camp),axis=0)
+                    abnormalData = turbine_efficiency_function.abnormal_detect_low(Df_all_m_all,turbine_camp,altitude,hub_high,rotor_radius,turbine_param_all,state,Pwrat_Rate,path,wtids[i])
+                    if abnormalData.empty == False:
+                        for j in range(len(abnormalData)):
+                            picture_path = abnormalData.iloc[j,'picture']
+                            turbine_name = abnormalData.iloc[j,'turbine']
+                            device_name = abnormalData.iloc[j,'device']
+                            ########################################################
+                            #上传图片到minio
+                            url_picture = upload(picture_path, algorithms_configs)
+                            #mysql记录
+                            insertDevicePicture(algorithms_configs, url_picture, turbine_name, device_name)
+                            ########################################################    
+            except Exception as e:
+                print(wtids[i]+'机组abnormal_detect_low报错')
+                errorInfomation = traceback.format_exc()
+                print(f'\033[31m{errorInfomation}\033[0m')
+                print(f'\033[33m顶层函数execute_multi_algorithms补获异常：{e}\033[0m')
+    ##################################################################################
 
     #################################################################################
     #全风机类型
@@ -1102,6 +1363,7 @@ async def judge_model(algorithms_configs):
         wind_freq = turbine_efficiency_function.winddistribute(Df_all_m_all_alltype,windbin,windbinreg)
         wind_max = np.nanmax(Df_all_m_all_alltype['wspd','nanmax'])
         wind_mean = np.nanmean(Df_all_m_all_alltype['wspd','nanmean'])
+        insertWindResourceWord(algorithms_configs,wind_freq, wind_max, wind_mean)
         
         fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
         ax.bar(wind_freq['windbin'],wind_freq['freq'],color='royalblue',bottom = 0,width=0.2)
@@ -1120,6 +1382,7 @@ async def judge_model(algorithms_configs):
         #全场月平均空气密度及风速
         altitude_farm = np.nanmean(algorithms_configs['zuobiao_all']['Z'])
         month_data, filename = turbine_efficiency_function.monthdata(Df_all_m_all_alltype,altitude_farm,os.path.dirname(path))
+        
         ########################################################
         #上传图片到minio
         picture_path = filename
@@ -1151,3 +1414,32 @@ async def judge_model(algorithms_configs):
         #mysql记录
         insertAllTurbulencePicture(algorithms_configs, url_picture)
         ########################################################
+        if (np.nanmax(wind_ti_alltype['windbin']) >= 15.0)&(15.0 in wind_ti_alltype['windbin'].values):
+            ti_windbin15 = round(wind_ti_alltype[wind_ti_alltype['windbin']==15.0]['ti'].values[0],2)
+            updateWindResourceWord(algorithms_configs, month_data['rho'].mean(), month_data['wspd'].idxmax(), ti_windbin15, 1)
+        else:
+            ti_windbin15 = np.nanmean(wind_ti_alltype['ti'])
+            updateWindResourceWord(algorithms_configs, month_data['rho'].mean(), month_data['wspd'].idxmax(), ti_windbin15, 0)
+        
+
+        #全场坐标
+        fig = plt.figure(figsize=(10,8),dpi=100)  
+        plt.subplot(1,1,1)
+        with plt.style.context('ggplot'):
+            plt.scatter(algorithms_configs['zuobiao_all'].loc[:,'X'],algorithms_configs['zuobiao_all'].loc[:,'Y'],s=10.0*algorithms_configs['zuobiao_all'].loc[:,'enyactbypw'],c=algorithms_configs['zuobiao_all']['Z'],cmap='jet',label='实发电量')
+            plt.xticks(rotation=90)
+            plt.legend(loc=1,fontsize=8)
+            plt.colorbar(label='海拔')
+            for x, y ,wtid  in zip(algorithms_configs['zuobiao_all'].loc[:,'X'], algorithms_configs['zuobiao_all'].loc[:,'Y'],algorithms_configs['zuobiao_all'].loc[:,'wtid']):
+                plt.text(x, y, '{0}'.format(wtid),verticalalignment='center', horizontalalignment='center',fontsize=12, color='black')
+            plt.xlabel('经度',fontsize=14)
+            plt.ylabel('纬度',fontsize=14)
+        fig.savefig(os.path.dirname(path) + '/' + 'zuobiao_all.png',dpi=100,bbox_inches='tight')  
+        ########################################################
+        #上传图片到minio
+        picture_path = os.path.dirname(path) + '/' +'zuobiao_all'+'.png'
+        url_picture = upload(picture_path, algorithms_configs)
+        #mysql记录
+        insertAllZuobiaoPicture(algorithms_configs, url_picture)
+        
+        

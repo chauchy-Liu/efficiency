@@ -53,6 +53,8 @@ def analyse(farmName, typeName:list, startTime, endTime):
             elem['faultLoss'] = '%.4f'%(stop_loss_show_temp.loc[num,'loss'])
             #平均风速(m/s)
             elem['meanWindSpeed'] = '%.4f'%(stop_loss_show_temp.loc[num,'wspd'])
+            #环境温度
+            elem['exltmp'] = '%.4f'%(stop_loss_show_temp.loc[num,'exltmp'])
             result['table'].append(elem)
         # stop_loss_show_temp.insert(0, 'wtid', turbine_list[num])
         stop_loss_show = pd.concat([stop_loss_show,stop_loss_show_temp])#.append(stop_loss_show_temp)

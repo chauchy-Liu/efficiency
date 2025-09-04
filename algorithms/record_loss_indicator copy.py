@@ -6,7 +6,6 @@ import pandas as pd
 import utils.time_util as time_util
 import asyncio
 from datetime import datetime as datetime
-from datetime import timedelta
 from configs.config import algConfig
 import data.efficiency_function as turbine_efficiency_function
 from db.db import selectPwTimeAll, insertTechnologyLossAll, insertLimturbineLossAll, insertFaultgridLossAll,insertStopLossAll,insertFaultLossAll, insertLimgridLossAll,insertEnyWspdAll, insertTurbineWarningAll, selectStopLossAll, selectZeroWrop
@@ -15,7 +14,6 @@ from pylab import mpl
 import sys
 import statistics as st
 from scipy import signal,integrate
-import traceback
 
 mpl.interactive(False)
 plt.switch_backend('agg')
@@ -57,7 +55,6 @@ async def judge_model(algorithms_configs):
     Df_all_all = algorithms_configs['Df_all_all']
     Df_all_m_all = algorithms_configs['Df_all_m_all']
     state = algorithms_configs['state']
-    statetyNormal = algorithms_configs['statetyNorm']
     limpw_state = algorithms_configs['limpw_state'] 
     Pwrat_Rate = algorithms_configs['Pwrat_Rate']
     path = algorithms_configs['path']
@@ -70,31 +67,24 @@ async def judge_model(algorithms_configs):
     fault_code = algorithms_configs['fault_code']
     state_code = algorithms_configs['state_code']
     typeName = algorithms_configs['typeName']
-    if algConfig["record_loss_indicator"]["isStatety"]:
-        # 统一状态替换替换限功率测点
-        Df_all_m_all['limpw','mymode'] = Df_all_m_all['statety','mymode']
-        Df_all_m_all['limpw','nanmean'] = Df_all_m_all['statety','nanmean']
+    # if algConfig[name]["isStatety"]:
+    #     # 统一状态替换替换限功率测点
+    #     Df_all_m_all['limpw','mymode'] = Df_all_m_all['statety','mymode']
     ###########################################################
     #从mysql表中提取数据
     pw_df_alltime = selectPwTimeAll(pd.DataFrame(), algorithms_configs['farmName'], algorithms_configs['typeName'])
     ##########################################################每天执行一次计算
     day_list = pd.date_range(np.min(Df_all_m_all.index),np.max(Df_all_m_all.index),freq="1d",normalize=True).strftime('%Y-%m-%d %H:%M:%S').to_list()#7天为一周期判断
-    if len(day_list) == 1:
-        dayObj = datetime.strptime(day_list[0], '%Y-%m-%d %H:%M:%S') + timedelta(days=1)
-        dayStr = dayObj.strftime('%Y-%m-%d %H:%M:%S')
-        day_list.append(dayStr)
-        dayLength = len(day_list) - 1
-    else:
-        dayLength = len(day_list)-1
-    for i in range(dayLength):
+    
+    for i in range(len(day_list)-1):
         print(str(day_list[i]))
-        # startTime = datetime.strptime(str(day_list[i]), "%Y-%m-%d %H:%M:%S") - pd.Timedelta(days=1)
-        # if i == 0:
-        #     stop_loss_all_record, turbine_dict = selectStopLossAll(pd.DataFrame(), algorithms_configs['farmName'], typeName, startTime, startTime)
-        # else:
-        #     stop_loss_all_record = stop_loss_all
+        startTime = datetime.strptime(str(day_list[i]), "%Y-%m-%d %H:%M:%S") - pd.Timedelta(days=1)
+        if i == 0:
+            stop_loss_all_record, turbine_dict = selectStopLossAll(pd.DataFrame(), algorithms_configs['farmName'], typeName, startTime, startTime)
+        else:
+            stop_loss_all_record = stop_loss_all
         # 场站限停时段
-        # zero_wrop = selectZeroWrop(algorithms_configs['farmName'], datetime.strptime(str(day_list[i]), "%Y-%m-%d %H:%M:%S"), datetime.strptime(str(day_list[i]), "%Y-%m-%d %H:%M:%S") + pd.Timedelta(days=1))
+        zero_wrop = selectZeroWrop(algorithms_configs['farmName'], datetime.strptime(str(day_list[i]), "%Y-%m-%d %H:%M:%S"), datetime.strptime(str(day_list[i]), "%Y-%m-%d %H:%M:%S") + pd.Timedelta(days=1))
         for num in range(len(Turbine_attr_type)):
             
             fault_loss = pd.DataFrame()
@@ -127,125 +117,135 @@ async def judge_model(algorithms_configs):
                 Df_all_m_clear = Df_all_m
                 Df_all_m_clear['clear'] = 6
             
-        
-            
+            #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # 将电网限电后10到20min的连续计划停机的限电标志位改为4
+            #计划停机限电状态跨天
+            #单机单类型
+            #承接前一天
+            if not stop_loss_all_record.empty:
+                limgrid_continue_flag = stop_loss_all_record[(stop_loss_all_record['wtid']==turbine_name)&(stop_loss_all_record['type']==typeName)&(stop_loss_all_record['localtime']==startTime)]['limgrid_continue_flag'].values[0]
+                if limgrid_continue_flag == 1:
+                    lim_start_time = datetime.strptime(str(day_list[i]), "%Y-%m-%d %H:%M:%S")
+                    lim_end_time = lim_start_time + pd.Timedelta(minutes=20)
+                    while True:
+                        mask = (Df_all_m['state','mymode']==8) & (Df_all_m['fault','nanmean']==200004) & (Df_all_m['localtime']<=lim_end_time) & (Df_all_m['localtime']>lim_start_time)
+                        Df_all_m_stop = Df_all_m[mask] #停机码：state:8, fault:20004
+                        if not Df_all_m_stop.empty:
+                            Df_all_m.loc[mask, ('limpw','mymode')] = 4
+                            lim_start_time = Df_all_m_stop['localtime'].max()
+                            lim_end_time = lim_start_time + pd.Timedelta(minutes=20)
+                        else:
+                            break
+            #处理当天
+            Df_all_m_limpw = Df_all_m[Df_all_m['limpw','mymode']==4] #限电：4
+            if Df_all_m_limpw.empty:
+                lim_start_time = datetime.strptime(str(day_list[i]), "%Y-%m-%d %H:%M:%S")
+                lim_end_time = datetime.strptime(str(day_list[i]), "%Y-%m-%d %H:%M:%S")
+            for lim_i in range(Df_all_m_limpw.shape[0]):
+                #跨过重叠时间
+                if not stop_loss_all_record.empty and limgrid_continue_flag == 1 and Df_all_m_limpw.iloc[lim_i]['localtime'].values[0]<=lim_start_time:
+                    continue
+                lim_start_time = Df_all_m_limpw.iloc[lim_i]['localtime'].values[0]
+                lim_end_time = lim_start_time + pd.Timedelta(minutes=20)
+                while True:
+                    mask = (Df_all_m['state','mymode']==8) & (Df_all_m['fault','nanmean']==200004) & (Df_all_m['localtime']<=lim_end_time) & (Df_all_m['localtime']>lim_start_time)
+                    Df_all_m_stop = Df_all_m[mask] #停机码：state:8
+                    if not Df_all_m_stop.empty:
+                        Df_all_m.loc[mask, ('limpw','mymode')]= 4
+                        lim_start_time = Df_all_m_stop['localtime'].max()
+                        lim_end_time = lim_start_time + pd.Timedelta(minutes=20)
+                    else:
+                        break
+            #计划停机限电状态跨天
+            #启下当天之后的限电状态
+            if lim_end_time >= datetime.strptime(str(day_list[i]), "%Y-%m-%d %H:%M:%S")+pd.Timedelta(days=1):
+                limgrid_continue_flag = 1
+            else:
+                limgrid_continue_flag = 0
+            #------------------------------------------------------------------------------------------------------
+            # 场站限停也把计划停机的限电标志位改为4
+            for zero_i in range(zero_wrop.shape[0]):
+                zero_start_time = zero_wrop.iloc[zero_i]['start_time']
+                zero_end_time = zero_wrop.iloc[zero_i]['end_time']
+                mask = (Df_all_m['state','mymode']==8) & (Df_all_m['fault','nanmean']==200004) & (Df_all_m['localtime']<=zero_end_time) & (Df_all_m['localtime']>=zero_start_time)
+                Df_all_m_stop = Df_all_m[mask] #停机码：state:8
+                if not Df_all_m_stop.empty:
+                    Df_all_m.loc[mask, ('limpw','mymode')] = 4
+            #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
             ###单机故障损失计算(分仓、功率曲线合并后的数据框---未知故障解释的停机全部归到故障停机中)###有故障时故障码不为0！！！！！！！！！！！！！！
             ##金风机组发生编码为733的故障时，风速不更新，导致损失电量计算不准确
             #输出内容：损失分析：三个表
-            try:
-                fault_loss = turbine_efficiency_function.Turbine_Fault_Loss(Df_all_m,turbine_name,pw_df_temp,fault_code,state_code) 
-                fault_loss.insert(0, 'type', typeName)
-                day_temp = datetime.strptime(day_list[i], '%Y-%m-%d %H:%M:%S')
-                day_temp = datetime.strftime(day_temp, '%Y-%m-%d')
-                day_temp = datetime.strptime(day_temp, '%Y-%m-%d')
-                fault_loss.insert(0, 'localtime', day_temp)              
-                # fault_loss.insert(0, 'localtime', pd.to_datetime(day_list[i],format='%Y-%m-%d'))              
-                fault_loss_all = pd.concat([fault_loss_all,fault_loss])#.append(fault_loss)
-            except Exception as e:
-                errorInfomation = traceback.format_exc()
-                print(f'\033[31m{errorInfomation}\033[0m')
-                print(f'\033[33m顶层函数execute_multi_algorithms补获异常：{e}\033[0m')
+            fault_loss = turbine_efficiency_function.Turbine_Fault_Loss(Df_all_m,turbine_name,pw_df_temp,fault_code,state_code) 
+            fault_loss.insert(0, 'type', typeName)
+            day_temp = datetime.strptime(day_list[i], '%Y-%m-%d %H:%M:%S')
+            day_temp = datetime.strftime(day_temp, '%Y-%m-%d')
+            day_temp = datetime.strptime(day_temp, '%Y-%m-%d')
+            fault_loss.insert(0, 'localtime', day_temp)              
+            # fault_loss.insert(0, 'localtime', pd.to_datetime(day_list[i],format='%Y-%m-%d'))              
+            fault_loss_all = pd.concat([fault_loss_all,fault_loss])#.append(fault_loss)
             
-            try:
-                ###单机电网限电损失(不包括限功率停机)，最小桨距角异常、额定功率异常不计算，这两种控制异常中台都会标记为90001！！！！！！
-                # limgrid_loss = turbine_efficiency_function.Grid_Limit_Loss(Df_all_m,turbine_name,pw_df_temp,fault_code,limpw_state)
-                Df_all_m_temp = turbine_efficiency_function.Grid_limit_stop(Df_all_m,limpw_state,state,3)
-                # if (turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'power_rate_err'].values >= 0):#&(turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'pitch_min_err'].values == 0):
-            except Exception as e:
-                errorInfomation = traceback.format_exc()
-                print(f'\033[31m{errorInfomation}\033[0m')
-                print(f'\033[33m顶层函数execute_multi_algorithms补获异常：{e}\033[0m')
-            
-            try:
-                limgrid_loss = turbine_efficiency_function.Grid_Limit_Loss(Df_all_m_temp,turbine_name,pw_df_temp,fault_code,limpw_state)
-                limgrid_loss.insert(0, 'type', typeName)
-                day_temp = datetime.strptime(day_list[i], '%Y-%m-%d %H:%M:%S')
-                day_temp = datetime.strftime(day_temp, '%Y-%m-%d')
-                day_temp = datetime.strptime(day_temp, '%Y-%m-%d')
-                limgrid_loss.insert(0, 'localtime', day_temp)              
-                # limgrid_loss.insert(0, 'localtime', pd.to_datetime(day_list[i],format='%Y-%m-%d'))
-                limgrid_loss_all = pd.concat([limgrid_loss_all,limgrid_loss])#.append(limgrid_loss)
-            except Exception as e:
-                errorInfomation = traceback.format_exc()
-                print(f'\033[31m{errorInfomation}\033[0m')
-                print(f'\033[33m顶层函数execute_multi_algorithms补获异常：{e}\033[0m')
+            ###单机电网限电损失(不包括限功率停机)，最小桨距角异常、额定功率异常不计算，这两种控制异常中台都会标记为90001！！！！！！
+            limgrid_loss = turbine_efficiency_function.Grid_Limit_Loss(Df_all_m,turbine_name,pw_df_temp,fault_code,state_code)
+            limgrid_loss.insert(0, 'type', typeName)
+            day_temp = datetime.strptime(day_list[i], '%Y-%m-%d %H:%M:%S')
+            day_temp = datetime.strftime(day_temp, '%Y-%m-%d')
+            day_temp = datetime.strptime(day_temp, '%Y-%m-%d')
+            limgrid_loss.insert(0, 'localtime', day_temp)              
+            # limgrid_loss.insert(0, 'localtime', pd.to_datetime(day_list[i],format='%Y-%m-%d'))
+            limgrid_loss_all = pd.concat([limgrid_loss_all,limgrid_loss])#.append(limgrid_loss)
                             
             
             ###单机计划停机损失
-            try:
-                stop_loss = turbine_efficiency_function.Stop_Loss(Df_all_m,turbine_name,pw_df_temp,fault_code,limpw_state)
-                stop_loss.insert(0, 'type', typeName)
-                day_temp = datetime.strptime(day_list[i], '%Y-%m-%d %H:%M:%S')
-                day_temp = datetime.strftime(day_temp, '%Y-%m-%d')
-                day_temp = datetime.strptime(day_temp, '%Y-%m-%d')
-                stop_loss.insert(0, 'localtime', day_temp)              
-                # stop_loss.insert(0, 'localtime', pd.to_datetime(day_list[i],format='%Y-%m-%d'))
-                stop_loss_all = pd.concat([stop_loss_all,stop_loss])#.append(stop_loss)
-            except Exception as e:
-                errorInfomation = traceback.format_exc()
-                print(f'\033[31m{errorInfomation}\033[0m')
-                print(f'\033[33m顶层函数execute_multi_algorithms补获异常：{e}\033[0m')
+            stop_loss = turbine_efficiency_function.Stop_Loss(Df_all_m,turbine_name,pw_df_temp,state_code)
+            stop_loss.insert(0, 'limgrid_continue_flag', limgrid_continue_flag)
+            stop_loss.insert(0, 'type', typeName)
+            day_temp = datetime.strptime(day_list[i], '%Y-%m-%d %H:%M:%S')
+            day_temp = datetime.strftime(day_temp, '%Y-%m-%d')
+            day_temp = datetime.strptime(day_temp, '%Y-%m-%d')
+            stop_loss.insert(0, 'localtime', day_temp)              
+            # stop_loss.insert(0, 'localtime', pd.to_datetime(day_list[i],format='%Y-%m-%d'))
+            stop_loss_all = pd.concat([stop_loss_all,stop_loss])#.append(stop_loss)
             
             #单机电网故障损失
-            try:
-                faultgrid_loss = turbine_efficiency_function.Grid_Fault_Loss(Df_all_m,turbine_name,pw_df_temp,fault_code,state_code)
-                faultgrid_loss.insert(0, 'type', typeName)
-                day_temp = datetime.strptime(day_list[i], '%Y-%m-%d %H:%M:%S')
-                day_temp = datetime.strftime(day_temp, '%Y-%m-%d')
-                day_temp = datetime.strptime(day_temp, '%Y-%m-%d')
-                faultgrid_loss.insert(0, 'localtime', day_temp)              
-                # faultgrid_loss.insert(0, 'localtime', pd.to_datetime(day_list[i],format='%Y-%m-%d'))
-                faultgrid_loss_all = pd.concat([faultgrid_loss_all,faultgrid_loss])#.append(faultgrid_loss)
-            except Exception as e:
-                errorInfomation = traceback.format_exc()
-                print(f'\033[31m{errorInfomation}\033[0m')
-                print(f'\033[33m顶层函数execute_multi_algorithms补获异常：{e}\033[0m')
+            faultgrid_loss = turbine_efficiency_function.Grid_Fault_Loss(Df_all_m,turbine_name,pw_df_temp,fault_code,state_code)
+            faultgrid_loss.insert(0, 'type', typeName)
+            day_temp = datetime.strptime(day_list[i], '%Y-%m-%d %H:%M:%S')
+            day_temp = datetime.strftime(day_temp, '%Y-%m-%d')
+            day_temp = datetime.strptime(day_temp, '%Y-%m-%d')
+            faultgrid_loss.insert(0, 'localtime', day_temp)              
+            # faultgrid_loss.insert(0, 'localtime', pd.to_datetime(day_list[i],format='%Y-%m-%d'))
+            faultgrid_loss_all = pd.concat([faultgrid_loss_all,faultgrid_loss])#.append(faultgrid_loss)
             
             ##单机自限电损失输入
-            try:
-                (data_limt,limturbine_loss) = turbine_efficiency_function.Turbine_Limit_Loss(Df_all_m_clear[Df_all_m_clear['clear'] <= 7],turbine_name,pw_df_temp,Pitch_Min,Pwrat_Rate,Rotspd_Connect,state, statetyNormal)
-                limturbine_loss.insert(0, 'type', typeName)
-                day_temp = datetime.strptime(day_list[i], '%Y-%m-%d %H:%M:%S')
-                day_temp = datetime.strftime(day_temp, '%Y-%m-%d')
-                day_temp = datetime.strptime(day_temp, '%Y-%m-%d')
-                limturbine_loss.insert(0, 'localtime', day_temp)              
-                # limturbine_loss.insert(0, 'localtime', pd.to_datetime(day_list[i],format='%Y-%m-%d'))
-                limturbine_loss_all = pd.concat([limturbine_loss_all,limturbine_loss])#.append(limturbine_loss) 
-            except Exception as e:
-                errorInfomation = traceback.format_exc()
-                print(f'\033[31m{errorInfomation}\033[0m')
-                print(f'\033[33m顶层函数execute_multi_algorithms补获异常：{e}\033[0m')
+            (data_limt,limturbine_loss) = turbine_efficiency_function.Turbine_Limit_Loss(Df_all_m_clear[Df_all_m_clear['clear'] <= 7],turbine_name,pw_df_temp,Pitch_Min,Pwrat_Rate,Rotspd_Connect,state)
+            limturbine_loss.insert(0, 'type', typeName)
+            day_temp = datetime.strptime(day_list[i], '%Y-%m-%d %H:%M:%S')
+            day_temp = datetime.strftime(day_temp, '%Y-%m-%d')
+            day_temp = datetime.strptime(day_temp, '%Y-%m-%d')
+            limturbine_loss.insert(0, 'localtime', day_temp)              
+            # limturbine_loss.insert(0, 'localtime', pd.to_datetime(day_list[i],format='%Y-%m-%d'))
+            limturbine_loss_all = pd.concat([limturbine_loss_all,limturbine_loss])#.append(limturbine_loss) 
             
             #单机技术待命损失    
-            try:
-                Technology_loss = turbine_efficiency_function.Turbine_Technology_Loss(Df_all_m,turbine_name,pw_df_temp,fault_code,state_code) 
-                Technology_loss.insert(0, 'type', typeName)
-                day_temp = datetime.strptime(day_list[i], '%Y-%m-%d %H:%M:%S')
-                day_temp = datetime.strftime(day_temp, '%Y-%m-%d')
-                day_temp = datetime.strptime(day_temp, '%Y-%m-%d')
-                Technology_loss.insert(0, 'localtime', day_temp)              
-                # Technology_loss.insert(0, 'localtime', pd.to_datetime(day_list[i],format='%Y-%m-%d'))
-                Technology_loss_all = pd.concat([Technology_loss_all,Technology_loss])#.append(Technology_loss)
-            except Exception as e:
-                errorInfomation = traceback.format_exc()
-                print(f'\033[31m{errorInfomation}\033[0m')
-                print(f'\033[33m顶层函数execute_multi_algorithms补获异常：{e}\033[0m')
+            Technology_loss = turbine_efficiency_function.Turbine_Technology_Loss(Df_all_m,turbine_name,pw_df_temp,fault_code,state_code) 
+            Technology_loss.insert(0, 'type', typeName)
+            day_temp = datetime.strptime(day_list[i], '%Y-%m-%d %H:%M:%S')
+            day_temp = datetime.strftime(day_temp, '%Y-%m-%d')
+            day_temp = datetime.strptime(day_temp, '%Y-%m-%d')
+            Technology_loss.insert(0, 'localtime', day_temp)              
+            # Technology_loss.insert(0, 'localtime', pd.to_datetime(day_list[i],format='%Y-%m-%d'))
+            Technology_loss_all = pd.concat([Technology_loss_all,Technology_loss])#.append(Technology_loss)
             
             ##告警统计
-            try:
-                turbine_warning = turbine_efficiency_function.Turbine_Warning(Df_all_m,turbine_name,fault_code,state_code)
-                turbine_warning.insert(0, 'type', typeName)
-                day_temp = datetime.strptime(day_list[i], '%Y-%m-%d %H:%M:%S')
-                day_temp = datetime.strftime(day_temp, '%Y-%m-%d')
-                day_temp = datetime.strptime(day_temp, '%Y-%m-%d')
-                turbine_warning.insert(0, 'localtime', day_temp)              
-                # turbine_warning.insert(0, 'localtime', pd.to_datetime(day_list[i],format='%Y-%m-%d'))
-                turbine_warning_all = pd.concat([turbine_warning_all,turbine_warning])#.append(turbine_warning)
-            except Exception as e:
-                errorInfomation = traceback.format_exc()
-                print(f'\033[31m{errorInfomation}\033[0m')
-                print(f'\033[33m顶层函数execute_multi_algorithms补获异常：{e}\033[0m')
+            turbine_warning = turbine_efficiency_function.Turbine_Warning(Df_all_m,turbine_name,fault_code,state_code)
+            turbine_warning.insert(0, 'type', typeName)
+            day_temp = datetime.strptime(day_list[i], '%Y-%m-%d %H:%M:%S')
+            day_temp = datetime.strftime(day_temp, '%Y-%m-%d')
+            day_temp = datetime.strptime(day_temp, '%Y-%m-%d')
+            turbine_warning.insert(0, 'localtime', day_temp)              
+            # turbine_warning.insert(0, 'localtime', pd.to_datetime(day_list[i],format='%Y-%m-%d'))
+            turbine_warning_all = pd.concat([turbine_warning_all,turbine_warning])#.append(turbine_warning)
             
             #日发电量及风速
             
@@ -265,9 +265,9 @@ async def judge_model(algorithms_configs):
     #全场单机型       
     ##全场损失统计           
     # fenduan_all.to_csv(str(path+'/fenduan.csv'),index=True, encoding='utf-8')
-    if len(turbine_warning_all)>0:
-        turbine_warning_all.set_index(('localtime'),inplace= True)
-        insertTurbineWarningAll(turbine_warning_all, algorithms_configs)
+    if len(turbine_warning)>0:
+        turbine_warning.set_index(('localtime'),inplace= True)
+        insertTurbineWarningAll(turbine_warning, algorithms_configs)
     if len(fault_loss_all)>0:
         fault_loss_all.set_index(('localtime'),inplace= True)
         insertFaultLossAll(fault_loss_all, algorithms_configs)

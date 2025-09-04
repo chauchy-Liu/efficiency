@@ -31,6 +31,7 @@ import configs.config as config
 # from flask import request, jsonify, json, make_response
 import requests
 import json
+import dask.dataframe as dd
 
 #能效分析中需要在算法中用到的输入变量量
 # Pwrat_Rate = None
@@ -484,26 +485,57 @@ async def run_in_threadpool(func, *args):
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(ThreadPoolExecutor(), lambda: func(*args))
 
-async def getWindFarm(wind_farm):
+async def getWindFarm(wind_farms):
     WindFarm_attr = pd.DataFrame()
-    url_asset = str(str(Url_asset) + '&mdmIds=' + str(wind_farm) + '&mdmTypes=EnOS_Wind_Farm&attributes=&locale=zh-CN')
-    
-    ResponsePoint = poseidon.urlopen(AccessKey, SecretKey, url_asset)
-    #print(ResponsePoint)
-    if ResponsePoint and ResponsePoint['pagination']['pageSize'] > 0:
-        WindFarm_attr = pd.DataFrame(ResponsePoint['data'][wind_farm]['mdmObjects']['EnOS_Wind_Farm'][:])
-        WindFarm_attr['风电场名'] = list(map(lambda x: x['name'], WindFarm_attr['attributes']))
-        WindFarm_attr['mdmId'] = list(map(lambda x: x['mdmId'], WindFarm_attr['attributes']))
-        WindFarm_attr['二级公司'] = list(map(lambda x: x['companyID'], WindFarm_attr['attributes']))
-        WindFarm_attr['容量'] = list(map(lambda x: x['operativeCapacity'], WindFarm_attr['attributes']))
-        WindFarm_attr['机型'] = list(map(lambda x: x['wtgTypes'], WindFarm_attr['attributes']))
-        WindFarm_attr['风资源'] = list(map(lambda x: x['resourceType'], WindFarm_attr['attributes']))
-        WindFarm_attr['风机台数'] = list(map(lambda x: x['equipmentAmount'], WindFarm_attr['attributes']))
-        WindFarm_attr['并网日期'] = list(map(lambda x: x['operativeDate'], WindFarm_attr['attributes']))
-        if 'address' in WindFarm_attr['attributes'].keys():
-            WindFarm_attr['地址'] = list(map(lambda x: x['address'], WindFarm_attr['attributes']))
-        elif 'county' in WindFarm_attr['attributes'].keys():
-            WindFarm_attr['地址'] = list(map(lambda x: x['county'], WindFarm_attr['attributes']))
+    for i, wind_farm in enumerate(wind_farms):
+        url_asset = str(str(Url_asset) + '&mdmIds=' + str(wind_farm) + '&mdmTypes=EnOS_Wind_Farm&attributes=&locale=zh-CN')
+        
+        ResponsePoint = poseidon.urlopen(AccessKey, SecretKey, url_asset)
+        #print(ResponsePoint)
+        if ResponsePoint and ResponsePoint['pagination']['pageSize'] > 0:
+            WindFarm = pd.DataFrame(ResponsePoint['data'][wind_farm]['mdmObjects']['EnOS_Wind_Farm'][:])
+            if "fullName" in WindFarm['attributes'][0]:
+                WindFarm_attr.loc[i,'风电场名'] = list(map(lambda x: x['fullName'], WindFarm['attributes']))[0]
+            elif "name" in WindFarm['attributes'][0]:
+                WindFarm_attr.loc[i,'风电场名'] = list(map(lambda x: x['name'], WindFarm['attributes']))[0]
+            else:
+                WindFarm_attr.loc[i,'风电场名'] = np.nan
+            WindFarm_attr.loc[i,'mdmId'] = list(map(lambda x: x['mdmId'], WindFarm['attributes']))[0]
+            if "companyID" in WindFarm['attributes'][0]:
+                WindFarm_attr.loc[i,'二级公司'] = list(map(lambda x: x['companyID'], WindFarm['attributes']))[0]
+            else:
+                WindFarm_attr.loc[i,'二级公司'] = np.nan
+            if "operativeCapacity" in WindFarm['attributes'][0]:
+                WindFarm_attr.loc[i,'容量'] = list(map(lambda x: x['operativeCapacity'], WindFarm['attributes']))[0]
+            elif "CleanEnergyCapacity" in WindFarm['attributes'][0]:
+                WindFarm_attr.loc[i,'容量'] = list(map(lambda x: x['CleanEnergyCapacity'], WindFarm['attributes']))[0]
+            else:
+                WindFarm_attr.loc[i,'容量'] = np.nan
+            if "wtgTypes" in WindFarm['attributes'][0]:
+                WindFarm_attr.loc[i,'机型'] = list(map(lambda x: x['wtgTypes'], WindFarm['attributes']))[0]
+            WindFarm_attr.loc[i,'风资源'] = list(map(lambda x: x['resourceType'], WindFarm['attributes']))[0]
+            if "DevAmount" in WindFarm['attributes'][0]:
+                WindFarm_attr.loc[i,'风机台数'] = list(map(lambda x: x['DevAmount'], WindFarm['attributes']))[0]
+            elif "equipmentAmount" in WindFarm['attributes'][0]:
+                WindFarm_attr.loc[i,'风机台数'] = list(map(lambda x: x['equipmentAmount'], WindFarm['attributes']))[0]
+            else:
+                WindFarm_attr.loc[i,'风机台数'] = np.nan
+            if "operativeDate" in WindFarm['attributes'][0]:
+                WindFarm_attr.loc[i,'并网日期'] = list(map(lambda x: x['operativeDate'], WindFarm['attributes']))[0]
+            elif "allOngridDate" in WindFarm['attributes'][0]:
+                WindFarm_attr.loc[i,'并网日期'] = list(map(lambda x: x['allOngridDate'], WindFarm['attributes']))[0]
+            else:
+                WindFarm_attr.loc[i,'并网日期'] = np.nan
+            if 'address' in WindFarm['attributes'][0].keys():
+                WindFarm_attr.loc[i,'地址'] = list(map(lambda x: x['address'], WindFarm['attributes']))[0]
+            elif 'county' in WindFarm['attributes'][0].keys():
+                WindFarm_attr.loc[i,'地址'] = list(map(lambda x: x['county'], WindFarm['attributes']))[0]
+            else:
+                WindFarm_attr.loc[i,'地址'] = np.nan
+            if 'rccID' in WindFarm['attributes'][0].keys():
+                WindFarm_attr.loc[i,'生产运营中心'] = list(map(lambda x: x['rccID'], WindFarm['attributes']))[0]
+            else:
+                WindFarm_attr.loc[i,'rccID'] = np.nan
         
     return WindFarm_attr
 
@@ -526,8 +558,11 @@ async def getWindTurbines(wind_farm):
             map(lambda x: x['name'],  wind_turbine_df['attributes']))
         wind_turbine_df['ratedPower'] = list(
             map(lambda x: x['ratedPower'],  wind_turbine_df['attributes']))
-        wind_turbine_df['rotorDiameter'] = list(
-            map(lambda x: x['rotorDiameter'],  wind_turbine_df['attributes']))
+        if 'rotorDiameter' in wind_turbine_df['attributes']:
+            wind_turbine_df['rotorDiameter'] = list(
+                map(lambda x: x['rotorDiameter'],  wind_turbine_df['attributes']))
+        else:
+            wind_turbine_df['rotorDiameter'] = [115] * len(wind_turbine_df['attributes'])
         wind_turbine_df['altitude'] = list(
             map(lambda x: x['altitude'],  wind_turbine_df['attributes']))
         wind_turbine_df['hubHeight'] = list(
@@ -804,36 +839,480 @@ def parallel_fill_data(df_list, result, num_processes=None):
 
     return result
 
+# def custom_merge(df_list):
+#     funStartTime = time.time()
+#     # 获取所有DataFrame的行索引和列名
+#     all_index = set()
+#     all_columns = set()
+#     for df in df_list:
+#         all_index.update(df.index)
+#         all_columns.update(df.columns)
+    
+#     # 创建一个空的DataFrame，包含所有可能的行和列
+#     result = pd.DataFrame(index=sorted(all_index), columns=sorted(all_columns))
+    
+#     # # 填充数据
+#     # for df in df_list:
+#     #     for idx in df.index:
+#     #         for col in df.columns:
+#     #             if pd.notna(df.loc[idx, col]):  # 只更新非空值
+#     #                 result.loc[idx, col] = df.loc[idx, col]
+
+#     # #多线程处理
+#     # result = parallel_fill_data(df_list, result, 3)
+
+#     for df in df_list:
+#         local_result = pd.DataFrame(index=sorted(all_index), columns=sorted(all_columns))
+#         mask = df.notna()
+#         local_result.update(df.where(mask))
+#         result.update(local_result)
+
+#     time_logger.info(f'###########################执行一次 custom_merge pandas表融合时长{time.time()-funStartTime}秒###################')
+#     return result
+
 def custom_merge(df_list):
     funStartTime = time.time()
-    # 获取所有DataFrame的行索引和列名
-    all_index = set()
-    all_columns = set()
-    for df in df_list:
-        all_index.update(df.index)
-        all_columns.update(df.columns)
+    # 1. 转换所有DataFrame为Dask DataFrame
+    ddfs = [dd.from_pandas(df, npartitions=4) for df in df_list]
     
-    # 创建一个空的DataFrame，包含所有可能的行和列
-    result = pd.DataFrame(index=sorted(all_index), columns=sorted(all_columns))
+    # 2. 获取所有唯一索引和列名
+    all_index = dd.concat([ddf.index for ddf in ddfs]).unique().compute()
+    all_columns = list(set().union(*[ddf.columns for ddf in ddfs]))
     
-    # # 填充数据
-    # for df in df_list:
-    #     for idx in df.index:
-    #         for col in df.columns:
-    #             if pd.notna(df.loc[idx, col]):  # 只更新非空值
-    #                 result.loc[idx, col] = df.loc[idx, col]
-
-    # #多线程处理
-    # result = parallel_fill_data(df_list, result, 3)
-
+    # 3. 创建完整索引的空DataFrame作为基础
+    base_df = dd.from_pandas(
+        pd.DataFrame(index=all_index, columns=all_columns), 
+        npartitions=4
+    )
+    merged = base_df.compute()
     for df in df_list:
-        local_result = pd.DataFrame(index=sorted(all_index), columns=sorted(all_columns))
+        # _, merged = df.align(merged, join="outer", axis=None)
         mask = df.notna()
-        local_result.update(df.where(mask))
-        result.update(local_result)
+        merged.update(df.where(mask))
+    # # 4. 定义合并函数
+    # def safe_update(base, new):
+    #     # 仅在base值为nan时更新
+    #     mask = base.isna()
+    #     return base.where(~mask, new)
+    
+    # # 5. 逐步合并所有DataFrame
+    # merged = base_df
+    # for ddf in ddfs:
+    #     # 对齐索引和列
+    #     aligned = ddf.compute().reindex(index=all_index, columns=all_columns) #aligned, _ = ddf.align(base_df, join="outer", axis=None)#
+    #     # 安全更新
+    #     # map_partitions 是 Dask 的核心方法之一，它：
+
+    #     # 将函数应用于每个分区（并行处理）
+
+    #     # 保持 DataFrame 结构不变
+
+    #     # 适用于自定义的分区级操作
+    #     merged = merged.map_partitions(
+    #         lambda df: safe_update(df, aligned.loc[df.index]),
+    #         meta=merged._meta # 指定返回类型
+    #     )
+    
+    result =  merged#.compute()
 
     time_logger.info(f'###########################执行一次 custom_merge pandas表融合时长{time.time()-funStartTime}秒###################')
     return result
+
+
+# async def TimeDeviceSlice(algorithms_configs): #, ai_points, resample_interval, getData
+#     funStartTime = time.time()
+#     # 按算法种类、时间和设备分片
+#     time_asset_param = []
+#     di_time_asset_param = []
+#     for key, value in algorithms_configs.items():
+#         # print(key)
+#         # if algorithms_configs[key]['PrepareTurbines'] == True:
+
+#         # #ai测点分组，为了解决请求数据时测点数量的限制以及快速合并数据
+#         # numPoints = algorithms_configs[key]['pointNum']
+#         # if len(algorithms_configs[key]["aiPoints"]) > numPoints:   
+#         #     accumCount = 0
+#         #     groupIndex = 0
+#         #     while len(algorithms_configs[key]["aiPoints"][accumCount:]) >= numPoints: 
+#         #         algorithms_configs[key]["aiPoints"+str(groupIndex)] = algorithms_configs[key]["aiPoints"][accumCount:accumCount+numPoints]
+#         #         accumCount += numPoints
+#         #         groupIndex += 1
+#         # algorithms_configs[key]["groupNum"] = groupIndex
+
+#         # 私有设备id扁平化
+#         privateIds = []
+#         for ids in value['param_private_assetIds']:
+#             privateIds += ids
+#         # privateIds = value['param_private_assetIds'] #[风机1[model1(id),model2(id)], 风机2[model1(id),model2(id)]]
+#         assetIds = value['param_assetIds']
+#         startTime = value['startTime']
+#         endTime = value['endTime']
+#         #di测点一般7天有一次数据, 小于7天可能获取不到数据
+#         di_startTime = value['startTime']
+#         di_endTime = value['endTime']
+#         # if di_endTime - di_startTime < timedelta(days=7):
+#         #     di_startTime = di_endTime - timedelta(days=7)
+#         #时间分片
+#         date_range = []
+#         timeUnit = algorithms_configs[key]['timeSlice'].split("=")[0]
+#         timeValue = algorithms_configs[key]['timeSlice'].split("=")[-1]
+#         if timeUnit == "hours":
+#             if endTime - startTime > timedelta(hours=float(timeValue)): #hours=12,hours=4, minutes=10
+#                 date_range = pd.date_range(startTime, endTime, freq=str(timeValue)+"h").strftime(
+#                     '%Y-%m-%d %H:%M:%S').to_list() #12h, 4h, 10min
+#             else:
+#                 date_range = [startTime.strftime('%Y-%m-%d %H:%M:%S'), endTime.strftime('%Y-%m-%d %H:%M:%S')]
+#         time_param = [(key, date_range[i], date_range[i + 1])
+#                     for i in range(len(date_range) - 1)]
+#         #针对di时间
+#         di_date_range = []
+#         di_timeUnit = algorithms_configs[key]['timeSlice'].split("=")[0]
+#         di_timeValue = algorithms_configs[key]['timeSlice'].split("=")[-1]
+#         if di_timeUnit == "hours":
+#             if di_endTime - di_startTime > timedelta(hours=float(di_timeValue)): #hours=12, hours=4, minutes=10
+#                 di_date_range = pd.date_range(di_startTime, di_endTime, freq=str(timeValue)+"h").strftime(
+#                     '%Y-%m-%d %H:%M:%S').to_list() #12h, 4h, 10min
+#             else:
+#                 di_date_range = [di_startTime.strftime('%Y-%m-%d %H:%M:%S'), di_endTime.strftime('%Y-%m-%d %H:%M:%S')]
+#         di_time_param = [(key, di_date_range[i], di_date_range[i + 1])
+#                     for i in range(len(di_date_range) - 1)]
+#         # 加上设备（笛卡尔积）
+#         if len(value["privatePoints"])>0:
+#             # for modelKey, pointsValue in value["privatePoints"].items():
+#             time_asset_param += product(time_param, privateIds)
+#         if len(value["aiPoints"]) > 0 or len(value["generalPoints"])>0:
+#             time_asset_param += product(time_param, assetIds)
+#         if len(value["diPoints"]) + len(value["cjDiPoints"]) + len(value["tyDiPoints"])> 0:
+#             di_time_asset_param += product(di_time_param, assetIds)
+#     if len(time_asset_param) == 0 and len(di_time_asset_param) == 0:
+#         return {}, {}, {}, {}, {}, {}
+#     final_time_asset_param = [(item[0][0], item[0][1], item[0][2], item[1])
+#                               for item in time_asset_param]  #(algorithm, startTime,startTime+12,turbineId)
+#     di_final_time_asset_param = [(item[0][0], item[0][1], item[0][2], item[1])
+#                               for item in di_time_asset_param]  #(algorithm, startTime,startTime+12,turbineId)
+#     # getAiDataWithTimeFunc = partial(getAiData, points=ai_points, resample_interval=resample_interval)
+#     # 获取ai数据
+#     timeout = 120#120 #180 #秒
+#     # aiTasks = [getAiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["aiPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in final_time_asset_param if len(algorithms_configs[time_tuple[0]]["aiPoints"])>0]
+#     aiTasks = []
+#     #ai测点分组，为了解决请求数据时测点数量的限制以及快速合并数据
+#     numPoints = algorithms_configs[key]['pointNum']
+#     for time_tuple in final_time_asset_param:
+#         if len(algorithms_configs[time_tuple[0]]["aiPoints"])>0:
+#             if len(algorithms_configs[time_tuple[0]]["aiPoints"]) > numPoints:
+#                 accumCount = 0
+#                 while len(algorithms_configs[time_tuple[0]]["aiPoints"][accumCount:]) >= numPoints:
+#                     if Platform == "ZhongTai":
+#                         aiTasks.append([])
+#                         aiTasks[-1].append(getAiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["aiPoints"][accumCount:accumCount+numPoints], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs))
+#                     elif Platform == "WuLianWang":
+#                         aiTasks.append([])
+#                         aiTasks[-1].append(getAiDataIntel(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["aiPoints"][accumCount:accumCount+numPoints], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs))
+#                     accumCount += numPoints
+#                 if len(algorithms_configs[time_tuple[0]]["aiPoints"][accumCount:]) > 0:
+#                     if Platform == "ZhongTai":
+#                         aiTasks.append([])
+#                         aiTasks[-1].append(getAiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["aiPoints"][accumCount:], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs))
+#                     elif Platform == "WuLianWang":
+#                         aiTasks.append([])
+#                         aiTasks[-1].append(getAiDataIntel(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["aiPoints"][accumCount:], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs))
+#             else:
+#                 if Platform == "ZhongTai":
+#                     aiTasks.append([])
+#                     aiTasks[-1].append(getAiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["aiPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs))
+#                 elif Platform == "WuLianWang":
+#                     aiTasks.append([])
+#                     aiTasks[-1].append(getAiDataIntel(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["aiPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs))
+
+#     aiResults = []
+#     if len(aiTasks) > 0:
+#         for i in range(len(aiTasks)):
+#             done, pending = await asyncio.wait(aiTasks[i], timeout=timeout)   
+#             aiResults.append([])
+#             aiResults[-1] = [task.result() for task in done]
+#             tmp = [task.cancel() for task in pending]
+#     # else:
+#     #     aiResults = []
+#     # 获取di数据
+#     if Platform == "ZhongTai":
+#         diTasks = [getDiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["diPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in di_final_time_asset_param if len(algorithms_configs[time_tuple[0]]["diPoints"])>0]
+#     elif Platform == "WuLianWang":
+#         diTasks = [getDiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["diPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in di_final_time_asset_param if len(algorithms_configs[time_tuple[0]]["diPoints"])>0]
+#     if len(diTasks) > 0:
+#         done, pending = await asyncio.wait(diTasks, timeout=timeout)   
+#         diResults = [task.result() for task in done]
+#         tmp = [task.cancel() for task in pending]
+#     else:
+#         diResults = []
+#     # 获取cj_di数据
+#     if Platform == "ZhongTai":
+#         cjDiTasks = [getDiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["cjDiPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in di_final_time_asset_param if len(algorithms_configs[time_tuple[0]]["cjDiPoints"])>0]
+#     elif Platform == "WuLianWang":
+#         cjDiTasks = [getDiDataIntel(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["cjDiPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in di_final_time_asset_param if len(algorithms_configs[time_tuple[0]]["cjDiPoints"])>0]
+#     if len(cjDiTasks) > 0:
+          
+#         done, pending = await asyncio.wait(cjDiTasks, timeout=timeout)   
+#         cjDiResults = [task.result() for task in done]
+#         tmp = [task.cancel() for task in pending]
+#     else:
+#         cjDiResults = []
+#     # 获取ty_di数据
+#     if Platform == "ZhongTai":
+#         tyDiTasks = [getDiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["tyDiPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in di_final_time_asset_param if len(algorithms_configs[time_tuple[0]]["tyDiPoints"])>0]
+#     elif Platform == "WuLianWang":
+#         tyDiTasks = [getDiDataIntel(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["tyDiPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in di_final_time_asset_param if len(algorithms_configs[time_tuple[0]]["tyDiPoints"])>0]
+#     if len(tyDiTasks) > 0:
+          
+#         done, pending = await asyncio.wait(tyDiTasks, timeout=timeout)   
+#         tyDiResults = [task.result() for task in done]
+#         tmp = [task.cancel() for task in pending]
+#     else:
+#         tyDiResults = []
+#     # 获取general数据
+#     if Platform == "ZhongTai":
+#         generalTasks = [getGeneralData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["generalPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in final_time_asset_param if len(algorithms_configs[time_tuple[0]]["generalPoints"])>0]
+#     elif Platform == "WuLianWang":
+#         generalTasks = [getGeneralDataIntel(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["generalPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in final_time_asset_param if len(algorithms_configs[time_tuple[0]]["generalPoints"])>0]
+#     if len(generalTasks) > 0:
+#         done, pending = await asyncio.wait(generalTasks, timeout=timeout)   
+#         generalResults = [task.result() for task in done]
+#         tmp = [task.cancel() for task in pending]
+#     else:
+#         generalResults = []
+
+#     time_logger.info(f'###########################执行一次 TimeDeviceSlice 请求总时长{time.time()-funStartTime}秒###################')
+#     funStartTime = time.time()
+#     #存储数据结果
+#     ai_df = {}
+#     di_df = {}
+#     cj_di_df = {}
+#     ty_di_df = {}
+#     general_df = {}
+#     private_df = {}
+#     for key, value in algorithms_configs.items():
+#         name = importlib.import_module('.' + key, package='algorithms')
+#         ###################################################################
+#         #组内测点纵向合并时间，组件横向合并各测点
+#         aiResultList = []
+#         ai_df[key] = pd.DataFrame()
+#         #遍历组
+#         for groupResult in aiResults:
+#             inGroupResult = pd.DataFrame()
+#             #遍历时间块
+#             for result in groupResult:
+#                 if result.empty == False:
+#                     aiResultList.append(result.loc[result['algorithm']==key])
+#                 else:
+#                     aiResultList.append(pd.DataFrame())
+        
+#                 if len(aiResultList) > 0:
+#                     inGroupResult = pd.concat(aiResultList)
+#                     inGroupResult = inGroupResult[~inGroupResult.index.duplicated()]
+#                     if 'timestamp' in inGroupResult.columns.to_list():
+#                         inGroupResult.drop('timestamp', axis=1, inplace=True)
+#             ai_df[key] = pd.concat([ai_df[key], inGroupResult], axis=1)
+#         # ai_df[key].drop('assetId', axis=1, inplace=True)
+#         ai_df[key] = ai_df[key].dropna(axis=1, thresh=int(len(ai_df[key])*0.1))
+#         ai_df[key].loc[:,ai_df[key].dtypes=='float64'] = ai_df[key].loc[:,ai_df[key].dtypes=='float64'].astype('float32')
+#         #重命名
+#         if len(name.ai_rename) != 0:
+#             for pointkey, evalue in name.ai_rename.items():
+#                 if pointkey in ai_df[key].columns.tolist():
+#                     ai_df[key].rename(columns={pointkey:evalue}, inplace=True)
+#                     # if pointkey in name.ai_points:
+#                         # index_key = name.ai_points.index(pointkey)
+#                         # name.ai_points[index_key] = evalue
+#         #去重复列名
+#         ai_df[key] = ai_df[key].dropna(axis=1,thresh=int(len(ai_df[key])*0.1))#某列非空值数量小于总数的10%剔除该列
+#         ai_df[key] = ai_df[key].loc[:,~ai_df[key].columns.duplicated()]
+#         # elif 'WGEN.GenSpdInstant' in ai_df[key].columns.tolist():
+#         #     ai_df[key].rename(columns={'WGEN.GenSpdInstant':'WGEN.GenSpd'}, inplace=True
+#         ###################################################################
+#         diResultList = []
+#         for result in diResults:
+#             if result.empty == False:
+#                 diResultList.append(result.loc[result['algorithm']==key])
+#             else:
+#                 diResultList.append(pd.DataFrame())
+#         di_df[key] = pd.concat(diResultList)
+#         if len(di_df[key]) > 0:
+#             di_df[key] = di_df[key][~di_df[key].index.duplicated()]#时间重复
+#             if 'timestamp' in di_df[key].columns.to_list():
+#                 di_df[key].drop('timestamp', axis=1, inplace=True)
+#             # di_df[key].drop('assetId', axis=1, inplace=True)
+#             # di_df[key] = di_df[key].dropna(axis=1,how='all')
+#             # if (endTime - startTime) != (di_endTime - di_startTime):
+#             #     resample_interval = algorithms_configs[key]["resampleTime"]
+#             #     resample_interval = time_util.replace_to_resample(
+#             #     resample_interval)
+#             #     if startTime < di_df[key].index.min() or startTime > di_df[key].index.max():
+#             #         di_df[key].loc[startTime] = np.nan
+#             #     if endTime < di_df[key].index.min() or endTime > di_df[key].index.max():
+#             #         di_df[key].loc[endTime] = np.nan
+#             #     #实际取得的测点和自定义的可能不一致会报错
+#             #     # common_columns = DfTemp.columns.intersection(points).tolist()
+#             #     di_df[key] = di_df[key].resample(resample_interval, closed='left').ffill()
+#             #     di_df[key] = di_df[key].ffill()
+#             #     di_df[key] = di_df[key].bfill()
+#             #     di_df[key] = di_df[key][(di_df[key].index >= startTime) & (di_df[key].index <= endTime)]
+#             #重命名
+#             if len(name.di_rename) != 0:
+#                 for pointkey, evalue in name.di_rename.items():
+#                     if pointkey in di_df[key].columns.tolist():
+#                         di_df[key].rename(columns={pointkey:evalue}, inplace=True)
+#                         # if pointkey in name.di_points:
+#                         #     index_key = name.di_points.index(pointkey)
+#                         #     name.di_points[index_key] = evalue
+#             #去重复列名
+#             di_df[key] = di_df[key].dropna(axis=1,how='all')
+#             di_df[key] = di_df[key].loc[:,~di_df[key].columns.duplicated()]
+#             ####剔除连续时间重复状态
+#             di_df[key]['sta1'] = di_df[key]['statel'].shift(periods=1, axis=0)
+#             di_df[key]['shift'] = di_df[key]['statel'] - di_df[key]['sta1']
+#             di_df[key] = di_df[key].loc[di_df[key]['shift']!=0, ['statel', 'assetId']]
+#         else:
+#             di_df[key] = pd.DataFrame()
+#         ###################################################################
+#         cjDiResultList = []
+#         for result in cjDiResults:
+#             if result.empty == False:
+#                 cjDiResultList.append(result.loc[result['algorithm']==key])
+#             else:
+#                 cjDiResultList.append(pd.DataFrame())
+#         cj_di_df[key] = pd.concat(cjDiResultList)
+#         if len(cj_di_df[key]) > 0:
+#             cj_di_df[key] = cj_di_df[key][~cj_di_df[key].index.duplicated()]#时间重复
+#             if 'timestamp' in cj_di_df[key].columns.to_list():
+#                 cj_di_df[key].drop('timestamp', axis=1, inplace=True)
+#             # cj_di_df[key].drop('assetId', axis=1, inplace=True)
+#             # cj_di_df[key] = cj_di_df[key].dropna(axis=1,how='all')
+#             # if (endTime - startTime) != (di_endTime - di_startTime):
+#             #     resample_interval = algorithms_configs[key]["resampleTime"]
+#             #     resample_interval = time_util.replace_to_resample(
+#             #     resample_interval)
+#             #     if startTime < cj_di_df[key].index.min() or startTime > cj_di_df[key].index.max():
+#             #         cj_di_df[key].loc[startTime] = np.nan
+#             #     if endTime < cj_di_df[key].index.min() or endTime > cj_di_df[key].index.max():
+#             #         cj_di_df[key].loc[endTime] = np.nan
+#             #     #实际取得的测点和自定义的可能不一致会报错
+#             #     # common_columns = DfTemp.columns.intersection(points).tolist()
+#             #     cj_di_df[key] = cj_di_df[key].resample(resample_interval, closed='left').ffill()
+#             #     cj_di_df[key] = cj_di_df[key].ffill()
+#             #     cj_di_df[key] = cj_di_df[key].bfill()
+#             #     cj_di_df[key] = cj_di_df[key][(cj_di_df[key].index >= startTime) & (cj_di_df[key].index <= endTime)]
+#             #重命名
+#             if len(name.cj_di_rename) != 0:
+#                 for pointkey, evalue in name.cj_di_rename.items():
+#                     if pointkey in cj_di_df[key].columns.tolist():
+#                         cj_di_df[key].rename(columns={pointkey:evalue}, inplace=True)
+#                         # if pointkey in name.cj_di_points:
+#                         #     index_key = name.cj_di_points.index(pointkey)
+#                         #     name.cj_di_points[index_key] = evalue
+#             #去重复列名
+#             cj_di_df[key] = cj_di_df[key].dropna(axis=1,how='all')
+#             cj_di_df[key] = cj_di_df[key].loc[:,~cj_di_df[key].columns.duplicated()]
+#             ####剔除连续时间重复状态
+#             cj_di_df[key]['sta1'] = cj_di_df[key]['state'].shift(periods=1, axis=0)
+#             cj_di_df[key]['shift'] = cj_di_df[key]['state'] - cj_di_df[key]['sta1']
+#             cj_di_df[key] = cj_di_df[key].loc[cj_di_df[key]['shift']!=0, ['state', 'assetId']]
+#         else:
+#             cj_di_df[key] = pd.DataFrame()
+#         ###################################################################
+#         tyDiResultList = []
+#         for result in tyDiResults:
+#             if result.empty == False:
+#                 tyDiResultList.append(result.loc[result['algorithm']==key])
+#             else:
+#                 tyDiResultList.append(pd.DataFrame())
+#         ty_di_df[key] = pd.concat(tyDiResultList)
+#         if len(ty_di_df[key]) > 0:
+#             ty_di_df[key] = ty_di_df[key][~ty_di_df[key].index.duplicated()]#时间重复
+#             if 'timestamp' in ty_di_df[key].columns.to_list():
+#                 ty_di_df[key].drop('timestamp', axis=1, inplace=True)
+#             # ty_di_df[key].drop('assetId', axis=1, inplace=True)
+#             # ty_di_df[key] = ty_di_df[key].dropna(axis=1,how='all')
+#             # if (endTime - startTime) != (di_endTime - di_startTime):
+#             #     resample_interval = algorithms_configs[key]["resampleTime"]
+#             #     resample_interval = time_util.replace_to_resample(
+#             #     resample_interval)
+#             #     if startTime < ty_di_df[key].index.min() or startTime > ty_di_df[key].index.max():
+#             #        ty_di_df[key].loc[startTime] = np.nan
+#             #     if endTime < ty_di_df[key].index.min() or endTime > ty_di_df[key].index.max():
+#             #         ty_di_df[key].loc[endTime] = np.nan
+#             #     #实际取得的测点和自定义的可能不一致会报错
+#             #     # common_columns = DfTemp.columns.intersection(points).tolist()
+#             #     ty_di_df[key] = ty_di_df[key].resample(resample_interval, closed='left').ffill()
+#             #     ty_di_df[key] = ty_di_df[key].ffill()
+#             #     ty_di_df[key] = ty_di_df[key].bfill()
+#             #     ty_di_df[key] = ty_di_df[key][(ty_di_df[key].index >= startTime) & (ty_di_df[key].index <= endTime)]
+#             #重命名
+#             if len(name.ty_di_rename) != 0:
+#                 for pointkey, evalue in name.ty_di_rename.items():
+#                     if pointkey in ty_di_df[key].columns.tolist():
+#                         ty_di_df[key].rename(columns={pointkey:evalue}, inplace=True)
+#                         # if pointkey in name.ty_di_points:
+#                         #     index_key = name.ty_di_points.index(pointkey)
+#                         #     name.ty_di_points[index_key] = evalue
+#             #去重复列名
+#             ty_di_df[key] = ty_di_df[key].dropna(axis=1,how='all')
+#             ty_di_df[key] = ty_di_df[key].loc[:,~ty_di_df[key].columns.duplicated()]
+#             ####剔除连续时间重复状态
+#             ty_di_df[key]['sta1'] = ty_di_df[key]['statety'].shift(periods=1, axis=0)
+#             ty_di_df[key]['shift'] = ty_di_df[key]['statety'] - ty_di_df[key]['sta1']
+#             ty_di_df[key] = ty_di_df[key].loc[ty_di_df[key]['shift']!=0, ['statety', 'assetId']]
+#         else:
+#             ty_di_df[key] = pd.DataFrame()
+#         ###################################################################
+#         generalResultList = []
+#         for result in generalResults:
+#             if result.empty == False:
+#                 generalResultList.append(result.loc[result['algorithm']==key])
+#             else:
+#                 generalResultList.append(pd.DataFrame())
+#         general_df[key] = pd.concat(generalResultList)
+#         if len(general_df[key]) > 0:
+#             general_df[key] = general_df[key][~general_df[key].index.duplicated()]
+#             if 'timestamp' in general_df[key].columns.to_list():
+#                 general_df[key].drop('timestamp',axis=1,inplace=True)
+#             # general_df[key].drop('assetId',axis=1,inplace=True)
+#             general_df[key] = general_df[key].dropna(axis=1,how='all')
+#             #重命名
+#             if len(name.general_rename) != 0:
+#                 for pointkey, evalue in name.general_rename.items():
+#                     if pointkey in general_df[key].columns.tolist():
+#                         general_df[key].rename(columns={pointkey:evalue}, inplace=True)
+#                         # if pointkey in name.general_points:
+#                         #     index_key = name.general_points.index(pointkey)
+#                         #     name.general_points[index_key] = evalue
+#             #去重复列名
+#             general_df[key] = general_df[key].dropna(axis=1,how='all')
+#             general_df[key] = general_df[key].loc[:,~general_df[key].columns.duplicated()]
+#             ####剔除连续时间重复故障
+#             general_df[key]['flt1'] = general_df[key]['fault'].shift(periods=1, axis=0)
+#             general_df[key]['shift'] = general_df[key]['fault'] - general_df[key]['flt1']
+#             general_df[key] = general_df[key].loc[general_df[key]['shift']!=0, ['fault', 'assetId']]
+#         else:
+#             general_df[key] = pd.DataFrame()
+#         ###################################################################
+#         # privateResultList = []
+#         # for result in privateResults:
+#         #     if result.empty == False:
+#         #         privateResultList.append(result.loc[result['algorithm']==key])
+#         #     else:
+#         #         privateResultList.append(pd.DataFrame())
+#         # private_df[key] = pd.concat(privateResultList)
+#         # if len(privateResults) > 0:
+#         #     private_df[key] = private_df[key][~private_df[key].index.duplicated()]
+#         # else:
+#         private_df[key] = pd.DataFrame()
+#         # #合并数据
+#         # fn_df = pd.DataFrame()
+#         # if ai_df[key].empty == False:
+        
+#     # df = pd.concat(results)
+
+#     time_logger.info(f'###########################执行一次 TimeDeviceSlice 存储去重整理格式总时间{time.time()-funStartTime}秒###################')
+#     return ai_df, di_df, cj_di_df, ty_di_df, general_df, private_df
 
 async def TimeDeviceSlice(algorithms_configs): #, ai_points, resample_interval, getData
     funStartTime = time.time()
@@ -858,20 +1337,26 @@ async def TimeDeviceSlice(algorithms_configs): #, ai_points, resample_interval, 
         #     di_startTime = di_endTime - timedelta(days=7)
         #时间分片
         date_range = []
-        if endTime - startTime > timedelta(hours=4): #hours=12,hours=4, minutes=10
-            date_range = pd.date_range(startTime, endTime, freq="4h").strftime(
-                '%Y-%m-%d %H:%M:%S').to_list() #12h, 4h, 10min
-        else:
-            date_range = [startTime.strftime('%Y-%m-%d %H:%M:%S'), endTime.strftime('%Y-%m-%d %H:%M:%S')]
+        timeUnit = algorithms_configs[key]['timeSlice'].split("=")[0]
+        timeValue = algorithms_configs[key]['timeSlice'].split("=")[-1]
+        if timeUnit == "hours":
+            if endTime - startTime > timedelta(hours=float(timeValue)): #hours=12,hours=4, minutes=10
+                date_range = pd.date_range(startTime, endTime, freq=str(timeValue)+"h").strftime(
+                    '%Y-%m-%d %H:%M:%S').to_list() #12h, 4h, 10min
+            else:
+                date_range = [startTime.strftime('%Y-%m-%d %H:%M:%S'), endTime.strftime('%Y-%m-%d %H:%M:%S')]
         time_param = [(key, date_range[i], date_range[i + 1])
                     for i in range(len(date_range) - 1)]
         #针对di时间
         di_date_range = []
-        if di_endTime - di_startTime > timedelta(hours=4): #hours=12, hours=4, minutes=10
-            di_date_range = pd.date_range(di_startTime, di_endTime, freq="4h").strftime(
-                '%Y-%m-%d %H:%M:%S').to_list() #12h, 4h, 10min
-        else:
-            di_date_range = [di_startTime.strftime('%Y-%m-%d %H:%M:%S'), di_endTime.strftime('%Y-%m-%d %H:%M:%S')]
+        di_timeUnit = algorithms_configs[key]['timeSlice'].split("=")[0]
+        di_timeValue = algorithms_configs[key]['timeSlice'].split("=")[-1]
+        if di_timeUnit == "hours":
+            if di_endTime - di_startTime > timedelta(hours=float(di_timeValue)): #hours=12, hours=4, minutes=10
+                di_date_range = pd.date_range(di_startTime, di_endTime, freq=str(timeValue)+"h").strftime(
+                    '%Y-%m-%d %H:%M:%S').to_list() #12h, 4h, 10min
+            else:
+                di_date_range = [di_startTime.strftime('%Y-%m-%d %H:%M:%S'), di_endTime.strftime('%Y-%m-%d %H:%M:%S')]
         di_time_param = [(key, di_date_range[i], di_date_range[i + 1])
                     for i in range(len(di_date_range) - 1)]
         # 加上设备（笛卡尔积）
@@ -890,10 +1375,10 @@ async def TimeDeviceSlice(algorithms_configs): #, ai_points, resample_interval, 
                               for item in di_time_asset_param]  #(algorithm, startTime,startTime+12,turbineId)
     # getAiDataWithTimeFunc = partial(getAiData, points=ai_points, resample_interval=resample_interval)
     # 获取ai数据
-    timeout = 120 #180 #秒
+    timeout = 120#120 #180 #秒
     # aiTasks = [getAiData(time_tuple[0], time_tuple[1], time_tuple[2], time_tuple[3], algorithms_configs[time_tuple[0]]["aiPoints"], algorithms_configs[time_tuple[0]]["resampleTime"], algorithms_configs) for time_tuple in final_time_asset_param if len(algorithms_configs[time_tuple[0]]["aiPoints"])>0]
     aiTasks = []
-    numPoints = 2
+    numPoints = algorithms_configs[key]['pointNum']
     for time_tuple in final_time_asset_param:
         if len(algorithms_configs[time_tuple[0]]["aiPoints"])>0:
             if len(algorithms_configs[time_tuple[0]]["aiPoints"]) > numPoints:
@@ -987,9 +1472,11 @@ async def TimeDeviceSlice(algorithms_configs): #, ai_points, resample_interval, 
                 aiResultList.append(pd.DataFrame())
         ai_df[key] = pd.DataFrame()
         if len(aiResultList) > 0:
-            # ai_df[key] = pd.concat(aiResultList)
-            # ai_df[key] = ai_df[key][~ai_df[key].index.duplicated()]
-            ai_df[key] = custom_merge(aiResultList)
+            if algConfig[key]["customMergeFlag"]:
+                ai_df[key] = custom_merge(aiResultList)
+            else:
+                ai_df[key] = pd.concat(aiResultList)
+                ai_df[key] = ai_df[key][~ai_df[key].index.duplicated()]
             if 'timestamp' in ai_df[key].columns.to_list():
                 ai_df[key].drop('timestamp', axis=1, inplace=True)
             # ai_df[key].drop('assetId', axis=1, inplace=True)

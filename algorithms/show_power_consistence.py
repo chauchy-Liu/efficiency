@@ -75,4 +75,4 @@ def analyse(farmName, typeName:str, wtid:list, startTime, endTime):
     # result['consistence'] = pw_df_order['k_order'].to_list()
     if len(pw_df_order[((pw_df_order['k_order']>1.05*1.05)|(pw_df_order['k_order']<0.95*0.95))])>0:
         print('##########功率曲线一致性较差###########')
-    return result
+    return result, pw_df_order
