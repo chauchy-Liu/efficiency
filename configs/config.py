@@ -13,12 +13,15 @@ farmOrIds = ["1857264288838782978"] #None
 
 # 应用风场的assetId
 #中台
-Wind_Farms = ["Z3Kw1DNz", "eOac1sow", "iFKMBKxw", "oQzjEzpf", "ioPLF6UP", "AcVjRFp9", "aFPXpplp", "yueLvGmW"] #物理场站["elU5WmYX", "FuMW37VD", "mgGUOeOY", "bQKyerQG", "weS4oBjh", "wC77rDRf", "OQurhMOg", "Q0mCCk1J", "JpYLjEWL"] #甘肃清水 'rWlbaEnM'
+Wind_Farms = ["Z3Kw1DNz"] #物理场站["elU5WmYX", "FuMW37VD", "mgGUOeOY", "bQKyerQG", "weS4oBjh", "wC77rDRf", "OQurhMOg", "Q0mCCk1J", "JpYLjEWL"] 
+#甘肃清水 'rWlbaEnM'
 #["SsYgnoSW"]# 北京分山东惠能
 # ["L3EWAdto",] 青格洱珠日河
+#["duMC5TRo"] 江西七琴
 # Wind_Farm_Name = '甘肃清水' #甘肃清水
 # Wind_Farm = 't1Z1JkuJ' #甘肃清水
 # Wind_Farm_Name = '甘肃通渭' #甘肃清水
+# 内蒙风场 "Z3Kw1DNz", "eOac1sow", "iFKMBKxw", "oQzjEzpf", "ioPLF6UP", "AcVjRFp9", "aFPXpplp", "yueLvGmW"
 
 
 # wspd = wspd_
@@ -157,7 +160,7 @@ scheduleConfig = {
 # turbine number setup
 turbineConfig = {
     'turbineNameList' : None, #2, #["A09"], #2, #["10#","1#","5#" ] # None#['#07', '#06']#None #["#01","#10"] None
-    'turbineTypeList' : ["GW", "EN", "MY", "SE", "SI"] #[]  None
+    'turbineTypeList' : ["GW", "EN", "MY", "SE", "SI"] #[]  None , "XE"
 }
 
 
@@ -175,7 +178,7 @@ if Platform == "ZhongTai":
             ],
             'ai_rename' : {
                 'WGEN.GenActivePW':'pwrat','WROT.Blade1Position':'pitch1','WROT.Blade2Position':'pitch2','WROT.Blade3Position':'pitch3',
-                'WNAC.WindSpeed':'wspd','WNAC.WindVaneDirection':'wdir0','WNAC.WindDirection1':'wdir25','WNAC.WindDirection':'wdir',
+                'WNAC.WindSpeed':'wspd','WNAC.WindVaneDirection':'wdir0','WNAC.WindDirection1':'wdir25','WNAC.WindDirection':'wdir',#风向
                 'WWPP.APProduction':'pwp','WWPP.APConsumed':'pwcs','WTUR.MainFaultCode':'faultmain',
                 'WROT.TemB1Mot':'mot1tmp','WROT.TemB2Mot':'mot2tmp','WROT.TemB3Mot':'mot3tmp','WTRM.RotorPDM':'rotspdzz',
                 'WROT.CurBlade1Motor':'mot1cur','WROT.CurBlade2Motor':'mot2cur','WROT.CurBlade3Motor':'mot3cur',
@@ -188,13 +191,14 @@ if Platform == "ZhongTai":
                 'WGEN.GenSenMaxTmp':'genmaxtmp',
                 'WGEN.GenSenTmp1':'gen1tmp','WGEN.GenSenTmp2':'gen2tmp','WGEN.GenSenTmp3':'gen3tmp',
                 'WGEN.GenSenTmp4':'gen4tmp','WGEN.GenSenTmp5':'gen5tmp','WGEN.GenSenTmp6':'gen6tmp',
-                'WYAW.NacellePosition':'yaw','WYAW.YawSpeed':'yawspd','WVIB.VibrationValid':'accxy',
+                'WYAW.NacellePosition':'yaw',#机舱方向
+                'WYAW.YawSpeed':'yawspd','WVIB.VibrationValid':'accxy',
                 'WVIB.VibrationV':'accx','WVIB.VibrationVFil':'accxfil','WVIB.VibrationL':'accy','WVIB.VibrationLFil':'accyfil',
                 'WYAW.YawMotor1RunTime':'yaw1time','WYAW.YawMotor2RunTime':'yaw2time','WYAW.YawMotor3RunTime':'yaw3time',
                 'WTRM.HubAngle':'yaw','WTRM.RotorSpd':'rotspdzz','WNAC.TemNacelleCab':'nacelcabtmp',
-                'WCNV.CVTTemWaterCoolInlet':'cvintmp','WCNV.CVTTemWaterCoolOutlet':'cvouttmp','WYAW.YawOpWind5sAVG':'wdirs',
+                'WCNV.CVTTemWaterCoolInlet':'cvintmp','WCNV.CVTTemWaterCoolOutlet':'cvouttmp','WYAW.YawOpWind5sAVG':'wdirs',#5秒机舱与风向夹角
                 'WTRM.TemMainBearing':'mainbeartmp','WYAW.YawCountSum':'yawsum','WNAC.WindDirectionInstant':'wdirs','WTUR.SITURAI17':'wdirs',
-                'WNAC.WindVaneDirectionInstant':'wdir0',
+                'WNAC.WindVaneDirectionInstant':'wdir0',#机舱与风向夹角
                 'WTRM.TemGeaMSND':'gear_msnd_tmp',#齿轮箱高速轴非驱动端轴承温度
                 'WTRM.TemGeaMSDE':'gear_msde_tmp',#齿轮箱高速轴驱动端轴承温度
                 'WGEN.TemGenStaU':'genUtmp','WGEN.TemGenStaV':'genVtmp','WGEN.TemGenStaW':'genWtmp',
@@ -278,7 +282,8 @@ if Platform == "ZhongTai":
             ],
             'ai_rename' : {
                 'WGEN.GenActivePW':'pwrat','WROT.Blade1Position':'pitch1','WROT.Blade2Position':'pitch2','WROT.Blade3Position':'pitch3',
-                'WNAC.WindSpeed':'wspd','WNAC.WindVaneDirection':'wdir0','WNAC.WindDirection1':'wdir25','WNAC.WindDirection':'wdir',
+                'WNAC.WindSpeed':'wspd','WNAC.WindVaneDirection':'wdir0',#机舱与风向夹角
+                'WNAC.WindDirection1':'wdir25','WNAC.WindDirection':'wdir', #风向
                 'WWPP.APProduction':'pwp','WWPP.APConsumed':'pwcs','WTUR.MainFaultCode':'faultmain',
                 'WROT.TemB1Mot':'mot1tmp','WROT.TemB2Mot':'mot2tmp','WROT.TemB3Mot':'mot3tmp','WTRM.RotorPDM':'rotspdzz',
                 'WROT.CurBlade1Motor':'mot1cur','WROT.CurBlade2Motor':'mot2cur','WROT.CurBlade3Motor':'mot3cur',

@@ -2,40 +2,34 @@ import data.efficiency_function as turbine_efficiency_function
 from scipy import signal
 
 def filter1(Df_all, Df_all_m):
-    if((['wdir0'] in Df_all.columns.values)==False)&((['wdir25'] in Df_all.columns.values)==True):
-        Df_all['wdir0'] = Df_all['wdir25'] - 180.0
-        Df_all_m['wdir0','nanmean'] = Df_all_m['wdir25','nanmean'] - 180.0
-    elif((['wdir0'] in Df_all.columns.values)==False)&((['wdir'] in Df_all.columns.values)==True):
-        Df_all['wdir0'] = Df_all['wdir'] - 180.0
-        Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-        Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],0.2,1,11,0.1,1,1)#1:低通滤波器，2：中值滤波，3：wiener滤波，4：巴特沃斯滤波器
-        Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean'] - 180.0  
-    elif((['wdir0'] in Df_all.columns.values)==False)&((['wdir'] in Df_all.columns.values)==False)&((['wdirs'] in Df_all.columns.values)==True):
-        Df_all['wdir0'] = signal.medfilt(Df_all['wdirs'],5)
-        Df_all_m['wdir0','nanmean'] = Df_all_m['wdirs','nanmean']
-    elif((['wdir0'] in Df_all.columns.values)==False)&((['wdir'] in Df_all.columns.values)==False)&((['wdirs'] in Df_all.columns.values)==False):
-        Df_all['wdir0'] = 0.0
-        Df_all_m['wdir0','nanmean'] = 0.0
+    if((['wdir0'] in Df_all.columns.values)==False): 
+        if((['wdir'] in Df_all.columns.values)==False):
+            Df_all['wdir0'] = Df_all['wdirs'] - Df_all['yaw']
+            Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+            Df_all_m['wdir0','nanmean'] = Df_all_m['wdirs','nanmean'] - Df_all_m['yaw','nanmean']
+        else:
+            Df_all['wdir0'] = Df_all['wdirs']# - Df_all['yaw']
+            Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+            Df_all_m['wdir0','nanmean'] = Df_all_m['wdirs','nanmean']# - Df_all_m['yaw','nanmean']
     else:
-        Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],0.5,1,11,0.1,1,1)
+        Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+    Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],0.5,0.5,11,0.5,1,1)
 
     return Df_all, Df_all_m
 
 def filter2(Df_all, Df_all_m, medfilt_num, filter1st_tao, choose_num):
-    if((['wdir0'] in Df_all.columns.values)==False)&((['wdir25'] in Df_all.columns.values)==True):
-        Df_all['wdir0'] = Df_all['wdir25'] - 180.0
-        Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-        Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
-    elif((['wdir0'] in Df_all.columns.values)==False)&((['wdir'] in Df_all.columns.values)==True):
-        Df_all['wdir0'] = Df_all['wdir'] - 180.0
-        Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-        Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)#1:低通滤波器，2：中值滤波，3：wiener滤波，4：巴特沃斯滤波器
-    elif((['wdir0'] in Df_all.columns.values)==False)&((['wdir'] in Df_all.columns.values)==False)&((['wdirs'] in Df_all.columns.values)==True):
-        Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdirs'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
-    elif((['wdir0'] in Df_all.columns.values)==False)&((['wdir'] in Df_all.columns.values)==False)&((['wdirs'] in Df_all.columns.values)==False):
-        Df_all['wdir0'] = 0.0
+    # choose_num = 4
+    if((['wdir0'] in Df_all.columns.values)==False):
+        if((['wdir'] in Df_all.columns.values)==False):
+            Df_all['wdir0'] = Df_all['wdirs'] - Df_all['yaw']
+            Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+        else:
+            Df_all['wdir0'] = Df_all['wdirs']# - Df_all['yaw']
+            Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
     else:
-        Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdirs'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
+        Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
+        
+    Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdirs'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
     
     return Df_all, Df_all_m
 
@@ -65,22 +59,23 @@ sname = pd.Series(['计划停机', '用户停机', '用户停机', '计划停机
 state = pd.DataFrame({'type_org':sname_org,'snum':snum.astype(int),'state_type':sname})
 
 # 并网转速
-Rotspd_Connect = 1074.2 
+Rotspd_Connect = 7.5 #1074.2 
 # 额定转速
-Rotspd_Rate = 1755.0 
-# 转矩控制系数
+Rotspd_Rate = 14.5#1755.0 
 # 清洗数据时使用的测点是转速还是叶片转速(简写)
-clear_rotspd = "rotspd"
+clear_rotspd = "rotspdzz"
 
 # 最小桨距角
-Pitch_Min = -0.5
+Pitch_Min = 0
 
 # 并网状态
-state_ = 5
+state_ = 6
 #限功率状态
 limpw_state = 80 #统一状态替换
 #正常发电状态
 stateNormal = 71
+
+
 
 # # 合计风速
 wspd = pd.Series([3. , 3.5, 4. , 4.5, 5. , 5.5, 6. , 6.5, 7. , 7.5, 8. , 8.5, 9. ,

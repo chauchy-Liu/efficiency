@@ -24,6 +24,7 @@ import warnings
 import gc
 import numpy as np
 import re
+from data.efficiency_function import turbineTypeNameFormat
 # import faultcode.faultcode_SE15645 as faultcode_SE15645
 # import faultcode.faultcode_GW140__3_57 as faultcode_GW140__3_57
 # import faultcode.faultcode_MINYANG_GANSU_QINGSHUI as faultcode_MINYANG_GANSU_QINGSHUI 
@@ -266,12 +267,15 @@ async def _do_execute(multi_algorithms, algorithms_configs, mainLog): #startTime
                 os.makedirs(path_farm)
             farm_item.to_csv(str(path_farm+'/WindFarm.csv'),index=True, encoding='utf-8') 
         mainLog.info(f"# {farm_index+1}/{WindFarm_attr.shape[0]}: {algorithms_configs['farmName']} ###################################################################################")
-        insertFarmInfo(algorithms_configs, path_farm)
         #  获取所有风机
         if Platform == "ZhongTai":
             Turbine_attr = await getWindTurbines(farm_item['mdmId']) #Wind_Farm
         elif Platform == "WuLianWang":
             Turbine_attr = await getWindTurbinesIntel(farm_item['orgId'])
+        if str(algorithms_configs['turbineType']) == "nan":
+            turbineTypeIDList = np.unique(Turbine_attr['turbineTypeID']).tolist()
+            algorithms_configs['turbineType'] = ",".join(turbineTypeIDList)
+        insertFarmInfo(algorithms_configs, path_farm)
 
         algorithms_configs['Turbine_attr'] = Turbine_attr
         algorithms_configs['Df_all_all_alltype'] = pd.DataFrame()
@@ -320,6 +324,7 @@ async def _do_execute(multi_algorithms, algorithms_configs, mainLog): #startTime
             algorithms_configs['Rotspd_Connect'] = faultCode.Rotspd_Connect
             algorithms_configs['Rotspd_Rate'] = faultCode.Rotspd_Rate
             algorithms_configs['Pitch_Min'] = faultCode.Pitch_Min
+            algorithms_configs['clear_rotspd'] = faultCode.clear_rotspd
 
             # 筛选机型
             if (algorithms_configs['ManufacturerID'] not in turbineConfig["turbineTypeList"] and algorithms_configs['ManufacturerID'].upper() not in turbineConfig["turbineTypeList"] and algorithms_configs['ManufacturerID'].lower() not in turbineConfig["turbineTypeList"]) or algorithms_configs['fault_code'].empty == True:
@@ -545,6 +550,8 @@ async def algorithms_turbines_stream(mainLog, algorithmLogs, multi_algorithms, a
         data_df = {'data_df':pd.DataFrame()}
         # 2. 每台风机执行算法
         for index, row in algorithms_configs['Turbine_attr_type'].iterrows():
+            if algConfig[name]["saveData"] and os.path.exists(os.path.join(algorithms_configs['path'],'Efficiency_ana_V3.pkl')) and index > 0:
+                continue
             no_alarm_models = []    # 正常执行、有数据、无告警模型
             alarm_models = []       # 正常执行、有数据、有告警模型
             exception_models = []   # 执行发生异常模型
@@ -660,20 +667,35 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
     # 3. 每个算法统一获取单台或多台数据
     # data_df =  await getDataForMultiAlgorithms(startTime, endTime, param_assetIds, param_private_assetIds, multi_algorithms)#await
     mainLog.info(f'获取{turbineName}风机单算法需要的数据:')
+    isPKLExist = os.path.exists(os.path.join(algorithms_configs['path'],'Efficiency_ana_V3.pkl'))
     try:
         endTime = algorithms_configs[name]['endTime']#datetime.now()
         date = endTime.date()
         days = str(date).split('-')[2]
         if days[0] == '0':
             days = days[1]
-        if not os.path.exists(os.path.join(algorithms_configs['path'],'Efficiency_ana_V3.pkl')) or not algConfig[name]["saveData"]: #name != 'Efficiency_ana_V3' or (name == 'Efficiency_ana_V3' and days == '1') or (name == 'Efficiency_ana_V3' and )
+        if not isPKLExist or not algConfig[name]["saveData"]: #name != 'Efficiency_ana_V3' or (name == 'Efficiency_ana_V3' and days == '1') or (name == 'Efficiency_ana_V3' and )
             algorithmData = await getDataForMultiAlgorithms({name:algorithms_configs[name]}, algorithms_configs['state']) #mainLog, algorithmLogs, 
         else:
             # if algorithms_configs[name]['PrepareTurbines'] == True:
             # algorithmData = {name: pd.read_pickle('Efficiency_ana_V3.pkl.gz')}
+            jobTime = algorithms_configs["jobTime"]
+            clear_rotspd = algorithms_configs['clear_rotspd']
+            Rotspd_Connect = algorithms_configs['Rotspd_Connect']
+            Rotspd_Rate = algorithms_configs['Rotspd_Rate']
+            state_ = algorithms_configs['state']
+            Pitch_Min = algorithms_configs['Pitch_Min']
             with open(os.path.join(algorithms_configs['path'],'Efficiency_ana_V3.pkl'), 'rb') as f:
                 algorithms_configs = pickle.load(f)
                 algorithms_configs["Df_all_m_all"].to_csv(os.path.join(algorithms_configs['path'],"Df_all_m_all.csv"), index=True)
+                algorithms_configs["Df_all_all"].to_csv(os.path.join(algorithms_configs['path'],"Df_all_all.csv"), index=True)
+                algorithms_configs["jobTime"] = jobTime
+                algorithms_configs['clear_rotspd'] = clear_rotspd
+                algorithms_configs['Rotspd_Connect'] = Rotspd_Connect
+                algorithms_configs['Rotspd_Rate'] = Rotspd_Rate
+                algorithms_configs['state'] = state_
+                algorithms_configs['Pitch_Min'] = Pitch_Min
+                
             # else:
                 # algorithmData = {name: pd.DataFrame()}
     except Exception as e:
@@ -704,7 +726,7 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
         #任务id映射
         # idMaps[name] = str(taskId)
     #提取算法对应的数据
-    if not os.path.exists(os.path.join(algorithms_configs['path'],'Efficiency_ana_V3.pkl')) or not algConfig[name]["saveData"]:
+    if not isPKLExist or not algConfig[name]["saveData"]:
         if name in algorithmData.keys():
             # 清洗数据
             get_data_async.wash_data(algorithmData[name], algorithms_configs)
@@ -738,7 +760,7 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
         
         return None# continue
     # if (algorithms_configs[name]['PrepareTurbines'] == True and days==1 and name == 'Efficiency_ana_V3') or (algorithms_configs[name]['PrepareTurbines'] == True and not os.path.exists('Efficiency_ana_V3.pkl.gz') and name == 'Efficiency_ana_V3'):
-    if  not os.path.exists(os.path.join(algorithms_configs['path'],'Efficiency_ana_V3.pkl')) and algConfig[name]["saveData"]:
+    if  not isPKLExist and algConfig[name]["saveData"]:
         # data_df.to_pickle('Efficiency_ana_V3.pkl.gz', compression='gzip')
         with open(os.path.join(algorithms_configs['path'],'Efficiency_ana_V3.pkl'), 'wb') as f:
             pickle.dump(algorithms_configs, f)

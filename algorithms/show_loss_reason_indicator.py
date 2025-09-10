@@ -75,6 +75,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
         #---------------------------------------------------------------------
         fault_loss_all_turbine = fault_loss_all.groupby(fault_loss_all['wtid']).agg({'loss':'sum'})
         fault_loss_all_turbine['loss_fb'] = fault_loss_all_turbine['loss']/10000.0
+
         eny_loss_all = pd.merge(eny_loss_all, fault_loss_all_turbine,left_index=True,right_index=True,how='outer')
         
         for num in range(len(turbine_FaultLoss_list)):
@@ -151,7 +152,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
         stop_loss_all_temp = stop_loss_all_temp.loc[startTime:endTime,:]
         stop_loss_all_temp = stop_loss_all_temp[stop_loss_all_temp['wtid'].isin(turbine_StopLoss_list)]
         #-------------------------------------------------
-        stop_loss_all_turbine = pd.DataFrame(stop_loss_all.loc[:,'loss'])
+        stop_loss_all_turbine = pd.DataFrame(stop_loss_all.groupby(stop_loss_all['wtid']).agg({'loss':'sum'}))#.loc[:,'loss']
         stop_loss_all_turbine['loss_sp'] = stop_loss_all_turbine['loss']/10000.0
         eny_loss_all = pd.merge(eny_loss_all, stop_loss_all_turbine,left_index=True,right_index=True,how='outer')
 
@@ -177,7 +178,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
         limgrid_loss_all_temp = limgrid_loss_all_temp.loc[startTime:endTime,:]
         limgrid_loss_all_temp = limgrid_loss_all_temp[limgrid_loss_all_temp['wtid'].isin(turbine_LimgridLoss_list)]
         #-----------------------------------------------
-        limgrid_loss_all_turbine = pd.DataFrame(limgrid_loss_all.loc[:,'loss'])
+        limgrid_loss_all_turbine = pd.DataFrame(limgrid_loss_all.groupby(limgrid_loss_all['wtid']).agg({'loss':'sum'}))#.loc[:,'loss']
         limgrid_loss_all_turbine['loss_lg'] = limgrid_loss_all_turbine['loss']/10000.0
         eny_loss_all = pd.merge(eny_loss_all, limgrid_loss_all_turbine,left_index=True,right_index=True,how='outer')
 
@@ -226,8 +227,10 @@ def analyse(farmName, typeName:list, startTime, endTime):
     eny_wspd_temp = eny_wspd_temp.loc[startTime:endTime,:]
     eny_wspd_temp = eny_wspd_temp[eny_wspd_temp['wtid'].isin(turbine_EnyWspd_list)]
     #----------------------------------------------
-    eny_wspd_all_turbine = pd.DataFrame(eny_wspd_all.loc[:,'eny'])
-    eny_wspd_all_turbine['enyactbypw'] = eny_wspd_all_turbine['eny']/10000.0
+    eny_wspd_all_turbine1 = pd.DataFrame(eny_wspd_all.groupby(eny_wspd_all['wtid']).agg({'eny':'sum'})) #.loc[:,'eny']
+    eny_wspd_all_turbine2 = pd.DataFrame(eny_wspd_all.groupby(eny_wspd_all['wtid']).agg({'wspd':'mean'}))
+    eny_wspd_all_turbine1['enyactbypw'] = eny_wspd_all_turbine1['eny']/10000.0
+    eny_wspd_all_turbine = pd.merge(eny_wspd_all_turbine1, eny_wspd_all_turbine2,left_index=True,right_index=True,how='outer')
     eny_loss_all = pd.merge(eny_loss_all, eny_wspd_all_turbine,left_index=True,right_index=True,how='outer')
 
     #平均风速
@@ -315,7 +318,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
     
     fig, ax = plt.subplots(figsize=(8, 4), dpi=200)    
     x = np.arange(len(eny_loss_all))
-    ax.bar(x,eny_loss_all['enyactbypw'],color='black',bottom = 0,width=0.2,tick_label=eny_loss_all['wtid'])
+    ax.bar(x,eny_loss_all['enyactbypw'],color='black',bottom = 0,width=0.2,tick_label=eny_loss_all.index)
     
     ax.bar(x,eny_loss_all['loss_fb'],color='red',bottom = eny_loss_all['enyactbypw'],width=0.2)
     ax.bar(x,eny_loss_all['loss_lg'],color='yellow',bottom = eny_loss_all['enyactbypw']+eny_loss_all['loss_fb'],width=0.2)
@@ -332,6 +335,6 @@ def analyse(farmName, typeName:list, startTime, endTime):
     # fig.savefig(path + '/' + 'eny.png',dpi=100,bbox_inches='tight')
     fig.savefig(buf, format='png', bbox_inches='tight')
     plt.close(fig)
-    result['figure'] = buf.getvalue()
+    result['figure'] = io.BytesIO(buf.getvalue())#.seek(0)
 
     return result

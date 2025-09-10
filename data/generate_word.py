@@ -26,6 +26,7 @@ import algorithms.show_grid_fault_loss as show_grid_fault_loss
 import algorithms.show_technology_loss as show_technology_loss
 import algorithms.show_stop_loss as show_stop_loss
 import algorithms.show_power_consistence as show_power_consistence
+import traceback
 
 
 
@@ -183,10 +184,10 @@ def write_word(farmInfo, startTime, endTime):
     windfarm_yunyingzhongxin = farmInfo['rccID'] #WindFarm.loc[0,'生产运营中心']
     windfarm_resourceType = resourceType[(resourceType['resourceType_ID'] == farmInfo['wind_resource'] )]['resourceType_name'].values[0] #WindFarm.loc[0,'风资源']
     trubine_type = len(farmInfo['wtid']) #len( np.unique(Turbine_attr['turbineTypeID']))
-    typeNameList = farmInfo['wtid'].keys().tolist() #np.unique(Turbine_attr['turbineTypeID']).tolist()
+    typeNameList = list(farmInfo['wtid'].keys()) #np.unique(Turbine_attr['turbineTypeID']).tolist()
     wtidAllList = []
-    for key, value in farmInfo['wtid'].items():
-        wtidAllList += wtidAllList + value
+    # for key, value in farmInfo['wtid'].items():
+    #     wtidAllList = wtidAllList + value
     
     #纸张设置
     #section1 = document.add_section()
@@ -237,7 +238,7 @@ def write_word(farmInfo, startTime, endTime):
     head0_run._element.rPr.rFonts.set(qn('w:eastAsia'),u'黑体')
     head0.paragraph_format.space_after = Pt(10)
 
-    paragraph_text = str(windfarm_erji + windfarm_name+'位于'+str(windfarm_postion)+'，装机容量'+str(windfarm_capi)+'MW，共计'+str(int(windfarm_amount))+'台机组，机组型号：'+windfarm_wttpye+'，并网时间'+str(windfarm_date)+'。'+
+    paragraph_text = str(windfarm_erji + windfarm_name+'位于'+str(windfarm_postion)+'，装机容量'+str(windfarm_capi)+'MW，共计'+str(int(float(windfarm_amount)))+'台机组，机组型号：'+windfarm_wttpye+'，并网时间'+str(windfarm_date)+'。'+
                          '风场接入'+str(windfarm_yunyingzhongxin)+'，风场地形为'+str(windfarm_siteType)+'，属'+str(windfarm_resourceType)+'风资源类型'+'。'+
                          '本次发电场能效评估时间段位为'+str(startTime)+'至'+str(endTime)+'，数据源来自集团公司产业数据中台，评估维度包括：风资源分析、损失电量分析、机组控制性能分析等。')
     paragraph = document.add_paragraph()
@@ -311,7 +312,7 @@ def write_word(farmInfo, startTime, endTime):
                 elif j == 2:
                     fill_table(tablez0_2, x=i, y=j, content='平均风速(m/s)', font_name='黑体', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j],height=1.5) 
                 elif j == 3:
-                    fill_table(tablez0_2, x=i, y=j, content='实发电量(kWh)', font_name='黑体', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                    fill_table(tablez0_2, x=i, y=j, content='实发电量(万kWh)', font_name='黑体', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                 elif j == 4:
                     fill_table(tablez0_2, x=i, y=j, content='等效利用小时数(h)', font_name='黑体', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j],height=1.5) 
                 elif j == 5:
@@ -321,7 +322,7 @@ def write_word(farmInfo, startTime, endTime):
                 elif j == 7:
                     fill_table(tablez0_2, x=i, y=j, content='MTBT(h)', font_name='黑体', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j],height=1.5)
                 elif j == 8:
-                    fill_table(tablez0_2, x=i, y=j, content='损失电量(kWh)', font_name='黑体', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j],height=1.5)
+                    fill_table(tablez0_2, x=i, y=j, content='损失电量(万kWh)', font_name='黑体', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j],height=1.5)
                 elif j == 9:
                     fill_table(tablez0_2, x=i, y=j, content='限电率', font_name='黑体', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j],height=1.5)
                 elif j == 10:
@@ -331,57 +332,69 @@ def write_word(farmInfo, startTime, endTime):
             else:
                 # path = str(str(farmInfo['path_farm'])+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[i-1]))
                 # metric_tongji = pd.read_csv(str(path+'/tongji.csv'),header=[0],index_col=[0])
-                metric_tongji = show_loss_reason_indicator.analyse(farmInfo['farm_name'], [str(typeNameList[i-1])], startTime, endTime)
-                metric_tongjiList.append(metric_tongji)
-                loss_power = eval(metric_tongji['reason']['turbineFaultLoss']) + eval(metric_tongji['reason']['limGridLoss']) + eval(metric_tongji['reason']['gridFaultLoss']) +eval(metric_tongji['reason']['limTurbineLoss']) + eval(metric_tongji['reason']['technologyLoss']) + eval(metric_tongji['reason']['stopLoss'])
-                enyPictureList.append(metric_tongji['figure'])
-                if j == 0:
-                    fill_table(tablez0_2, x=i, y=j, content=str(str(typeNameList[i-1])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
-                elif j == 1:
-                    fill_table(tablez0_2, x=i, y=j, content=int(len(farmInfo['wtid'][typeNameList[i-1]])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
-                elif j == 2:
-                    fill_table(tablez0_2, x=i, y=j, content='{:.2f}'.format(eval(metric_tongji['indicator']['meanWindSpeed'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
-                elif j == 3:
-                    fill_table(tablez0_2, x=i, y=j, content='{:.1f}'.format(eval(metric_tongji['indicator']['actualPower'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
-                elif j == 4:
-                    fill_table(tablez0_2, x=i, y=j, content='{:.1f}'.format(eval(metric_tongji['indicator']['validHour'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
-                elif j == 5:
-                    fill_table(tablez0_2, x=i, y=j, content=eval(metric_tongji['indicator']['powerRate']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
-                elif j == 6:
-                    fill_table(tablez0_2, x=i, y=j, content=eval(metric_tongji['indicator']['timeAvailableRate']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j])
-                elif j == 7:
-                    fill_table(tablez0_2, x=i, y=j, content='{:.1f}'.format(eval(metric_tongji['indicator']['MTBF'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j])
-                elif j == 8:
-                    fill_table(tablez0_2, x=i, y=j, content='{:.1f}'.format(loss_power), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j])
-                elif j == 9:
-                    fill_table(tablez0_2, x=i, y=j, content=eval(metric_tongji['indicator']['limitPowerRate']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j])
-                elif j == 10:
-                    fill_table(tablez0_2, x=i, y=j, content=eval(metric_tongji['indicator']['faultStoreTime']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j])
-                elif j == 11:
-                    fill_table(tablez0_2, x=i, y=j, content=eval(metric_tongji['indicator']['noFaultTime']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j])
+                try:
+                    if j==0:
+                        metric_tongji = show_loss_reason_indicator.analyse(farmInfo['farm_name'], [str(typeNameList[i-1])], startTime, endTime)
+                        metric_tongjiList.append(metric_tongji)
+                        loss_power = eval(metric_tongji['reason']['turbineFaultLoss']) + eval(metric_tongji['reason']['limGridLoss']) + eval(metric_tongji['reason']['gridFaultLoss']) +eval(metric_tongji['reason']['limTurbineLoss']) + eval(metric_tongji['reason']['technologyLoss']) + eval(metric_tongji['reason']['stopLoss'])
+                        enyPictureList.append(metric_tongji['figure'])
+                    if j == 0:
+                        fill_table(tablez0_2, x=i, y=j, content=str(str(typeNameList[i-1])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                    elif j == 1:
+                        fill_table(tablez0_2, x=i, y=j, content=int(len(farmInfo['wtid'][typeNameList[i-1]])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                    elif j == 2:
+                        fill_table(tablez0_2, x=i, y=j, content='{:.2f}'.format(eval(metric_tongji['indicator']['meanWindSpeed'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                    elif j == 3:
+                        fill_table(tablez0_2, x=i, y=j, content='{:.1f}'.format(eval(metric_tongji['indicator']['actualPower'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                    elif j == 4:
+                        fill_table(tablez0_2, x=i, y=j, content='{:.1f}'.format(eval(metric_tongji['indicator']['validHour'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                    elif j == 5:
+                        fill_table(tablez0_2, x=i, y=j, content=metric_tongji['indicator']['powerRate'], font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                    elif j == 6:
+                        fill_table(tablez0_2, x=i, y=j, content=metric_tongji['indicator']['timeAvailableRate'], font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j])
+                    elif j == 7:
+                        fill_table(tablez0_2, x=i, y=j, content='{:.1f}'.format(eval(metric_tongji['indicator']['MTBF'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j])
+                    elif j == 8:
+                        fill_table(tablez0_2, x=i, y=j, content='{:.1f}'.format(loss_power), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j])
+                    elif j == 9:
+                        fill_table(tablez0_2, x=i, y=j, content=metric_tongji['indicator']['limitPowerRate'], font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j])
+                    elif j == 10:
+                        fill_table(tablez0_2, x=i, y=j, content=eval(metric_tongji['indicator']['faultStoreTime']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j])
+                    elif j == 11:
+                        fill_table(tablez0_2, x=i, y=j, content=eval(metric_tongji['indicator']['noFaultTime']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j])
+                except Exception as e:
+
+                    errorInfomation = traceback.format_exc()
+                    # print("数据库中表eny_wspd_all在时段"+str(startTime)+"到"+str(endTime)+"没有机型"+str(typeNameList[i-1]))
+                    print("############################数据库中表eny_wspd_all在时段"+str(startTime)+"到"+str(endTime)+"没有机型"+str(typeNameList[i-1])+'的数据导致报错#################################')
+                    print(f'{errorInfomation}')
+                    # logger.info(f'\033[31m{errorInfomation}\033[0m')
+                    # logger.info(f'\033[33m指标报错：{e}\033[0m')
 
     #图1
-    for i in range(trubine_type):
+    for i in range(len(metric_tongjiList)): #trubine_type
         # figure_path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[i])+'/'+'eny.png')
-        paragraph_picture0_3 = document.add_paragraph()
-        paragraph_picture0_3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        paragraph_picture0_3_run = paragraph_picture0_3.add_run()
-        paragraph_picture0_3_run.add_picture(enyPictureList[i],width=Cm(14)) #str(figure_path)
+        wtidAllList += farmInfo['wtid'][typeNameList[i]]
+        if i < len(enyPictureList):
+            paragraph_picture0_3 = document.add_paragraph()
+            paragraph_picture0_3.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            paragraph_picture0_3_run = paragraph_picture0_3.add_run()
+            paragraph_picture0_3_run.add_picture(enyPictureList[i],width=Cm(14)) #str(figure_path)
 
-        if i == 0:
-            paragraph_picture0_3.paragraph_format.space_before = Pt(15)
-        paragraph_picture0_3.paragraph_format.space_after = Pt(0)
-        #图示
-        picture_num += 1
-        paragraph0_3_text = str('图'+str(picture_num)+' '+str(typeNameList[i])+'机组实发电量、风速统计图')
-        paragraph0_3 = document.add_paragraph()
-        paragraph0_3_run = paragraph0_3.add_run(paragraph0_3_text)
-        paragraph0_3_run.font.size = Pt(10)
-        paragraph0_3_run.font.name = '黑体'
-        paragraph0_3_run._element.rPr.rFonts.set(qn('w:eastAsia'),u'黑体')
-        #paragraph0_3.paragraph_format.first_line_indent = paragraph_run.font.size * 2
-        paragraph0_3.paragraph_format.space_after = Pt(10)
-        paragraph0_3.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            if i == 0:
+                paragraph_picture0_3.paragraph_format.space_before = Pt(15)
+            paragraph_picture0_3.paragraph_format.space_after = Pt(0)
+            #图示
+            picture_num += 1
+            paragraph0_3_text = str('图'+str(picture_num)+' '+str(typeNameList[i])+'机组实发电量、风速统计图')
+            paragraph0_3 = document.add_paragraph()
+            paragraph0_3_run = paragraph0_3.add_run(paragraph0_3_text)
+            paragraph0_3_run.font.size = Pt(10)
+            paragraph0_3_run.font.name = '黑体'
+            paragraph0_3_run._element.rPr.rFonts.set(qn('w:eastAsia'),u'黑体')
+            #paragraph0_3.paragraph_format.first_line_indent = paragraph_run.font.size * 2
+            paragraph0_3.paragraph_format.space_after = Pt(10)
+            paragraph0_3.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     #文字
     paragraph0_4_text = '如图'+str(picture_num+1)+'为各机组的坐标图，圆点大小表征发电量，颜色表征海拔高度，机组发电量或风速与海拔及机组位置相关性明显or不明显！！！！！'
@@ -430,6 +443,8 @@ def write_word(farmInfo, startTime, endTime):
     #文字
     picture_num += 1
     wind_freq = selectWindResourceWord(farmInfo['farm_name'], startTime, endTime)
+    # 将freq列转换为数值类型
+    wind_freq['freq'] = pd.to_numeric(wind_freq['freq'], errors='coerce')
     top6_freq = wind_freq.nlargest(6, 'freq', keep='all')
     min_speed = top6_freq['windbin'].min()
     max_speed = top6_freq['windbin'].max()
@@ -464,7 +479,7 @@ def write_word(farmInfo, startTime, endTime):
     #文字
     picture_num += 1
     mean_rho = wind_freq.iloc[0]['mean_rho'] #month_data['rho'].mean()
-    max_speed_month = wind_freq[0]['max_speed_month'] #month_data['wspd'].idxmax()
+    max_speed_month = wind_freq.iloc[0]['max_speed_month'] #month_data['wspd'].idxmax()
     paragraph1_3_text = '图'+str(picture_num)+'为统计时间段内风场风速、空气密度变化图（红色代表空气密度、蓝色代表风速），平均空气密度'+'{:.2f}'.format(mean_rho)+'kg/m'+chr(179)+'，'+str(max_speed_month)+'份风速相对较大。'
     paragraph1_3 = document.add_paragraph()
     paragraph1_3_run = paragraph1_3.add_run(paragraph1_3_text)
@@ -523,7 +538,7 @@ def write_word(farmInfo, startTime, endTime):
     for i in range(row_num):
         for j in range(2):
             if ((i*2+j+1) > turbine_num):
-                if (i*2+j+1)>len(wtidAllList):
+                if (i*2+j+1)>len(wtidAllList) or trubine_type_i >= len(typeNameList)-1:
                     break
                 trubine_type_i = trubine_type_i + 1
                 num = 0
@@ -615,11 +630,11 @@ def write_word(farmInfo, startTime, endTime):
     
     
     #文字
-    for i in range(trubine_type):
+    for i in range(len(metric_tongjiList)): #trubine_type
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[i]))
         metric_tongji = metric_tongjiList[i]#pd.read_csv(str(path+'/tongji.csv'),header=[0],index_col=[0])
         loss_power = eval(metric_tongji['reason']['turbineFaultLoss']) + eval(metric_tongji['reason']['limGridLoss']) + eval(metric_tongji['reason']['gridFaultLoss']) +eval(metric_tongji['reason']['limTurbineLoss']) + eval(metric_tongji['reason']['technologyLoss']) + eval(metric_tongji['reason']['stopLoss'])
-        paragraph2_1_text = ('分析时段内，'+windfarm_name+str(typeNameList[i])+'机型各类损失电量共计'+'{:.1f}'.format(loss_power)+'kWh，占应发电量'+'{:.2f}'.format(100-float(eval(metric_tongji['indicator']['powerRate'])))+'%。'+
+        paragraph2_1_text = ('分析时段内，'+windfarm_name+str(typeNameList[i])+'机型各类损失电量共计'+'{:.1f}'.format(loss_power)+'kWh，占应发电量'+'{:.2f}'.format(100-float(eval(metric_tongji['indicator']['powerRate'].strip('%'))))+'%。'+
                              '其中风机机组故障损失电量'+'{:.1f}'.format(eval(metric_tongji['reason']['turbineFaultLoss'])*10000)+'kWh，'+
                              '电网限电损失电量'+'{:.1f}'.format(eval(metric_tongji['reason']['limGridLoss'])*10000)+'kWh，'+
                              '电网故障损失电量'+'{:.1f}'.format(eval(metric_tongji['reason']['gridFaultLoss'])*10000)+'kWh，'+
@@ -646,12 +661,14 @@ def write_word(farmInfo, startTime, endTime):
     paragraph2_2.paragraph_format.space_before = Pt(12) 
     paragraph2_2.paragraph_format.space_after = Pt(0) 
     
-    for typei in range(trubine_type):
+    for typei in range(len(metric_tongjiList)):  #trubine_type
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[typei]))
         metric_tongji = metric_tongjiList[typei]#pd.read_csv(str(path+'/tongji.csv'),header=[0],index_col=[0])
         
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[typei]))
-        fault_loss_all = show_turbine_fault_loss.analyse(farmInfo['farum_name'], [typeNameList[typei]], startTime, endTime)['table']#pd.read_csv(str(path+'/fault_loss_all.csv'),header=[0],index_col=[0])
+        fault_loss_all = show_turbine_fault_loss.analyse(farmInfo['farm_name'], [typeNameList[typei]], startTime, endTime)#['table']#pd.read_csv(str(path+'/fault_loss_all.csv'),header=[0],index_col=[0])
+        if len(fault_loss_all) > 0:
+            fault_loss_all = fault_loss_all['table']
         
         if (eval(metric_tongji['reason']['turbineFaultLoss'])*10000 > 200 and len(fault_loss_all)>0): #&(len(fault_loss_all)>0
             paragraph2_1_text = ('分析时段内'+str(typeNameList[typei])+'机型各机组故障损失电量共'+'{:.1f}'.format(eval(metric_tongji['reason']['turbineFaultLoss'])*10000)+'kWh，折合等效小时'+
@@ -754,14 +771,16 @@ def write_word(farmInfo, startTime, endTime):
     paragraph2_2.paragraph_format.space_before = Pt(12)
     paragraph2_2.paragraph_format.space_after = Pt(0) 
     
-    for typei in range(trubine_type):
+    for typei in range(len(metric_tongjiList)): # trubine_type
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[typei]))
         metric_tongji = metric_tongjiList[i]#pd.read_csv(str(path+'/tongji.csv'),header=[0],index_col=[0])
         
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[typei]))
-        limgrid_loss_all = show_grid_limit_loss.analyse(farmInfo['farum_name'], [typeNameList[typei]], startTime, endTime)['table']#pd.read_csv(str(path+'/limgrid_loss_all.csv'),header=[0],index_col=[0])
+        limgrid_loss_all = show_grid_limit_loss.analyse(farmInfo['farm_name'], [typeNameList[typei]], startTime, endTime)#pd.read_csv(str(path+'/limgrid_loss_all.csv'),header=[0],index_col=[0])
+        if len(limgrid_loss_all) > 0:
+            limgrid_loss_all = limgrid_loss_all['table']
         
-        if (eval(metric_tongji['reason']['limGridLoss'])*10000 > 200)&(len(limgrid_loss_all)>0):
+        if (eval(metric_tongji['reason']['limGridLoss'])*10000 > 200) and (len(limgrid_loss_all)>0):
             paragraph2_1_text = ('分析时段内'+str(typeNameList[typei])+'机型各机组电网限电损失电量共'+'{:.1f}'.format(eval(metric_tongji['reason']['limGridLoss'])*10000)+'kWh，折合等效小时'+
                                 '{:.1f}'.format(eval(metric_tongji['reason']['limGridLoss'])*10000/windfarm_capi/1000)+'h，各机组详细统计见下表。')
             paragraph2_1 = document.add_paragraph()
@@ -837,14 +856,16 @@ def write_word(farmInfo, startTime, endTime):
     paragraph2_6.paragraph_format.space_after = Pt(0) 
     paragraph2_6.paragraph_format.space_before = Pt(12)
     
-    for typei in range(trubine_type):
+    for typei in range(len(metric_tongjiList)): # trubine_type
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[typei]))
         metric_tongji = metric_tongjiList[typei]#pd.read_csv(str(path+'/tongji.csv'),header=[0],index_col=[0])
         
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[typei]))
-        limturbine_loss_all = show_turbine_limit_loss.analyse(farmInfo['farum_name'], [typeNameList[typei]], startTime, endTime)['table']#pd.read_csv(str(path+'/limturbine_loss_all.csv'),header=[0],index_col=[0])
+        limturbine_loss_all = show_turbine_limit_loss.analyse(farmInfo['farm_name'], [typeNameList[typei]], startTime, endTime)#['table']#pd.read_csv(str(path+'/limturbine_loss_all.csv'),header=[0],index_col=[0])
+        if len(limturbine_loss_all) > 0:
+            limturbine_loss_all = limturbine_loss_all['table']
         
-        if (eval(metric_tongji['reason']['limTurbineLoss'])*10000 >= 0)&(len(limturbine_loss_all)>0):
+        if (eval(metric_tongji['reason']['limTurbineLoss'])*10000 > 0) and (len(limturbine_loss_all)>0):
             paragraph2_1_text = ('分析时段内'+str(typeNameList[typei])+'机型各机组自限电损失电量共'+'{:.1f}'.format(metric_tongji['reason']['limTurbineLoss']*10000)+'kWh，折合等效小时'+
                                 '{:.1f}'.format(eval(metric_tongji['reason']['limTurbineLoss'])*10000/windfarm_capi/1000)+'h，各机组详细统计见下表。自限电原因分析*****')
             paragraph2_1 = document.add_paragraph()
@@ -917,14 +938,16 @@ def write_word(farmInfo, startTime, endTime):
     paragraph2_2.paragraph_format.space_before = Pt(12) 
     paragraph2_2.paragraph_format.space_after = Pt(0) 
     
-    for typei in range(trubine_type):
+    for typei in range(len(metric_tongjiList)): #trubine_type
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[typei]))
         metric_tongji = metric_tongjiList[typei]#pd.read_csv(str(path+'/tongji.csv'),header=[0],index_col=[0])
         
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[typei]))
-        faultgrid_loss_all = show_grid_fault_loss.analyse(farmInfo['farum_name'], [typeNameList[typei]], startTime, endTime)['table']#pd.read_csv(str(path+'/faultgrid_loss_all.csv'),header=[0],index_col=[0])
+        faultgrid_loss_all = show_grid_fault_loss.analyse(farmInfo['farm_name'], [typeNameList[typei]], startTime, endTime)#['table']#pd.read_csv(str(path+'/faultgrid_loss_all.csv'),header=[0],index_col=[0])
+        if len(faultgrid_loss_all) > 0:
+            faultgrid_loss_all = faultgrid_loss_all['table']
         
-        if (eval(metric_tongji['reason']['gridFaultLoss'])*10000 > 200)&(len(faultgrid_loss_all)>0):
+        if (eval(metric_tongji['reason']['gridFaultLoss'])*10000 > 200) and (len(faultgrid_loss_all)>0):
             paragraph2_1_text = ('分析时段内'+str(typeNameList[typei])+'机型各机组因电网故障发生的损失电量共'+'{:.1f}'.format(eval(metric_tongji['reason']['gridFaultLoss'])*10000)+'kWh，折合等效小时'+
                                 '{:.1f}'.format(eval(metric_tongji['reason']['gridFaultLoss'])*10000/windfarm_capi/1000)+'h，详细故障损失统计见下表，其中***故障发生频次较高。')   
             paragraph2_1 = document.add_paragraph()
@@ -1016,14 +1039,16 @@ def write_word(farmInfo, startTime, endTime):
     paragraph2_1.paragraph_format.space_after = Pt(0)
     paragraph2_1.paragraph_format.space_before = Pt(6)
     
-    for typei in range(trubine_type):
+    for typei in range(len(metric_tongjiList)): # trubine_type
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[typei]))
         metric_tongji = metric_tongjiList[typei] #pd.read_csv(str(path+'/tongji.csv'),header=[0],index_col=[0])
         
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[typei]))
-        Technology_loss_all = show_technology_loss.analyse(farmInfo['farum_name'], [typeNameList[typei]], startTime, endTime)['table'] #pd.read_csv(str(path+'/Technology_loss_all.csv'),header=[0],index_col=[0])
+        Technology_loss_all = show_technology_loss.analyse(farmInfo['farm_name'], [typeNameList[typei]], startTime, endTime)#['table'] #pd.read_csv(str(path+'/Technology_loss_all.csv'),header=[0],index_col=[0])
+        if len(Technology_loss_all) > 0:
+            Technology_loss_all = Technology_loss_all['table']
         
-        if (eval(metric_tongji['reason']['technologyLoss'])*10000 > 200)&(len(Technology_loss_all)>0):
+        if (eval(metric_tongji['reason']['technologyLoss'])*10000 > 200) and (len(Technology_loss_all)>0):
             paragraph2_1_text = ('分析时段内'+str(typeNameList[typei])+'机型各机组技术待机损失电量共'+'{:.1f}'.format(metric_tongji.loc[0]['Technology_loss'])+'kWh，折合等效小时'+
                                 '{:.1f}'.format(eval(metric_tongji['reason']['technologyLoss'])*10000/windfarm_capi/1000)+'h，详细损失统计见下表。')   
             paragraph2_1 = document.add_paragraph()
@@ -1114,14 +1139,16 @@ def write_word(farmInfo, startTime, endTime):
     paragraph2_1.paragraph_format.space_after = Pt(0)
     paragraph2_1.paragraph_format.space_before = Pt(6)
     
-    for typei in range(trubine_type):
+    for typei in range(len(metric_tongjiList)): # trubine_type
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[typei]))
         metric_tongji = metric_tongjiList[typei]#pd.read_csv(str(path+'/tongji.csv'),header=[0],index_col=[0])
         
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[typei]))
-        stop_loss_all = show_stop_loss.analyse(farmInfo['farum_name'], [typeNameList[typei]], startTime, endTime)['table']#pd.read_csv(str(path+'/stop_loss_all.csv'),header=[0],index_col=[0])
+        stop_loss_all = show_stop_loss.analyse(farmInfo['farm_name'], [typeNameList[typei]], startTime, endTime)#['table']#pd.read_csv(str(path+'/stop_loss_all.csv'),header=[0],index_col=[0])
+        if len(stop_loss_all) > 0:
+            stop_loss_all = stop_loss_all['table']
         
-        if (eval(metric_tongji['reason']['stopLoss'])*10000)&(len(stop_loss_all)>0):
+        if (eval(metric_tongji['reason']['stopLoss'])*10000 > 200) and (len(stop_loss_all)>0):
             paragraph2_1_text = ('分析时段内'+str(typeNameList[typei])+'机型各机组计划停机损失电量共'+'{:.1f}'.format(metric_tongji.loc[0]['stop_loss'])+'kWh，折合等效小时'+
                                 '{:.1f}'.format(eval(metric_tongji['reason']['stopLoss'])*10000/windfarm_capi/1000)+'h，详细损失统计见下图表。')   
             paragraph2_1 = document.add_paragraph()
@@ -1197,15 +1224,22 @@ def write_word(farmInfo, startTime, endTime):
     
 
     #文字
-    for i in range(trubine_type):
+    for i in range(len(metric_tongjiList)): # trubine_type
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[i]))
-        result, power_tongji = show_power_consistence.analyse(farmInfo['farm_name'], typeNameList[i], farmInfo['wtid'][typeNameList[i]], startTime, endTime)#pd.read_csv(str(path+'/turbine_err_all.csv'),header=[0],index_col=[0])
+        try:
+            result, power_tongji = show_power_consistence.analyse(farmInfo['farm_name'], typeNameList[i], farmInfo['wtid'][typeNameList[i]], startTime, endTime)#pd.read_csv(str(path+'/turbine_err_all.csv'),header=[0],index_col=[0])
+        except Exception as e:
+            errorInfomation = traceback.format_exc()
+            # print("数据库中表eny_wspd_all在时段"+str(startTime)+"到"+str(endTime)+"没有机型"+str(typeNameList[i-1]))
+            print("############################数据库中表pw_turbine_all在时段"+str(startTime)+"到"+str(endTime)+"没有机型"+str(typeNameList[i])+'的数据导致报错#################################')
+            print(f'{errorInfomation}')
+            continue
         
         if len(power_tongji) <= 5:
             top_num = 1
-        elif (len(power_tongji) > 5)&(len(power_tongji) <= 10):
+        elif (len(power_tongji) > 5) and (len(power_tongji) <= 10):
             top_num = 2
-        elif (len(power_tongji) > 10)&(len(power_tongji) <= 20):
+        elif (len(power_tongji) > 10) and (len(power_tongji) <= 20):
             top_num = 3
         else: 
             top_num = 5
@@ -1247,6 +1281,8 @@ def write_word(farmInfo, startTime, endTime):
                 print(j_pw)
                 #fig.savefig(path + '/' +'功率曲线'+str(j_pw) +'.png',dpi=100, transparent=True, bbox_inches='tight')
                 figure_path = selectPowerCurvePicture(farmInfo['farm_name'], typeNameList[i], '功率曲线'+str(j_pw) +'.png', startTime, endTime)#str(str(path)+'/'+'/'+'功率曲线'+str(j_pw) +'.png')
+                if figure_path == None:
+                    continue
                 paragraph_picture2_4 = document.add_paragraph()
                 paragraph_picture2_4.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 paragraph_picture2_4_run = paragraph_picture2_4.add_run()
@@ -1264,6 +1300,8 @@ def write_word(farmInfo, startTime, endTime):
                 paragraph2_4.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 
                 figure_path = selectCPPicture(farmInfo['farm_name'], typeNameList[i], 'Cp曲线'+str(j_pw) +'.png', startTime, endTime) #str(str(path)+'/'+'/'+'Cp曲线'+str(j_pw) +'.png')
+                if figure_path == None:
+                    continue
                 paragraph_picture2_4 = document.add_paragraph()
                 paragraph_picture2_4.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 paragraph_picture2_4_run = paragraph_picture2_4.add_run()
@@ -1282,6 +1320,8 @@ def write_word(farmInfo, startTime, endTime):
         else:
             #fig.savefig(path + '/' +'功率曲线'+str(pnum+1) +'.png',dpi=100,transparent=True, bbox_inches='tight')
             figure_path = selectPowerCurvePicture(farmInfo['farm_name'], typeNameList[i], '功率曲线'+str(pnum+1) +'.png', startTime, endTime)#str(str(path)+'/'+'/'+'功率曲线'+str(pnum+1) +'.png')
+            if figure_path == None:
+                    continue
             paragraph_picture2_4 = document.add_paragraph()
             paragraph_picture2_4.alignment = WD_ALIGN_PARAGRAPH.CENTER
             paragraph_picture2_4_run = paragraph_picture2_4.add_run()
@@ -1299,6 +1339,8 @@ def write_word(farmInfo, startTime, endTime):
             paragraph2_4.alignment = WD_ALIGN_PARAGRAPH.CENTER
             
             figure_path = selectCPPicture(farmInfo['farm_name'], typeNameList[i], 'Cp曲线'+str(pnum+1) +'.png', startTime, endTime) #str(str(path)+'/'+'/'+'Cp曲线'+str(pnum+1) +'.png')
+            if figure_path == None:
+                    continue
             paragraph_picture2_4 = document.add_paragraph()
             paragraph_picture2_4.alignment = WD_ALIGN_PARAGRAPH.CENTER
             paragraph_picture2_4_run = paragraph_picture2_4.add_run()
@@ -1359,7 +1401,7 @@ def write_word(farmInfo, startTime, endTime):
     paragraph2_1.paragraph_format.space_after = Pt(0)
     paragraph2_1.paragraph_format.space_before = Pt(6)
     
-    for typei in range(trubine_type):
+    for typei in range(len(metric_tongjiList)):#trubine_type
         
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[typei]))
         err_result_great5 = []#pd.read_csv(str(path+'/err_result_all.csv'),header=[0],index_col=[0])
@@ -1480,19 +1522,19 @@ def write_word(farmInfo, startTime, endTime):
                 paragraph2_1.paragraph_format.space_before = Pt(6)
 #---------------------------------------------------------------------------------------
 
-    for typei in range(trubine_type):
+    for typei in range(len(metric_tongjiList)):#trubine_type
             
             # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[typei]))
             turbine_err_all = []#pd.read_csv(str(path+'/turbine_err_all.csv'),header=[0],index_col=[0])
             for turbineName in farmInfo['wtid'][typeNameList[typei]]:
-                resultBiasControl = selectNavigationBiasControlPicture(farmInfo['farm_name'], typeNameList[typei], turbineName, startTime, endTime)
-                if resultBiasControl is not None:
+                resultBiasDirection = selectNavigationBiasControlPicture(farmInfo['farm_name'], typeNameList[typei], turbineName, startTime, endTime)
+                if resultBiasDirection is not None:
                     dictBiasControl = {}
                     dictBiasControl['wtid'] = resultBiasDirection[0]
                     dictBiasControl['yaw_leiji_err'] = resultBiasDirection[2]
                     dictBiasControl['picture'] = resultBiasDirection[1]
                     if np.abs(dictBiasControl['yaw_leiji_err']) > 0: # and np.abs(dictBiasDirection['yawerr']) < 999
-                        turbine_err_all.append(dictBiasDirection)
+                        turbine_err_all.append(dictBiasControl)
             err_temp = turbine_err_all#[(np.abs(turbine_err_all['yaw_leiji_err'])>0)]
             if len(err_temp)>0:
                 paragraph2_1_text = ('风力发电机组的偏航对风角度一般控制在-10°～+10°之间。分析时段内'+str(typeNameList[typei])+'机型部分机组偏航对风控制误差较大，详细见下表，偏航控制具有一定优化空间。')   
@@ -1561,7 +1603,7 @@ def write_word(farmInfo, startTime, endTime):
     
     
     ###########最小桨距角异常
-    for typei in range(trubine_type):
+    for typei in range(len(metric_tongjiList)):#trubine_type
         
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[typei]))
         turbine_err_all = []#pd.read_csv(str(path+'/turbine_err_all.csv'),header=[0],index_col=[0])
@@ -1640,7 +1682,7 @@ def write_word(farmInfo, startTime, endTime):
     
             
     ########变桨控制异常
-    for typei in range(trubine_type):
+    for typei in range(len(metric_tongjiList)):#trubine_type
         
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[typei]))
         turbine_err_all = []#pd.read_csv(str(path+'/turbine_err_all.csv'),header=[0],index_col=[0])
@@ -1711,7 +1753,7 @@ def write_word(farmInfo, startTime, endTime):
             
     
     ########变桨不平衡
-    for typei in range(trubine_type):
+    for typei in range(len(metric_tongjiList)):#trubine_type
         
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[typei]))
         turbine_err_all = []#pd.read_csv(str(path+'/turbine_err_all.csv'),header=[0],index_col=[0])
@@ -1805,7 +1847,7 @@ def write_word(farmInfo, startTime, endTime):
     paragraph2_1.paragraph_format.space_before = Pt(6)
     
     
-    for typei in range(trubine_type):
+    for typei in range(len(metric_tongjiList)):#trubine_type
         
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[typei]))
         turbine_err_all = []#pd.read_csv(str(path+'/turbine_err_all.csv'),header=[0],index_col=[0])
@@ -1816,7 +1858,7 @@ def write_word(farmInfo, startTime, endTime):
                 dictControlAction['wtid'] = resultControlAction[0]
                 dictControlAction['picture'] = resultControlAction[1]
                 turbine_err_all.append(dictControlAction)
-        err_temp = turbine_err_all[(np.abs(turbine_err_all['torque_kopt_err'])>0)]
+        err_temp = turbine_err_all#turbine_err_all[(np.abs(turbine_err_all['torque_kopt_err'])>0)]
         if len(err_temp)>0:
             paragraph2_1_text = ('分析时段内'+str(typeNameList[typei])+
                                  '部分机组存转矩控制异常，下图表中异常机组的转速-功率散点图，部分散点（红色）明显偏离最佳Cp控制区域。')   
@@ -1915,7 +1957,7 @@ def write_word(farmInfo, startTime, endTime):
     paragraph2_1.paragraph_format.space_before = Pt(6)
     
     
-    for typei in range(trubine_type):
+    for typei in range(len(metric_tongjiList)):#trubine_type
         
         # path = str(str(path_farm)+'/'+str(np.unique(Turbine_attr['turbineTypeID'])[typei]))
         turbine_err_all = []#pd.read_csv(str(path+'/turbine_err_all.csv'),header=[0],index_col=[0])

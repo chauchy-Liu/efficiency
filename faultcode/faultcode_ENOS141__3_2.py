@@ -55,10 +55,10 @@ state = pd.DataFrame({'type_org':sname_org,'snum':snum.astype(int),'state_type':
 Rotspd_Connect = 1074.2 
 # 额定转速
 Rotspd_Rate = 1755.0 
-# 转矩控制系数
-set
 # 最小桨距角
 Pitch_Min = -0.5
+# 清洗数据时使用的测点是转速还是叶片转速(简写)
+clear_rotspd = "rotspd"
 
 # 并网状态
 state_ = 5

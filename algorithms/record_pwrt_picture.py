@@ -62,6 +62,7 @@ async def judge_model(algorithms_configs):
     algorithms_configs['wind_ti_all'] = pd.DataFrame()
     algorithms_configs['wind_ti_all']['windbin'] = algorithms_configs['windbin']
     #变量替换名字####################################
+    clear_rotspd = algorithms_configs['clear_rotspd']
     Turbine_attr_type = algorithms_configs['Turbine_attr_type']
     wtids = algorithms_configs['wtids']
     turbine_param_all = algorithms_configs['turbine_param_all']
@@ -102,7 +103,7 @@ async def judge_model(algorithms_configs):
         Df_all_m = Df_all_m_all[Df_all_m_all['wtid'] == turbine_name]
         #10min数据清洗
         try:
-            Df_all_m_clear = turbine_efficiency_function.data_min_clear(Df_all_m,state,Rotspd_Connect,Rotspd_Rate,Pwrat_Rate,Pitch_Min,neighbors_num=20,threshold=3)
+            Df_all_m_clear = turbine_efficiency_function.data_min_clear(Df_all_m,state,Rotspd_Connect,Rotspd_Rate,Pwrat_Rate,Pitch_Min, clear_rotspd,neighbors_num=20,threshold=3)
             df_all_clear = Df_all_m_clear[Df_all_m_clear['clear'] == 2]#1为干净值
         except Exception:
             Df_all_m_clear = Df_all_m
@@ -138,7 +139,7 @@ async def judge_model(algorithms_configs):
         pw_turbine.rename(columns = {'pwrat':turbine_name,'wspd_rho':str(turbine_name+'_'+'wspd')},inplace = True) 
         
         #####绘制近三月的功率曲线，用于控制策略分析, 输出内容：功率曲线一致性分析：机型功率曲线
-        pw_df = turbine_efficiency_function.pwratcurve_rho_alltime(df_all_clear,windbin,6)
+        pw_df = turbine_efficiency_function.pwratcurve_rho_alltime(df_all_clear,windbin,6, clear_rotspd)
         pw_df = pw_df.loc[:,['windbin','pwrat','count']]
         pw_df.rename(columns = {'pwrat':turbine_name,'count':str(turbine_name+'_'+'count')},inplace = True) 
         pw_df_alltime = pd.merge(pw_df_alltime,pw_df,how='outer',on='windbin')
@@ -331,11 +332,11 @@ async def judge_model(algorithms_configs):
         
         
         #########无叶片2、3角度，防止报错
-        if((['pitch2'] in Df_all.columns.values)==False):
+        if((('pitch2') in Df_all.columns.values.tolist())==False):
             Df_all['pitch2'] = Df_all['pitch1']
             Df_all_m['pitch2','nanmean'] = Df_all_m['pitch1','nanmean']
             print('桨距角2不存在')
-        if((['pitch3'] in Df_all.columns.values)==False):
+        if((('pitch3') in Df_all.columns.values.tolist())==False):
             Df_all['pitch3'] = Df_all['pitch1']
             Df_all_m['pitch3','nanmean'] = Df_all_m['pitch1','nanmean']
             print('桨距角3不存在')
@@ -455,7 +456,7 @@ async def judge_model(algorithms_configs):
         
         #10min数据清洗
         try:
-            Df_all_m_clear = turbine_efficiency_function.data_min_clear(Df_all_m,state,Rotspd_Connect,Rotspd_Rate,Pwrat_Rate,Pitch_Min,neighbors_num=20,threshold=3)
+            Df_all_m_clear = turbine_efficiency_function.data_min_clear(Df_all_m,state,Rotspd_Connect,Rotspd_Rate,Pwrat_Rate,Pitch_Min, clear_rotspd,neighbors_num=20,threshold=3)
             df_all_clear = Df_all_m_clear[Df_all_m_clear['clear'] == 2]#1为干净值
         except Exception:
             Df_all_m_clear = Df_all_m
@@ -473,23 +474,23 @@ async def judge_model(algorithms_configs):
         #df_all_clear['rho'] = 1.293*(10.0**(-(altitude+hub_high)/(18400.0*(1.0+0.003674*df_all_clear['exltmp','nanmean']))))/(1.0+0.003674*df_all_clear['exltmp','nanmean'])
         df_all_clear['rho'] = (101325.0*(1.0-0.0065*(altitude+hub_high)/(df_all_clear['exltmp','nanmean']+273.15))**5.255584)/(287.05*(df_all_clear['exltmp','nanmean']+273.15))
         df_all_clear['cp'] =  2000.0*df_all_clear['pwrat','nanmean'] / df_all_clear['rho'] / (np.pi*rotor_radius*rotor_radius) / df_all_clear['wspd','nanmean']**3
-        df_all_clear['kopt'] = 1000.0*df_all_clear['pwrat','nanmean'] / (df_all_clear['rotspd','nanmean']*0.10471)**3
+        df_all_clear['kopt'] = 1000.0*df_all_clear['pwrat','nanmean'] / (df_all_clear[clear_rotspd,'nanmean']*0.10471)**3
         
         ########
         rho_temp = np.nanmean(df_all_clear['rho'])
         if((['rotspdzz'] in Df_all.columns.values)==False):
             Df_all['rotspdzz'] = Df_all['rotspd']                
-        temp = Df_all[(Df_all['pwrat']>0.0)&(Df_all['rotspd']>Rotspd_Connect*0.9)&(Df_all['rotspdzz']>0.5)]
+        temp = Df_all[(Df_all['pwrat']>0.0)&(Df_all[clear_rotspd]>Rotspd_Connect*0.9)&(Df_all['rotspdzz']>0.5)]
         temp['gearsscale'] = temp['rotspd'] / temp['rotspdzz']
         chilun = np.nanmean(temp['gearsscale'])
         
-        temp = df_all_clear[(df_all_clear['rotspd','nanmean']>=1.05*Rotspd_Connect)&(df_all_clear['rotspd','nanmean']<=0.95*Rotspd_Rate)]
+        temp = df_all_clear[(df_all_clear[clear_rotspd,'nanmean']>=1.05*Rotspd_Connect)&(df_all_clear[clear_rotspd,'nanmean']<=0.95*Rotspd_Rate)]
         turbine_param_all.loc[turbine_param_all['wtid']==turbine_name,'kopt'] = np.nanmean(temp['kopt'])
         Cp = np.nanmean(temp['cp'])
         
         #######按如下方法计算设计KOPT和风速、空气密度、叶轮直径均无关系，需要知道整机厂家设计时的Cp和叶尖速比
-        temp = df_all_clear[(df_all_clear['rotspd','nanmean']>=0.95*0.5*(Rotspd_Connect+Rotspd_Rate))&(df_all_clear['rotspd','nanmean']<=1.05*0.5*(Rotspd_Connect+Rotspd_Rate))]
-        lamde = rotor_radius*np.nanmean(temp['rotspd','nanmean'])*0.1047/np.nanmean(temp['wspd','nanmean'])/chilun
+        temp = df_all_clear[(df_all_clear[clear_rotspd,'nanmean']>=0.95*0.5*(Rotspd_Connect+Rotspd_Rate))&(df_all_clear[clear_rotspd,'nanmean']<=1.05*0.5*(Rotspd_Connect+Rotspd_Rate))]
+        lamde = rotor_radius*np.nanmean(temp[clear_rotspd,'nanmean'])*0.1047/np.nanmean(temp['wspd','nanmean'])/chilun
         turbine_param_all.loc[turbine_param_all['wtid']==turbine_name,'koptsheji'] = 0.5*3.14*rho_temp*Cp*(rotor_radius**5)/(lamde**3)/(chilun**3)
         turbine_param_all.loc[turbine_param_all['wtid']==turbine_name,'Cp'] = Cp
         turbine_param_all.loc[turbine_param_all['wtid']==turbine_name,'lamde'] = lamde
@@ -563,7 +564,7 @@ async def judge_model(algorithms_configs):
         plt.title(str(turbine_name))    
         with plt.style.context('ggplot'):  
             #plt.plot(biaozhun['wspd'],biaozhun['pwrat'],color='red')          
-            plt.scatter(Df_all_m_clear['rotspd','nanmean']*1,Df_all_m_clear['pwrat','nanmean'],c=Df_all_m_clear['clear'],cmap='jet',s=15,alpha=1)
+            plt.scatter(Df_all_m_clear[clear_rotspd,'nanmean']*1,Df_all_m_clear['pwrat','nanmean'],c=Df_all_m_clear['clear'],cmap='jet',s=15,alpha=1)
             plt.grid()
             #plt.xlim(Rotspd_Connect*0.8,Rotspd_Rate*1.1)
             plt.ylim(0,Pwrat_Rate*1.2)
@@ -576,7 +577,7 @@ async def judge_model(algorithms_configs):
         plt.title(str(turbine_name))    
         with plt.style.context('ggplot'):  
             #plt.plot(biaozhun['wspd'],biaozhun['pwrat'],color='red')          
-            plt.scatter(Df_all_m_clear['rotspd','nanmean']*1,Df_all_m_clear['pwrat','nanmean'],c=Df_all_m_clear.index.month,cmap='jet',s=15,alpha=1)
+            plt.scatter(Df_all_m_clear[clear_rotspd,'nanmean']*1,Df_all_m_clear['pwrat','nanmean'],c=Df_all_m_clear.index.month,cmap='jet',s=15,alpha=1)
             plt.grid()
             plt.xlim(Rotspd_Connect*0.8,Rotspd_Rate*1.1)
             plt.ylim(0,Pwrat_Rate*1.2)
@@ -677,7 +678,7 @@ async def judge_model(algorithms_configs):
         
         
         ###########分段统计#########
-        (data_fenduan,fenduan) = turbine_efficiency_function.FenDuan(df_all_clear,Pwrat_Rate,Rotspd_Connect,Rotspd_Rate,turbine_name)
+        (data_fenduan,fenduan) = turbine_efficiency_function.FenDuan(df_all_clear,Pwrat_Rate,Rotspd_Connect,Rotspd_Rate,clear_rotspd,turbine_name)
         fenduan_all = pd.concat([fenduan_all, fenduan])#.append(fenduan)
         
         ###图形不展示
@@ -685,7 +686,7 @@ async def judge_model(algorithms_configs):
         plt.title(str(turbine_name))    
         with plt.style.context('ggplot'):  
             #plt.plot(biaozhun['wspd'],biaozhun['pwrat'],color='red')          
-            plt.scatter(data_fenduan['rotspd','nanmean'],data_fenduan['pwrat','nanmean'],c=data_fenduan['labelfen'],cmap='jet',s=15,alpha=1)
+            plt.scatter(data_fenduan[clear_rotspd,'nanmean'],data_fenduan['pwrat','nanmean'],c=data_fenduan['labelfen'],cmap='jet',s=15,alpha=1)
             plt.grid()
             plt.xlim(Rotspd_Connect*0.8,Rotspd_Rate*1.1)
             plt.ylim(0,Pwrat_Rate*1.1)
@@ -758,7 +759,7 @@ async def judge_model(algorithms_configs):
         
         #最小桨距角异常data=all，输出内容：变桨控制分析：最小桨距角异常
         #Df_all_m_clear[Df_all_m_clear['clear'] == 2]
-        if turbine_efficiency_function.Pitch_Min_loss(Df_all_m_clear[Df_all_m_clear['clear'] <= 7],Pitch_Min,Pwrat_Rate,Rotspd_Connect) > 0:
+        if turbine_efficiency_function.Pitch_Min_loss(Df_all_m_clear[Df_all_m_clear['clear'] <= 7],Pitch_Min,Pwrat_Rate,Rotspd_Connect,clear_rotspd) > 0:
             turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'pitch_min_err'] = 1
             
             df_all_clear_pitch_min = Df_all_m_clear[Df_all_m_clear['clear'] <= 7]
@@ -818,7 +819,7 @@ async def judge_model(algorithms_configs):
         ###########转矩控制分析############
         #最佳Cp段转矩控制异常异常, 输出内容：变桨控制分析：转矩控制异常
         if (turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'power_rate_err'].values == 0):
-            (kopt_err,data_temp) = turbine_efficiency_function.Torque_Cp_kopt_loss(df_all_clear,Pwrat_Rate,Rotspd_Connect,Rotspd_Rate,mytol=0.1,myreg=0.02)
+            (kopt_err,data_temp) = turbine_efficiency_function.Torque_Cp_kopt_loss(df_all_clear,Pwrat_Rate,Rotspd_Connect,Rotspd_Rate, clear_rotspd,mytol=0.1,myreg=0.02)
             if (kopt_err==1):
                 turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'torque_kopt_err'] = 1
 
@@ -836,7 +837,7 @@ async def judge_model(algorithms_configs):
                 fig = plt.figure(figsize=(10,8),dpi=100)  
                 plt.title(str(turbine_name), color='#ccc')    
                 with plt.style.context('ggplot'):  
-                    plt.scatter(data_temp['rotspd','nanmean'],data_temp['pwrat','nanmean'],c=data_temp['group'],s=15)
+                    plt.scatter(data_temp[clear_rotspd,'nanmean'],data_temp['pwrat','nanmean'],c=data_temp['group'],s=15)
                     plt.grid()
                     #plt.ylim(-3,25)
                     plt.xlabel('转速(rpm)',fontsize=20, color='#ccc')
@@ -870,7 +871,7 @@ async def judge_model(algorithms_configs):
                 fig = plt.figure(figsize=(10,8),dpi=100)  
                 plt.title(str(turbine_name))    
                 with plt.style.context('ggplot'):  
-                    plt.scatter(data_temp['rotspd','nanmean'],data_temp['pwrat','nanmean'],c=data_temp.index.month,cmap='jet',s=15)
+                    plt.scatter(data_temp[clear_rotspd,'nanmean'],data_temp['pwrat','nanmean'],c=data_temp.index.month,cmap='jet',s=15)
                     #plt.scatter(df_all_clear['rotspd','nanmean'],df_all_clear['pwrat','nanmean'],c=df_all_clear['kopt_err'],cmap='jet',s=15)
                     plt.grid()
                     #plt.ylim(-3,25)
@@ -881,15 +882,15 @@ async def judge_model(algorithms_configs):
             
             #额定功率段转矩控制异常异常
             else:
-                (rate_kopt_err,rotspd_power_nihe) = turbine_efficiency_function.Torque_Rotspd_Rate_loss(df_all_clear,Pwrat_Rate,Rotspd_Rate,Rotspd_Connect)
+                (rate_kopt_err,rotspd_power_nihe) = turbine_efficiency_function.Torque_Rotspd_Rate_loss(df_all_clear,Pwrat_Rate,Rotspd_Rate,Rotspd_Connect,clear_rotspd)
                 if (rate_kopt_err == 1):
                     turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'torque_rate_err'] = 1
                     
                     fig = plt.figure(figsize=(10,8),dpi=100)  
                     plt.title(str(turbine_name))    
                     with plt.style.context('ggplot'):  
-                        plt.scatter(df_all_clear['rotspd','nanmean'],df_all_clear['pwrat','nanmean'],color='cornflowerblue',s=15)
-                        plt.plot(rotspd_power_nihe['rotspd'],rotspd_power_nihe['pwrat'],color='darkorange',markersize=3,linewidth=3.0)
+                        plt.scatter(df_all_clear[clear_rotspd,'nanmean'],df_all_clear['pwrat','nanmean'],color='cornflowerblue',s=15)
+                        plt.plot(rotspd_power_nihe[clear_rotspd],rotspd_power_nihe['pwrat'],color='darkorange',markersize=3,linewidth=3.0)
                         plt.grid()
                         #plt.ylim(-3,25)
                         plt.xlabel('转速(rpm)',fontsize=20)
@@ -960,11 +961,11 @@ async def judge_model(algorithms_configs):
                 choose_num = 2
                 while restart and request_num < 8:
                     if request_num == 0:
-                        res_df = turbine_efficiency_function.data_clear(Df_all,Pitch_Min,Pwrat_Rate,Rotspd_Rate,Rotspd_Connect,rotor_radius,altitude,state)#剔除数据后数据量太少无法有效拟合
+                        res_df = turbine_efficiency_function.data_clear(Df_all,Pitch_Min,Pwrat_Rate,Rotspd_Rate,Rotspd_Connect,rotor_radius,altitude,state, clear_rotspd)#剔除数据后数据量太少无法有效拟合
                         if len(res_df)<100:
                             res_df = Df_all
                         #res_df = data
-                        err_result = turbine_efficiency_function.winddir_err_before_new(res_df,dirbin,windbin2,dirbin1,windbin1,path,turbine_name,request_num)
+                        err_result, picture_path = turbine_efficiency_function.winddir_err_before_new(res_df,dirbin,windbin2,dirbin1,windbin1,path,turbine_name,request_num)
                     if err_result == -999999:
                         Df_all = Df_all_all[Df_all_all['wtid'] == turbine_name]
 
@@ -1050,7 +1051,7 @@ async def judge_model(algorithms_configs):
                         #     Df_all['wdir'] = Df_all['wdir'].fillna(0)
                         #     Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
                             
-                        res_df = turbine_efficiency_function.data_clear(Df_all,Pwrat_Rate,Rotspd_Rate,Rotspd_Connect,rotor_radius,altitude,state)#剔除数据后数据量太少无法有效拟合
+                        res_df = turbine_efficiency_function.data_clear(Df_all,Pitch_Min, Pwrat_Rate,Rotspd_Rate,Rotspd_Connect,rotor_radius,altitude,state, clear_rotspd)#剔除数据后数据量太少无法有效拟合
                         if len(res_df)<100:
                             res_df = Df_all
                         #res_df = data
@@ -1079,7 +1080,10 @@ async def judge_model(algorithms_configs):
                     turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'yaw_duifeng_err'] = err_result
                     turbine_err_all.loc[turbine_err_all['wtid']==turbine_name,'yaw_duifeng_loss'] = err_result_all.loc[num,'loss']
                         
-            except Exception:
+            except Exception as e:
+                errorInfomation = traceback.format_exc()
+                print(f'\033[31m{errorInfomation}\033[0m')
+                print(f'\033[33m顶层函数execute_multi_algorithms补获异常：{e}\033[0m')
                 err_result_all.loc[num,'turbine'] = turbine_name
                 err_result_all.loc[num,'yawerr'] = -999999
                 err_result_all.loc[num,'loss'] = -999999
@@ -1123,7 +1127,7 @@ async def judge_model(algorithms_configs):
         ###发电机转速与叶轮转速不平衡
         #Df_all = Df_all_all[Df_all_all['wtid'] == 'F3']
         if((['rotspdzz'] in Df_all.columns.values)==True):
-            temp = Df_all[(Df_all['pwrat']>0.0)&(Df_all['rotspd']>Rotspd_Connect*0.9)&(Df_all['rotspdzz']>0.5)]
+            temp = Df_all[(Df_all['pwrat']>0.0)&(Df_all[clear_rotspd]>Rotspd_Connect*0.9)&(Df_all['rotspdzz']>0.5)]
             temp['gearsscale'] = temp['rotspd'] / temp['rotspdzz']
             fig = plt.figure(figsize=(10,8),dpi=100)  
             plt.title(str(turbine_name))    
@@ -1156,14 +1160,14 @@ async def judge_model(algorithms_configs):
             Df_all_m = Df_all_m_all[Df_all_m_all['wtid'] == turbine_name]
             
             #########无叶片2、3角度，防止报错
-            if((['pitch2','nanmean'] in Df_all_m.columns.values)==False):
+            if((('pitch2','nanmean') in Df_all_m.columns.values.tolist())==False):
                 Df_all_m['pitch2','nanmean'] = Df_all_m['pitch1','nanmean']
-            if((['pitch3','nanmean'] in Df_all_m.columns.values)==False):
+            if((('pitch3','nanmean') in Df_all_m.columns.values.tolist())==False):
                 Df_all_m['pitch3','nanmean'] = Df_all_m['pitch1','nanmean']
                 
             #10min数据清洗
             try:
-                Df_all_m_clear = turbine_efficiency_function.data_min_clear(Df_all_m,state,Rotspd_Connect,Rotspd_Rate,Pwrat_Rate,Pitch_Min,neighbors_num=20,threshold=3)
+                Df_all_m_clear = turbine_efficiency_function.data_min_clear(Df_all_m,state,Rotspd_Connect,Rotspd_Rate,Pwrat_Rate,Pitch_Min, clear_rotspd,neighbors_num=20,threshold=3)
                 df_all_clear = Df_all_m_clear[Df_all_m_clear['clear'] <= 7]#最小桨距角异常特殊为7
             except Exception:
                 Df_all_m_clear = Df_all_m
@@ -1333,7 +1337,7 @@ async def judge_model(algorithms_configs):
                 else:
                     turbine_camp = trubine_juli[wtids[i]].nsmallest(3).index.values
                     wtids_select = np.concatenate((wtids_select,turbine_camp),axis=0)
-                    abnormalData = turbine_efficiency_function.abnormal_detect_low(Df_all_m_all,turbine_camp,altitude,hub_high,rotor_radius,turbine_param_all,state,Pwrat_Rate,path,wtids[i])
+                    abnormalData = turbine_efficiency_function.abnormal_detect_low(Df_all_m_all,turbine_camp,altitude,hub_high,rotor_radius,turbine_param_all,state,Pwrat_Rate,path,wtids[i], clear_rotspd)
                     if abnormalData.empty == False:
                         for j in range(len(abnormalData)):
                             picture_path = abnormalData.iloc[j,'picture']

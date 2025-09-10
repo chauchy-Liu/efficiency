@@ -40,6 +40,20 @@ else:
 plt.rcParams['axes.unicode_minus'] = False 
 
 
+def turbineTypeNameFormat(typeNameSeries:str):
+    typeNameSeriesList = typeNameSeries.split(',')
+    formatNameSeries = ''
+    for typeName in typeNameSeriesList:
+        typeNameList = typeName.strip().split('/')
+        formatName = ''
+        if len(typeNameList) > 0:
+            for obj in typeNameList:
+                formatName += obj.strip()
+        else:
+            formatName = typeName
+        formatNameSeries += formatName
+    return formatNameSeries
+
 def thresholdfun_orig(data,threshold):
     temp_all = pd.DataFrame()    
     wind_bin = np.arange(2.0,np.ceil(np.nanmax(data['wspd'])),0.5)
@@ -62,7 +76,7 @@ def thresholdfun_orig1(data,neighbors_num=50):
     temp_all = data[data['y_pred']==1]
     return temp_all
 
-def pwratcurve_rho_alltime(data,windbin,num):
+def pwratcurve_rho_alltime(data,windbin,num, clear_rotspd):
     pc_df_rho = pd.DataFrame()
     for i in range(len(windbin)):
         temp = data[(data['wspd_rho']>=windbin[i]-0.25) & (data['wspd_rho']<windbin[i]+0.25)]
@@ -70,7 +84,7 @@ def pwratcurve_rho_alltime(data,windbin,num):
             pc_df_rho.loc[i,'windbin'] = windbin[i]
             pc_df_rho.loc[i,'pwrat'] = np.mean(temp['pwrat','nanmean'])
             pc_df_rho.loc[i,'wspd_mean'] = np.mean(temp['wspd_rho'])
-            pc_df_rho.loc[i,'rotspd_mean'] = np.mean(temp['rotspd','nanmean'])
+            pc_df_rho.loc[i,clear_rotspd+'_mean'] = np.mean(temp[clear_rotspd,'nanmean'])
             pc_df_rho.loc[i,'pwrat_std'] = np.std(temp['pwrat','nanmean'])   
             pc_df_rho.loc[i,'count'] = len(temp)
         #pc_df = pc_df.append(pc_df)
@@ -92,7 +106,7 @@ def pwratcurve_rho(data,turbine_type,turbine_name,pw_startTime,pw_endTime,windbi
         #pc_df = pc_df.append(pc_df)
     return pc_df_rho
 
-def pwrat_wind(data,pwratbin,num):
+def pwrat_wind(data,pwratbin,num, clear_rotspd):
     pwrat_wind = pd.DataFrame()
     for i in range(len(pwratbin)):
         temp = data[(data['pwrat','nanmean']>=pwratbin[i]-50) & (data['pwrat','nanmean']<pwratbin[i]+50)]
@@ -100,7 +114,7 @@ def pwrat_wind(data,pwratbin,num):
             pwrat_wind.loc[i,'pwratbin'] = pwratbin[i]
             pwrat_wind.loc[i,'pwrat'] = np.mean(temp['pwrat','nanmean'])
             pwrat_wind.loc[i,'wspd'] = np.mean(temp['wspd','nanmean'])
-            pwrat_wind.loc[i,'rotspd'] = np.mean(temp['rotspd','nanmean'])
+            pwrat_wind.loc[i,clear_rotspd] = np.mean(temp[clear_rotspd,'nanmean'])
             pwrat_wind.loc[i,'wind_std'] = np.std(temp['wspd','nanmean'])
             pwrat_wind.loc[i,'pwrat_std'] = np.std(temp['pwrat','nanmean'])            
         #pc_df = pc_df.append(pc_df)
@@ -184,7 +198,7 @@ def pass_filter(data,cutoff_freq,medfilt_freq,wiener_freq,cutoff_freq_butter,ord
     return filtered_data    
 
 
-def data_clear(data,Pitch_Min,Pwrat_Rate,Rotspd_Rate,Rotspd_Connect,rotor,altitude,state):
+def data_clear(data,Pitch_Min,Pwrat_Rate,Rotspd_Rate,Rotspd_Connect,rotor,altitude,state, clear_rotspd):
     
     res_df = data[(data['state']==state)]
     pwrat_range = np.arange(0,Pwrat_Rate*1.2+10,20.0)#######数据点太少容易出错
@@ -197,7 +211,7 @@ def data_clear(data,Pitch_Min,Pwrat_Rate,Rotspd_Rate,Rotspd_Connect,rotor,altitu
     res_df = res_df[abs(res_df['wdir0'])<=35.0] 
     res_df = res_df[res_df['wspd']<=50.0]
     res_df = res_df[(res_df['pwrat']>0) & (res_df['pwrat']<Pwrat_Rate*0.9)]
-    res_df = res_df[(res_df['rotspd']>=Rotspd_Connect*0.95) & (res_df['rotspd']<=Rotspd_Rate*1.1)]
+    res_df = res_df[(res_df[clear_rotspd]>=Rotspd_Connect*0.95) & (res_df[clear_rotspd]<=Rotspd_Rate*1.1)] #'rotspd'
     #res_df = res_df[(res_df['pwrat']<=0.8*power_rate) & (res_df['pitch1']<=2.5)]
     #res_df['rho'] = (101325.0*(1.0-0.0065*altitude/(res_df['exltmp']+273.15))**5.255584)/(287.05*(res_df['exltmp']+273.15))
     #res_df['wspd_f'] = (res_df['wspd'])*(res_df['rho']/1.225)**(1.0/3.0)
@@ -479,7 +493,7 @@ def mymean(data):
 
 
 #10min数据清洗
-def data_min_clear(data,state,Rotspd_Connect,Rotspd_Rate,Pwrat_Rate,Pitch_Min,neighbors_num=20,threshold=3): 
+def data_min_clear(data,state,Rotspd_Connect,Rotspd_Rate,Pwrat_Rate,Pitch_Min, clear_rotspd,neighbors_num=20,threshold=3): 
     
     pwrat_coeff1 = 0.92
     pwrat_coeff2 = 0.3
@@ -509,7 +523,7 @@ def data_min_clear(data,state,Rotspd_Connect,Rotspd_Rate,Pwrat_Rate,Pitch_Min,ne
     data.loc[(data['state','mymode']==state),'clear'] = 9
     #data.loc[((data['state','mymode']==8)|(data['state','mymode']==9)|(data['state','mymode']==10)),'clear'] = 9
     #风机转速、功率正常阈值内
-    data.loc[(data['rotspd','nanmean']>Rotspd_Connect*0.9)&(data['rotspd','nanmean']<Rotspd_Rate*1.1)&(data['pwrat','nanmean']>0)&(data['pwrat','nanmean']<Pwrat_Rate*1.2)&(data['clear']==9),'clear'] = 8
+    data.loc[(data[clear_rotspd,'nanmean']>Rotspd_Connect*0.9)&(data[clear_rotspd,'nanmean']<Rotspd_Rate*1.1)&(data['pwrat','nanmean']>0)&(data['pwrat','nanmean']<Pwrat_Rate*1.2)&(data['clear']==9),'clear'] = 8
     #非限功率状态
     data.loc[(data['state','mymode']==state)&(data['clear']==8),'clear'] = 7
     #data.loc[((data['statety','mymode']==71)|(data['statety','mymode']==80)|(data['statety','mymode']==60))&(data['clear']==8),'clear'] = 7
@@ -549,14 +563,14 @@ def Pwrat_Rate_loss(data,Pwrat_Rate):
         False
 
 #最佳Cp段转矩控制异常异常
-def Torque_Cp_kopt_loss(data,Pwrat_Rate,Rotspd_Connect,Rotspd_Rate,mytol=0.1,myreg=0.02):
+def Torque_Cp_kopt_loss(data,Pwrat_Rate,Rotspd_Connect,Rotspd_Rate, clear_rotspd,mytol=0.1,myreg=0.02):
     data['kopt_err'] = 1
     kopt_err = 0
     #gmm = GaussianMixture(n_components=2,covariance_type='full',random_state=0,tol=0.01,reg_covar=0.000005)
     gmm = BayesianGaussianMixture(n_components=2, covariance_type="full",random_state=0,tol=mytol,reg_covar=myreg)
     #gmm = DBSCAN(eps=0.1,min_samples=10)
     #gmm = SpectralClustering(n_clusters=2,assign_labels='discretize',eigen_solver='arpack',affinity='nearest_neighbors',n_neighbors=500,random_state=0,n_jobs=-1)
-    temp = data[(data['rotspd','nanmean']>Rotspd_Connect*1.1)&(data['rotspd','nanmean']<Rotspd_Rate*0.9)]
+    temp = data[(data[clear_rotspd,'nanmean']>Rotspd_Connect*1.1)&(data[clear_rotspd,'nanmean']<Rotspd_Rate*0.9)]
     if len(temp)>0.2*len(data):
         xx = temp.loc[:,[('kopt')]].values
         min_max_scaler = preprocessing.StandardScaler()
@@ -579,24 +593,24 @@ def Torque_Cp_kopt_loss(data,Pwrat_Rate,Rotspd_Connect,Rotspd_Rate,mytol=0.1,myr
 
             
 #额定功率段转矩控制异常异常
-def Torque_Rotspd_Rate_loss(data,Pwrat_Rate,Rotspd_Rate,Rotspd_Connect):
+def Torque_Rotspd_Rate_loss(data,Pwrat_Rate,Rotspd_Rate,Rotspd_Connect,clear_rotspd):
     rate_kopt_err = 0
-    if np.abs(np.nanmean(data.loc[data['pwrat','nanmean'].nlargest(20).index,('rotspd','nanmean')]) - Rotspd_Rate)/Rotspd_Rate>0.03:
-        Rotspd_Rate = np.nanmean(data.loc[data['pwrat','nanmean'].nlargest(20).index,('rotspd','nanmean')])
-    temp = data[(data['rotspd','nanmean']>Rotspd_Rate*0.97)&(data['pwrat','nanmean']<=Pwrat_Rate)]
-    temp_kopt = data[np.abs(data['rotspd','nanmean']-(Rotspd_Connect+Rotspd_Rate)*0.5)/((Rotspd_Connect+Rotspd_Rate)*0.5)<=0.1]
-    kopt_temp = np.nanmean(temp_kopt['pwrat','nanmean'] / (temp_kopt['rotspd','nanmean']**3))
+    if np.abs(np.nanmean(data.loc[data['pwrat','nanmean'].nlargest(20).index,(clear_rotspd,'nanmean')]) - Rotspd_Rate)/Rotspd_Rate>0.03:
+        Rotspd_Rate = np.nanmean(data.loc[data['pwrat','nanmean'].nlargest(20).index,(clear_rotspd,'nanmean')])
+    temp = data[(data[clear_rotspd,'nanmean']>Rotspd_Rate*0.97)&(data['pwrat','nanmean']<=Pwrat_Rate)]
+    temp_kopt = data[np.abs(data[clear_rotspd,'nanmean']-(Rotspd_Connect+Rotspd_Rate)*0.5)/((Rotspd_Connect+Rotspd_Rate)*0.5)<=0.1]
+    kopt_temp = np.nanmean(temp_kopt['pwrat','nanmean'] / (temp_kopt[clear_rotspd,'nanmean']**3))
     rotspd_power_nihe = pd.DataFrame()
     if len(temp)>100:
-        rotspd_small = np.nanmean(temp.loc[temp['pwrat','nanmean'].nsmallest(20).index,('rotspd','nanmean')])
-        rotspd_large = np.nanmean(temp.loc[temp['pwrat','nanmean'].nlargest(20).index,('rotspd','nanmean')])    
+        rotspd_small = np.nanmean(temp.loc[temp['pwrat','nanmean'].nsmallest(20).index,(clear_rotspd,'nanmean')])
+        rotspd_large = np.nanmean(temp.loc[temp['pwrat','nanmean'].nlargest(20).index,(clear_rotspd,'nanmean')])    
         if (np.abs(rotspd_large - rotspd_small)/(0.5*(rotspd_large + rotspd_small))>0.01)&((np.nanmean(temp['pwrat','nanmean'].nlargest(20)) - np.nanmean(temp['pwrat','nanmean'].nsmallest(20)))<0.15*Pwrat_Rate):
             rate_kopt_err = 1
-            rotspd_power_nihe['rotspd'] = np.arange(Rotspd_Connect,Rotspd_Rate+(Rotspd_Rate-Rotspd_Connect)*0.0001,(Rotspd_Rate-Rotspd_Connect)*0.0001)
-            rotspd_power_nihe['pwrat'] = kopt_temp*rotspd_power_nihe['rotspd']**3
-            new_row = pd.DataFrame({'rotspd':[Rotspd_Connect],'pwrat':[0]})
+            rotspd_power_nihe[clear_rotspd] = np.arange(Rotspd_Connect,Rotspd_Rate+(Rotspd_Rate-Rotspd_Connect)*0.0001,(Rotspd_Rate-Rotspd_Connect)*0.0001)
+            rotspd_power_nihe['pwrat'] = kopt_temp*rotspd_power_nihe[clear_rotspd]**3
+            new_row = pd.DataFrame({clear_rotspd:[Rotspd_Connect],'pwrat':[0]})
             rotspd_power_nihe = pd.concat([rotspd_power_nihe,new_row],ignore_index=True)#.append(new_row,ignore_index=True)
-            new_row = pd.DataFrame({'rotspd':[Rotspd_Rate],'pwrat':[Pwrat_Rate]})
+            new_row = pd.DataFrame({clear_rotspd:[Rotspd_Rate],'pwrat':[Pwrat_Rate]})
             rotspd_power_nihe = pd.concat([rotspd_power_nihe,new_row],ignore_index=True)
             rotspd_power_nihe = rotspd_power_nihe.sort_values(by='pwrat',ascending=True)
             return rate_kopt_err,rotspd_power_nihe
@@ -646,10 +660,10 @@ def Yaw_Control_loss(data):
 
         
 #最小桨距角异常data=all
-def Pitch_Min_loss(data,Pitch_Min,Pwrat_Rate,Rotspd_Connect):
+def Pitch_Min_loss(data,Pitch_Min,Pwrat_Rate,Rotspd_Connect,clear_rotspd):
     Pitch_Min_loss = 0
     day = pd.date_range(np.min(data.index),np.max(data.index),freq="7d").to_list()#.strftime('%Y-%m-%d %H:%M:%S').to_list()#7天为一周期判断
-    temp_all = data[(data['rotspd','nanmean']>Rotspd_Connect)&(data['pwrat','nanmean']<Pwrat_Rate*0.35)]
+    temp_all = data[(data[clear_rotspd,'nanmean']>Rotspd_Connect)&(data[clear_rotspd,'nanmean']<Pwrat_Rate*0.35)]
     #temp_err = data[(data['rotspd','nanmean']>Rotspd_Connect*1.1)&(data['pwrat','nanmean']<Pwrat_Rate*0.3)&(np.abs(data['pitch1','nanmean'])>2.5)&(np.abs(data['pitch1','nanmin'])>2.5)]
     
     for i in range(len(day)-1):
@@ -681,7 +695,7 @@ def Pitch_Nobalance_loss(data,data_m):
     
 
 #分段统计
-def FenDuan(data,Pwrat_Rate,Rotspd_Connect,Rotspd_Rate,turbine_name):
+def FenDuan(data,Pwrat_Rate,Rotspd_Connect,Rotspd_Rate,clear_rotspd,turbine_name):
     fenduan = pd.DataFrame()
     '''
     #gmm = GaussianMixture(n_components=3,covariance_type='full',random_state=0,tol=0.1,reg_covar=0.01)
@@ -713,11 +727,11 @@ def FenDuan(data,Pwrat_Rate,Rotspd_Connect,Rotspd_Rate,turbine_name):
     data.loc[((data['labels_temp']>=order_rotspd[0,2])),'labelfen'] = 3
     data.loc[((data['pwrat','nanmean']>Pwrat_Rate*0.95)),'labelfen'] = 4
     '''
-    if np.abs(np.nanmean(data.loc[data['pwrat','nanmean'].nlargest(20).index,('rotspd','nanmean')]) - Rotspd_Rate)/Rotspd_Rate>0.03:
-        Rotspd_Rate = np.nanmean(data.loc[data['pwrat','nanmean'].nlargest(20).index,('rotspd','nanmean')])
-    data.loc[((data['rotspd','nanmean']<Rotspd_Connect*1.02)),'labelfen'] = 1
-    data.loc[((data['rotspd','nanmean']>=Rotspd_Connect*1.02)&(data['rotspd','nanmean']<Rotspd_Rate*0.98)),'labelfen'] = 2
-    data.loc[((data['rotspd','nanmean']>=Rotspd_Rate*0.98)&(data['pwrat','nanmean']<=Pwrat_Rate*0.97)),'labelfen'] = 3
+    if np.abs(np.nanmean(data.loc[data['pwrat','nanmean'].nlargest(20).index,(clear_rotspd,'nanmean')]) - Rotspd_Rate)/Rotspd_Rate>0.03:
+        Rotspd_Rate = np.nanmean(data.loc[data['pwrat','nanmean'].nlargest(20).index,(clear_rotspd,'nanmean')])
+    data.loc[((data[clear_rotspd,'nanmean']<Rotspd_Connect*1.02)),'labelfen'] = 1
+    data.loc[((data[clear_rotspd,'nanmean']>=Rotspd_Connect*1.02)&(data[clear_rotspd,'nanmean']<Rotspd_Rate*0.98)),'labelfen'] = 2
+    data.loc[((data[clear_rotspd,'nanmean']>=Rotspd_Rate*0.98)&(data['pwrat','nanmean']<=Pwrat_Rate*0.97)),'labelfen'] = 3
     data.loc[((data['pwrat','nanmean']>Pwrat_Rate*0.97)),'labelfen'] = 4
     
     fenduan.loc[turbine_name,'count_connect'] = len(data[data['labelfen']==1]) / len(data)
@@ -1268,7 +1282,7 @@ def Turbine_Technology_Loss(data,turbine_name,pw_df_temp,fault_code,state_code):
 
 
 ##单机自限电损失输入
-def Turbine_Limit_Loss(data,turbine_name,pw_df_temp,Pitch_Min,Pwrat_Rate,Rotspd_Connect,state, statetyNormal): 
+def Turbine_Limit_Loss(data,turbine_name,pw_df_temp,Pitch_Min,Pwrat_Rate,Rotspd_Connect,clear_rotspd,state, statetyNormal): 
     limturbine_loss = pd.DataFrame()
     data_limt = data[(data['limpw','nanmean']==statetyNormal)&(data['state','nanmean']==state)] #4：限电, 5:正常, 应填：5
     #列分级
@@ -1316,7 +1330,7 @@ def Turbine_Limit_Loss(data,turbine_name,pw_df_temp,Pitch_Min,Pwrat_Rate,Rotspd_
     #fig.savefig(path + '/' +str(turbine_name) + '_限电2.png',dpi=100)
     '''
     #data_limt_lim = data_limt[data_limt[('clear','')]==7]
-    data_limt_lim = data_limt[(data_limt['pwrat','nanmean']<data_limt['pwrat_lim'])&(data_limt['pwrat','nanmean']<Pwrat_Rate*0.8)&(data_limt['pwrat','nanmean']>100.0)&(data_limt['pitch1','nanmin']>Pitch_Min+2.5)&(data_limt['rotspd','nanmin']>Rotspd_Connect*1.05)]
+    data_limt_lim = data_limt[(data_limt['pwrat','nanmean']<data_limt['pwrat_lim'])&(data_limt['pwrat','nanmean']<Pwrat_Rate*0.8)&(data_limt['pwrat','nanmean']>100.0)&(data_limt['pitch1','nanmin']>Pitch_Min+2.5)&(data_limt[clear_rotspd,'nanmin']>Rotspd_Connect*1.05)]
     
     #print(len(data_limt_lim)/len(data_limt))
     if len(data_limt_lim)/len(data_limt) > 0.05:
@@ -1391,12 +1405,12 @@ def NotFault_Time(start_time,end_time,fault_loss,faultgrid_loss):
     return notfault_time
 
 
-def abnormal_detect(data,turbine_camp,altitude,hub_high,rotor_radius,turbine_param_all,state,Pwrat_Rate,path,wtids_ses):
+def abnormal_detect(data,turbine_camp,altitude,hub_high,rotor_radius,turbine_param_all,state,Pwrat_Rate,path,wtids_ses, clear_rotspd):
     data_all = pd.DataFrame()
     #('wspd','nanmean'),('wspd','nanstd'),('wdir','nanmean'),
-    columns_names = [('wtid',''),('pwrat','nanmean'),('rotspd','nanmean'),('accx','nanmean'),('accy','nanmean'),
+    columns_names = [('wtid',''),('pwrat','nanmean'),(clear_rotspd,'nanmean'),('accx','nanmean'),('accy','nanmean'),
                      ('pitch1','nanmean'),('pitch2','nanmean'),('pitch3','nanmean'),('exltmp','nanmean'),
-                     ('rotspd','nanstd'),('pwrat','nanstd'),('pitch1','nanstd'),('pitch2','nanstd'),('labelfen',''),#原始数据没有，为使分段后取数正常预置
+                     (clear_rotspd,'nanstd'),('pwrat','nanstd'),('pitch1','nanstd'),('pitch2','nanstd'),('labelfen',''),#原始数据没有，为使分段后取数正常预置
                      ('pitch3','nanstd'),('accxfil','nanmean'),('accyfil','nanmean'),
                      ('mot1cur','nanmean'),('mot2cur','nanmean'),('mot3cur','nanmean'),('mot1tmp','nanmean'),
                      ('mot2tmp','nanmean'),('mot3tmp','nanmean'),('gen1tmp','nanmean'),('gen2tmp','nanmean'),
@@ -1415,9 +1429,9 @@ def abnormal_detect(data,turbine_camp,altitude,hub_high,rotor_radius,turbine_par
         Rotspd_Connect = turbine_param_all.loc[turbine_param_all['wtid']==turbine_name,'Rotspd_Connect'].values[0]
         Rotspd_Rate = turbine_param_all.loc[turbine_param_all['wtid']==turbine_name,'Rotspd_Rate'].values[0]
         
-        Df_all_m_clear = data_min_clear(Df_all_m,state,Rotspd_Connect,Rotspd_Rate,Pwrat_Rate,Pitch_Min,neighbors_num=20,threshold=3)
+        Df_all_m_clear = data_min_clear(Df_all_m,state,Rotspd_Connect,Rotspd_Rate,Pwrat_Rate,Pitch_Min, clear_rotspd,neighbors_num=20,threshold=3)
         df_all_clear = Df_all_m_clear[Df_all_m_clear['clear'] == 2]#1为干净值
-        (data_fenduan,fenduan) = FenDuan(df_all_clear,Pwrat_Rate,Rotspd_Connect,Rotspd_Rate,turbine_name)
+        (data_fenduan,fenduan) = FenDuan(df_all_clear,Pwrat_Rate,Rotspd_Connect,Rotspd_Rate,clear_rotspd,turbine_name)
         
         columns_names = [col for col in columns_names if col in data_fenduan.columns]
         
@@ -1570,12 +1584,12 @@ def abnormal_detect(data,turbine_camp,altitude,hub_high,rotor_radius,turbine_par
         abnormal_detect = pd.concat([abnormal_detect,abnormal_detect_label])#.append(abnormal_detect_label)
     return abnormal_detect
 
-def abnormal_detect_low(data,turbine_camp,altitude,hub_high,rotor_radius,turbine_param_all,state,Pwrat_Rate,path,wtids_ses):
+def abnormal_detect_low(data,turbine_camp,altitude,hub_high,rotor_radius,turbine_param_all,state,Pwrat_Rate,path,wtids_ses, clear_rotspd):
     data_all = pd.DataFrame()
     #('wspd','nanmean'),('wspd','nanstd'),('wdir','nanmean'),
-    columns_names = [('wtid',''),('pwrat','nanmean'),('rotspd','nanmean'),('accx','nanmean'),('accy','nanmean'),
+    columns_names = [('wtid',''),('pwrat','nanmean'),(clear_rotspd,'nanmean'),('accx','nanmean'),('accy','nanmean'),
                      ('pitch1','nanmean'),('pitch2','nanmean'),('pitch3','nanmean'),('exltmp','nanmean'),
-                     ('rotspd','nanstd'),('pwrat','nanstd'),('pitch1','nanstd'),('pitch2','nanstd'),('labelfen',''),#原始数据没有，为使分段后取数正常预置
+                     (clear_rotspd,'nanstd'),('pwrat','nanstd'),('pitch1','nanstd'),('pitch2','nanstd'),('labelfen',''),#原始数据没有，为使分段后取数正常预置
                      ('pitch3','nanstd'),('accxfil','nanmean'),('accyfil','nanmean'),
                      ('mot1cur','nanmean'),('mot2cur','nanmean'),('mot3cur','nanmean'),('mot1tmp','nanmean'),
                      ('mot2tmp','nanmean'),('mot3tmp','nanmean'),('gen1tmp','nanmean'),('gen2tmp','nanmean'),
@@ -1594,9 +1608,9 @@ def abnormal_detect_low(data,turbine_camp,altitude,hub_high,rotor_radius,turbine
         Rotspd_Connect = turbine_param_all.loc[turbine_param_all['wtid']==turbine_name,'Rotspd_Connect'].values[0]
         Rotspd_Rate = turbine_param_all.loc[turbine_param_all['wtid']==turbine_name,'Rotspd_Rate'].values[0]
         
-        Df_all_m_clear = data_min_clear(Df_all_m,state,Rotspd_Connect,Rotspd_Rate,Pwrat_Rate,Pitch_Min,neighbors_num=20,threshold=3)
+        Df_all_m_clear = data_min_clear(Df_all_m,state,Rotspd_Connect,Rotspd_Rate,Pwrat_Rate,Pitch_Min, clear_rotspd,neighbors_num=20,threshold=3)
         df_all_clear = Df_all_m_clear[Df_all_m_clear['clear'] == 2]#1为干净值
-        (data_fenduan,fenduan) = FenDuan(df_all_clear,Pwrat_Rate,Rotspd_Connect,Rotspd_Rate,turbine_name)
+        (data_fenduan,fenduan) = FenDuan(df_all_clear,Pwrat_Rate,Rotspd_Connect,Rotspd_Rate,clear_rotspd,turbine_name)
         
         columns_names = [col for col in columns_names if col in data_fenduan.columns]
         

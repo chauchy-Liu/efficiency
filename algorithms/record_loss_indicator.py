@@ -70,6 +70,7 @@ async def judge_model(algorithms_configs):
     fault_code = algorithms_configs['fault_code']
     state_code = algorithms_configs['state_code']
     typeName = algorithms_configs['typeName']
+    clear_rotspd = algorithms_configs['clear_rotspd']
     if algConfig["record_loss_indicator"]["isStatety"]:
         # 统一状态替换替换限功率测点
         Df_all_m_all['limpw','mymode'] = Df_all_m_all['statety','mymode']
@@ -114,6 +115,8 @@ async def judge_model(algorithms_configs):
             #print(str(turbine_name + '损失电量计算'))
             
             #fault_code = faultcode_SANY.fault
+            if turbine_name not in pw_df_alltime.columns.tolist():
+                continue
             pw_df_temp = pw_df_alltime.loc[:,['windbin','pwrat',turbine_name]]
             pw_df_temp[turbine_name] = pw_df_temp[turbine_name].fillna(pw_df_temp.loc[pw_df_temp[turbine_name].isnull(),'pwrat'])
             
@@ -122,7 +125,7 @@ async def judge_model(algorithms_configs):
             Df_all_m['windbin'] = pd.cut(Df_all_m['wspd','nanmean'],windbinreg,labels=windbin)
             
             try:
-                Df_all_m_clear = turbine_efficiency_function.data_min_clear(Df_all_m,state,Rotspd_Connect,Rotspd_Rate,Pwrat_Rate,Pitch_Min,neighbors_num=20,threshold=3)
+                Df_all_m_clear = turbine_efficiency_function.data_min_clear(Df_all_m,state,Rotspd_Connect,Rotspd_Rate,Pwrat_Rate,Pitch_Min, clear_rotspd,neighbors_num=20,threshold=3)
             except Exception:
                 Df_all_m_clear = Df_all_m
                 Df_all_m_clear['clear'] = 6
@@ -204,7 +207,7 @@ async def judge_model(algorithms_configs):
             
             ##单机自限电损失输入
             try:
-                (data_limt,limturbine_loss) = turbine_efficiency_function.Turbine_Limit_Loss(Df_all_m_clear[Df_all_m_clear['clear'] <= 7],turbine_name,pw_df_temp,Pitch_Min,Pwrat_Rate,Rotspd_Connect,state, statetyNormal)
+                (data_limt,limturbine_loss) = turbine_efficiency_function.Turbine_Limit_Loss(Df_all_m_clear[Df_all_m_clear['clear'] <= 7],turbine_name,pw_df_temp,Pitch_Min,Pwrat_Rate,Rotspd_Connect,clear_rotspd,state, statetyNormal)
                 limturbine_loss.insert(0, 'type', typeName)
                 day_temp = datetime.strptime(day_list[i], '%Y-%m-%d %H:%M:%S')
                 day_temp = datetime.strftime(day_temp, '%Y-%m-%d')

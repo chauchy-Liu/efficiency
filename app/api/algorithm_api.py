@@ -19,6 +19,7 @@ import os
 from algorithms import show_fault_distribute, show_grid_fault_loss, show_grid_limit_loss, show_loss_reason_indicator, show_power_consistence, show_power_curve, show_power_data, show_station_compare, show_stop_loss, show_technology_loss, show_time_compare, show_turbine_fault_loss, show_turbine_limit_loss, show_turbine_type_compare, show_warning, show_word
 import logging
 import traceback
+from data.efficiency_function import turbineTypeNameFormat
 
 logger = logging.getLogger('http-request')
 if not logger.handlers:
@@ -529,11 +530,12 @@ def generate_word():
         logger.info(f"参数：{params}")
         farmName = params['farm'][-1]['mdmId']
         # typeName = []
-        # for name_dict in params['farm'][-1]['turbineType']:
-            # typeName.append(name_dict['name'])
+        #机型修改为统一样式
+        for name_dict in params['farm'][-1]['turbineType']:
+            name_dict['name'] = turbineTypeNameFormat(name_dict['name']) #name_dict['name']
         startTime = params['target']['startDate']
         endTime = params['target']['endDate']
-        result = show_word.generate_word(farmName, startTime, endTime)
+        result = show_word.analyse(farmName, startTime, endTime)
         logger.info(f"word返回结果：")
         logger.info(f"{result['word_url']}")
         return result['word_url']

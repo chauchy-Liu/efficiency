@@ -15,6 +15,7 @@ from urllib.parse import urlparse, parse_qs
 import requests
 import io
 import re
+from urllib.parse import quote
 
 log = logging.getLogger('mysql_log')
 if not log.handlers:
@@ -416,7 +417,7 @@ create_wind_resource_table_query = f'''
         wind_max float comment '最大风速',
         wind_mean float comment '平均风速',
         mean_rho float comment '平均空气密度',
-        max_speed_month int comment '最大风速月份',
+        max_speed_month text comment '最大风速月份',
         turbulence float comment '湍流强度',
         turbulence_flag15 int comment '是否使用了15m/s的湍流强度',
         del_flag tinyint default 0 comment '删除数据标志位'
@@ -512,10 +513,22 @@ create_word_table_query = f'''
 #提取数据
 ####################################################33
 def selectFarmInfo(farmName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"####################################提取farmInfo数据############################")
@@ -534,8 +547,8 @@ def selectFarmInfo(farmName, start_time=datetime.now()-timedelta(days=91), end_t
         path_farm, \
         minio_dir, \
         wtid \
-        from farmInfo where farm_name=%s and execute_time = (select max(execute_time) from farmInfo where execute_time <= %s)"
-    data_query = (farmName, end_time)
+        from farmInfo where farm_name=%s and execute_time = (select max(execute_time) from farmInfo where execute_time <= %s and farm_name=%s)"
+    data_query = (farmName, end_time, farmName)
     log.info(f'sql语句：{query}')
     log.info(f'sql数据：{data_query}')
     cursor.execute(query, data_query)
@@ -551,12 +564,15 @@ def selectFarmInfo(farmName, start_time=datetime.now()-timedelta(days=91), end_t
         capacity = queryResult[5]
         turbine_num = queryResult[6]
         turbine_type = queryResult[7]
-        wind_resource = queryResult[8]
+        wind_resource = float(queryResult[8])
         operate_time = queryResult[9]
         rccID = queryResult[10]
         path_farm = queryResult[11]
         minio_dir = queryResult[12]
+        # if queryResult[13]:
         wtid = eval(queryResult[13])
+        # else:
+            # wtid = {turbine_type: []}
     return {
             'execute_time': execute_time,
             'farm_name': farm_name,
@@ -575,10 +591,22 @@ def selectFarmInfo(farmName, start_time=datetime.now()-timedelta(days=91), end_t
            }
 
 def selectWindResourceWord(farmName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"####################################提取wind_resource数据############################")
@@ -597,9 +625,9 @@ def selectWindResourceWord(farmName, start_time=datetime.now()-timedelta(days=91
             turbulence, \
             turbulence_flag15 \
             from wind_resource \
-            where farm_name=%s AND execute_time = (select max(execute_time) from wind_resource where execute_time <= %s) \
+            where farm_name=%s AND execute_time = (select max(execute_time) from wind_resource where execute_time <= %s and farm_name=%s) \
         "
-    data_to_obtain = (farmName, end_time)
+    data_to_obtain = (farmName, end_time, farmName)
     log.info(f'sql语句：{obtain_query}')
     log.info(f'sql数据：{data_to_obtain}')
     cursor.execute(obtain_query, data_to_obtain)
@@ -633,10 +661,22 @@ def selectWindResourceWord(farmName, start_time=datetime.now()-timedelta(days=91
     return data
 
 def selectAllWindFrequencyPicture(farmName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"##################################提取wind_frequency_picture数据####################")
@@ -650,12 +690,12 @@ def selectAllWindFrequencyPicture(farmName, start_time=datetime.now()-timedelta(
         file_name, \
         del_flag \
         from wind_frequency_picture \
-        where farm_name=%s and type_name=all and execute_time = (select max(execute_time) from wind_frequency_picture where execute_time  <= %s)\
+        where farm_name=%s and type_name='all' and execute_time = (select max(execute_time) from wind_frequency_picture where execute_time  <= %s and farm_name=%s and type_name='all')\
     "
-    data_query = (farmName, end_time)
+    data_query = (farmName, end_time, farmName)
     log.info(f'sql语句：{query}')
     log.info(f'sql数据：{data_query}')
-    cursor.execute(query)
+    cursor.execute(query,data_query)
     queryResult = cursor.fetchone()
     if queryResult == None or len(queryResult) <= 0:
         return None
@@ -667,13 +707,25 @@ def selectAllWindFrequencyPicture(farmName, start_time=datetime.now()-timedelta(
         minio_url = queryResult[4]
         log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 图片名: {file_name} , 图片URL：{minio_url}")
         
-    return download(minio_url)
+    return io.BytesIO(download(minio_url))
 
 def selectWindFrequencyPicture(farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"##################################提取wind_frequency_picture数据####################")
@@ -687,12 +739,12 @@ def selectWindFrequencyPicture(farmName, typeName, start_time=datetime.now()-tim
         file_name, \
         del_flag \
         from wind_frequency_picture \
-        where farm_name=%s and type_name=%s and execute_time = (select max(execute_time) from wind_frequency_picture where execute_time %s)\
+        where farm_name=%s and type_name=%s and execute_time = (select max(execute_time) from wind_frequency_picture where execute_time %s and farm_name=%s and type_name=%s)\
     "
-    data_query = (farmName, typeName, end_time)
+    data_query = (farmName, typeName, end_time, farmName, typeName)
     log.info(f'sql语句：{query}')
     log.info(f'sql数据：{data_query}')
-    cursor.execute(query)
+    cursor.execute(query,data_query)
     queryResult = cursor.fetchone()
     if queryResult == None or len(queryResult) <= 0:
         return None
@@ -704,13 +756,25 @@ def selectWindFrequencyPicture(farmName, typeName, start_time=datetime.now()-tim
         minio_url = queryResult[4]
         log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 图片名: {file_name} , 图片URL：{minio_url}")
         
-    return download(minio_url)
+    return io.BytesIO(download(minio_url))
 
 def selectWindDirectionPicture(farmName, typeName, wtid, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"##################################提取wind_direction_picture数据####################")
@@ -725,12 +789,12 @@ def selectWindDirectionPicture(farmName, typeName, wtid, start_time=datetime.now
         wtid, \
         del_flag \
         from wind_direction_picture \
-        where farm_name=%s and type_name=%s and witd=%s and execute_time = (select max(execute_time) from wind_direction_picture where execute_time <= %s)\
+        where farm_name=%s and type_name=%s and wtid=%s and execute_time = (select max(execute_time) from wind_direction_picture where execute_time <= %s and farm_name=%s and type_name=%s and wtid=%s)\
     "
-    data_query = (farmName, typeName, wtid, end_time)
+    data_query = (farmName, typeName, wtid, end_time, farmName, typeName, wtid)
     log.info(f'sql语句：{query}')
     log.info(f'sql数据：{data_query}')
-    cursor.execute(query)
+    cursor.execute(query,data_query)
     queryResult = cursor.fetchone()
     if queryResult == None or len(queryResult) <= 0:
         return None
@@ -743,13 +807,25 @@ def selectWindDirectionPicture(farmName, typeName, wtid, start_time=datetime.now
         wtid = queryResult[7]
         log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 风机名：{wtid}, 图片名: {file_name} , 图片URL：{minio_url}")
         
-    return download(minio_url)
+    return io.BytesIO(download(minio_url))
 
 def selectAllAirDensityPicture(farmName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"##################################提取air_density_picture数据####################")
@@ -763,12 +839,12 @@ def selectAllAirDensityPicture(farmName, start_time=datetime.now()-timedelta(day
         file_name, \
         del_flag \
         from air_density_picture \
-        where farm_name=%s and type_name=all and execute_time = (select max(execute_time) from air_density_picture where execute_time  <= %s)\
+        where farm_name=%s and type_name='all' and execute_time = (select max(execute_time) from air_density_picture where execute_time  <= %s and farm_name=%s and type_name='all')\
     "
-    data_query = (farmName, end_time)
+    data_query = (farmName, end_time, farmName)
     log.info(f'sql语句：{query}')
     log.info(f'sql数据：{data_query}')
-    cursor.execute(query)
+    cursor.execute(query,data_query)
     queryResult = cursor.fetchone()
     if queryResult == None or len(queryResult) <= 0:
         return None
@@ -780,13 +856,25 @@ def selectAllAirDensityPicture(farmName, start_time=datetime.now()-timedelta(day
         minio_url = queryResult[4]
         log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 图片名: {file_name} , 图片URL：{minio_url}")
         
-    return download(minio_url)
+    return io.BytesIO(download(minio_url))
 
 def selectAirDensityPicture(farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"##################################提取air_density_picture数据####################")
@@ -800,12 +888,12 @@ def selectAirDensityPicture(farmName, typeName, start_time=datetime.now()-timede
         file_name, \
         del_flag \
         from air_density_picture \
-        where farm_name=%s and type_name=%s and execute_time = (select max(execute_time) from air_density_picture where execute_time <= %s)\
+        where farm_name=%s and type_name=%s and execute_time = (select max(execute_time) from air_density_picture where execute_time <= %s and farm_name=%s and type_name=%s)\
     "
-    data_query = (farmName, typeName, end_time)
+    data_query = (farmName, typeName, end_time, farmName, typeName)
     log.info(f'sql语句：{query}')
     log.info(f'sql数据：{data_query}')
-    cursor.execute(query)
+    cursor.execute(query,data_query)
     queryResult = cursor.fetchone()
     if queryResult == None or len(queryResult) <= 0:
         return None
@@ -817,13 +905,25 @@ def selectAirDensityPicture(farmName, typeName, start_time=datetime.now()-timede
         minio_url = queryResult[4]
         log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 图片名: {file_name} , 图片URL：{minio_url}")
         
-    return download(minio_url)
+    return io.BytesIO(download(minio_url))
 
 def selectAllTurbulencePicture(farmName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"##################################提取turbulence_picture数据####################")
@@ -837,12 +937,12 @@ def selectAllTurbulencePicture(farmName, start_time=datetime.now()-timedelta(day
         file_name, \
         del_flag \
         from turbulence_picture \
-        where farm_name=%s and type_name=all and execute_time = (select max(execute_time) from turbulence_picture where execute_time <= %s)\
+        where farm_name=%s and type_name='all' and execute_time = (select max(execute_time) from turbulence_picture where execute_time <= %s and farm_name=%s and type_name='all')\
     "
-    data_query = (farmName, end_time)
+    data_query = (farmName, end_time, farmName)
     log.info(f'sql语句：{query}')
     log.info(f'sql数据：{data_query}')
-    cursor.execute(query)
+    cursor.execute(query,data_query)
     queryResult = cursor.fetchone()
     if queryResult == None or len(queryResult) <= 0:
         return None
@@ -854,13 +954,25 @@ def selectAllTurbulencePicture(farmName, start_time=datetime.now()-timedelta(day
         minio_url = queryResult[4]
         log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 图片名: {file_name} , 图片URL：{minio_url}")
         
-    return download(minio_url)
+    return io.BytesIO(download(minio_url))
 
 def selectTurbulencePicture(farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"##################################提取turbulence_picture数据####################")
@@ -874,12 +986,12 @@ def selectTurbulencePicture(farmName, typeName, start_time=datetime.now()-timede
         file_name, \
         del_flag \
         from turbulence_picture \
-        where farm_name=%s and type_name=%s and execute_time = (select max(execute_time) from turbulence_picture where execute_time <= %s)\
+        where farm_name=%s and type_name=%s and execute_time = (select max(execute_time) from turbulence_picture where execute_time <= %s and farm_name=%s and type_name=%s)\
     "
-    data_query = (farmName, typeName, end_time)
+    data_query = (farmName, typeName, end_time, farmName, typeName)
     log.info(f'sql语句：{query}')
     log.info(f'sql数据：{data_query}')
-    cursor.execute(query)
+    cursor.execute(query,data_query)
     queryResult = cursor.fetchone()
     if queryResult == None or len(queryResult) <= 0:
         return None
@@ -891,16 +1003,28 @@ def selectTurbulencePicture(farmName, typeName, start_time=datetime.now()-timede
         minio_url = queryResult[4]
         log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 图片名: {file_name} , 图片URL：{minio_url}")
         
-    return download(minio_url)
+    return io.BytesIO(download(minio_url))
 
 def selectNavigationBiasDirectionPicture(farmName, typeName, wtid, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
-    log.info(f"##################################提取navigation_bias_directon_picture数据####################")
+    log.info(f"##################################提取navigation_bias_direction_picture数据####################")
     query = "SELECT \
         execute_time, \
         farm_name, \
@@ -912,13 +1036,13 @@ def selectNavigationBiasDirectionPicture(farmName, typeName, wtid, start_time=da
         wtid, \
         yaw_duifeng_err, \
         yaw_duifeng_loss \
-        from navigation_bias_directon_picture \
-        where farm_name=%s and type_name=%s and witd=%s and execute_time = (select max(execute_time) from navigation_bias_directon_picture where execute_time between %s and %s)\
+        from navigation_bias_direction_picture \
+        where farm_name=%s and type_name=%s and wtid=%s and execute_time = (select max(execute_time) from navigation_bias_direction_picture where farm_name=%s and type_name=%s and wtid=%s and execute_time between %s and %s)\
     "
-    data_query = (farmName, typeName, wtid, start_time, end_time)
+    data_query = (farmName, typeName, wtid, farmName, typeName, wtid, start_time, end_time)
     log.info(f'sql语句：{query}')
     log.info(f'sql数据：{data_query}')
-    cursor.execute(query)
+    cursor.execute(query,data_query)
     queryResult = cursor.fetchone()
     if queryResult == None or len(queryResult) <= 0:
         return None
@@ -933,14 +1057,26 @@ def selectNavigationBiasDirectionPicture(farmName, typeName, wtid, start_time=da
         yaw_duifeng_loss = queryResult[9]
         log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 风机名：{wtid}, 图片名: {file_name} , 图片URL：{minio_url}, 偏航对风误差：{yaw_duifeng_err}, 偏航对风损失：{yaw_duifeng_loss}")
         
-    return wtid, download(minio_url), yaw_duifeng_err, yaw_duifeng_loss
+    return wtid, io.BytesIO(download(minio_url)), yaw_duifeng_err, yaw_duifeng_loss
 
 
 def selectNavigationBiasControlPicture(farmName, typeName, wtid, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"##################################提取navigation_bias_control_picture数据####################")
@@ -956,12 +1092,12 @@ def selectNavigationBiasControlPicture(farmName, typeName, wtid, start_time=date
         yaw_leiji_err, \
         del_flag \
         from navigation_bias_control_picture \
-        where farm_name=%s and type_name=%s and witd=%s and execute_time = (select max(execute_time) from navigation_bias_control_picture where execute_time  between %s and %s)\
+        where farm_name=%s and type_name=%s and wtid=%s and execute_time = (select max(execute_time) from navigation_bias_control_picture where farm_name=%s and type_name=%s and wtid=%s and execute_time  between %s and %s)\
     "
-    data_query = (farmName, typeName, wtid, start_time, end_time)
+    data_query = (farmName, typeName, wtid, farmName, typeName, wtid, start_time, end_time)
     log.info(f'sql语句：{query}')
     log.info(f'sql数据：{data_query}')
-    cursor.execute(query)
+    cursor.execute(query,data_query)
     queryResult = cursor.fetchone()
     if queryResult == None or len(queryResult) <= 0:
         return None
@@ -975,13 +1111,25 @@ def selectNavigationBiasControlPicture(farmName, typeName, wtid, start_time=date
         yaw_leiji_err = queryResult[8]
         log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 风机名：{wtid}, 图片名: {file_name} , 图片URL：{minio_url}, 偏航累积误差：{yaw_leiji_err}")
         
-    return wtid, download(minio_url), yaw_leiji_err
+    return wtid, io.BytesIO(download(minio_url)), yaw_leiji_err
 
 def selectPitchAnglePicture(farmName, typeName, wtid, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"##################################提取pitch_angle_picture数据####################")
@@ -999,12 +1147,12 @@ def selectPitchAnglePicture(farmName, typeName, wtid, start_time=datetime.now()-
         pitch_min_loss, \
         del_flag \
         from pitch_angle_picture \
-        where farm_name=%s and type_name=%s and witd=%s and execute_time = (select max(execute_time) from pitch_angle_picture where execute_time between %s and %s)\
+        where farm_name=%s and type_name=%s and wtid=%s and execute_time = (select max(execute_time) from pitch_angle_picture where farm_name=%s and type_name=%s and wtid=%s and execute_time between %s and %s)\
     "
-    data_query = (farmName, typeName, wtid, start_time, end_time)
+    data_query = (farmName, typeName, wtid, farmName, typeName, wtid, start_time, end_time)
     log.info(f'sql语句：{query}')
     log.info(f'sql数据：{data_query}')
-    cursor.execute(query)
+    cursor.execute(query,data_query)
     queryResult = cursor.fetchone()
     if queryResult == None or len(queryResult) <= 0:
         return None
@@ -1020,13 +1168,25 @@ def selectPitchAnglePicture(farmName, typeName, wtid, start_time=datetime.now()-
         pitch_min_loss = queryResult[10]
         log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 风机名：{wtid}, 图片名: {file_name} , 图片URL：{minio_url}, 对比图片名: {file_name_compare}, 对比图片URL：{minio_url_compare}, 最小偏航损失：{pitch_min_loss}")
         
-    return wtid, download(minio_url), download(minio_url_compare), pitch_min_loss
+    return wtid, io.BytesIO(download(minio_url)), download(minio_url_compare), pitch_min_loss
 
 def selectPitchActionPicture(farmName, typeName, wtid, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"##################################提取pitch_action_picture数据####################")
@@ -1041,12 +1201,12 @@ def selectPitchActionPicture(farmName, typeName, wtid, start_time=datetime.now()
         wtid, \
         del_flag \
         from pitch_action_picture \
-        where farm_name=%s and type_name=%s and witd=%s and execute_time = (select max(execute_time) from pitch_action_picture where execute_time between %s and %s)\
+        where farm_name=%s and type_name=%s and wtid=%s and execute_time = (select max(execute_time) from pitch_action_picture where farm_name=%s and type_name=%s and wtid=%s and execute_time between %s and %s)\
     "
-    data_query = (farmName, typeName, wtid, start_time, end_time)
+    data_query = (farmName, typeName, wtid, farmName, typeName, wtid, start_time, end_time)
     log.info(f'sql语句：{query}')
     log.info(f'sql数据：{data_query}')
-    cursor.execute(query)
+    cursor.execute(query,data_query)
     queryResult = cursor.fetchone()
     if queryResult == None or len(queryResult) <= 0:
         return None
@@ -1059,12 +1219,24 @@ def selectPitchActionPicture(farmName, typeName, wtid, start_time=datetime.now()
         wtid = queryResult[7]
         log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 风机名：{wtid}, 图片名: {file_name} , 图片URL：{minio_url}")
         
-    return wtid, download(minio_url)
+    return wtid, io.BytesIO(download(minio_url))
 def selectPitchUnbalancePicture(farmName, typeName, wtid, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"##################################提取pitch_unbalance_picture数据####################")
@@ -1079,12 +1251,12 @@ def selectPitchUnbalancePicture(farmName, typeName, wtid, start_time=datetime.no
         wtid, \
         del_flag \
         from pitch_unbalance_picture \
-        where farm_name=%s and type_name=%s and witd=%s and execute_time = (select max(execute_time) from pitch_unbalance_picture where execute_time between %s and %s)\
+        where farm_name=%s and type_name=%s and wtid=%s and execute_time = (select max(execute_time) from pitch_unbalance_picture where farm_name=%s and type_name=%s and wtid=%s and execute_time between %s and %s)\
     "
-    data_query = (farmName, typeName, wtid, start_time, end_time)
+    data_query = (farmName, typeName, wtid, farmName, typeName, wtid, start_time, end_time)
     log.info(f'sql语句：{query}')
     log.info(f'sql数据：{data_query}')
-    cursor.execute(query)
+    cursor.execute(query,data_query)
     queryResult = cursor.fetchone()
     if queryResult == None or len(queryResult) <= 0:
         return None
@@ -1097,12 +1269,25 @@ def selectPitchUnbalancePicture(farmName, typeName, wtid, start_time=datetime.no
         wtid = queryResult[7]
         log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 风机名：{wtid}, 图片名: {file_name} , 图片URL：{minio_url}")
         
-    return wtid, download(minio_url)
+    return wtid, io.BytesIO(download(minio_url))
+
 def selectTorqueControlPicture(farmName, typeName, wtid, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"##################################提取torque_control_picture数据####################")
@@ -1117,12 +1302,12 @@ def selectTorqueControlPicture(farmName, typeName, wtid, start_time=datetime.now
         wtid, \
         del_flag \
         from torque_control_picture \
-        where farm_name=%s and type_name=%s and witd=%s and execute_time = (select max(execute_time) from torque_control_picture where execute_time between %s and %s)\
+        where farm_name=%s and type_name=%s and wtid=%s and execute_time = (select max(execute_time) from torque_control_picture where farm_name=%s and type_name=%s and wtid=%s and execute_time between %s and %s)\
     "
-    data_query = (farmName, typeName, wtid, start_time, end_time)
+    data_query = (farmName, typeName, wtid, farmName, typeName, wtid, start_time, end_time)
     log.info(f'sql语句：{query}')
     log.info(f'sql数据：{data_query}')
-    cursor.execute(query)
+    cursor.execute(query,data_query)
     queryResult = cursor.fetchone()
     if queryResult == None or len(queryResult) <= 0:
         return None
@@ -1135,13 +1320,25 @@ def selectTorqueControlPicture(farmName, typeName, wtid, start_time=datetime.now
         wtid = queryResult[7]
         log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 风机名：{wtid}, 图片名: {file_name} , 图片URL：{minio_url}")
         
-    return wtid, download(minio_url)
+    return wtid, io.BytesIO(download(minio_url))
 
 def selectAllZuobiaoPicture(farmName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"##################################提取zuobiao_picture数据####################")
@@ -1155,12 +1352,11 @@ def selectAllZuobiaoPicture(farmName, start_time=datetime.now()-timedelta(days=9
         file_name, \
         del_flag \
         from zuobiao_picture \
-        where farm_name=%s and type_name=all and execute_time = (select max(execute_time) from zuobiao_picture where execute_time <= %s)\
-    "
-    data_query = (farmName, end_time)
+        where farm_name=%s and type_name='all' and execute_time = (select max(execute_time) from zuobiao_picture where farm_name=%s and type_name='all' and execute_time <= %s)"
+    data_query = (farmName, farmName, end_time)
     log.info(f'sql语句：{query}')
     log.info(f'sql数据：{data_query}')
-    cursor.execute(query)
+    cursor.execute(query, data_query)
     queryResult = cursor.fetchone()
     if queryResult == None or len(queryResult) <= 0:
         return None
@@ -1172,13 +1368,25 @@ def selectAllZuobiaoPicture(farmName, start_time=datetime.now()-timedelta(days=9
         minio_url = queryResult[4]
         log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 图片名: {file_name} , 图片URL：{minio_url}")
         
-    return download(minio_url)
+    return io.BytesIO(download(minio_url))
 
 def selectPowerCurvePicture(farmName, typeName, fileName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"##################################提取power_curve_picture数据####################")
@@ -1192,12 +1400,12 @@ def selectPowerCurvePicture(farmName, typeName, fileName, start_time=datetime.no
         file_name, \
         del_flag \
         from power_curve_picture \
-        where farm_name=%s and type_name=%s and file_name like %s and execute_time = (select max(execute_time) from power_curve_picture where execute_time <= %s)\
+        where farm_name=%s and type_name=%s and file_name like %s and execute_time = (select max(execute_time) from power_curve_picture where execute_time <= %s and farm_name=%s and type_name=%s)\
     "
-    data_query = (farmName, typeName, '%'+fileName+'%', end_time)
+    data_query = (farmName, typeName, '%'+quote(fileName)+'%', end_time, farmName, typeName)
     log.info(f'sql语句：{query}')
     log.info(f'sql数据：{data_query}')
-    cursor.execute(query)
+    cursor.execute(query,data_query)
     queryResult = cursor.fetchone()
     if queryResult == None or len(queryResult) <= 0:
         return None
@@ -1209,13 +1417,25 @@ def selectPowerCurvePicture(farmName, typeName, fileName, start_time=datetime.no
         minio_url = queryResult[4]
         log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 图片名: {file_name} , 图片URL：{minio_url}")
         
-    return download(minio_url)
+    return io.BytesIO(download(minio_url))
 
 def selectCPPicture(farmName, typeName, fileName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"##################################提取cp_picture数据####################")
@@ -1229,12 +1449,12 @@ def selectCPPicture(farmName, typeName, fileName, start_time=datetime.now()-time
         file_name, \
         del_flag \
         from cp_picture \
-        where farm_name=%s and type_name=%s and file_name like %s and execute_time = (select max(execute_time) from cp_picture where execute_time <= %s)\
+        where farm_name=%s and type_name=%s and file_name like %s and execute_time = (select max(execute_time) from cp_picture where execute_time <= %s and farm_name=%s and type_name=%s)\
     "
-    data_query = (farmName, typeName, '%'+fileName+'%', end_time)
+    data_query = (farmName, typeName, '%'+quote(fileName)+'%', end_time, farmName, typeName)
     log.info(f'sql语句：{query}')
     log.info(f'sql数据：{data_query}')
-    cursor.execute(query)
+    cursor.execute(query,data_query)
     queryResult = cursor.fetchone()
     if queryResult == None or len(queryResult) <= 0:
         return None
@@ -1246,13 +1466,25 @@ def selectCPPicture(farmName, typeName, fileName, start_time=datetime.now()-time
         minio_url = queryResult[4]
         log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 图片名: {file_name} , 图片URL：{minio_url}")
         
-    return download(minio_url)
+    return io.BytesIO(download(minio_url))
 
 def selectDevicePicture(farmName, typeName, wtid, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"##################################提取device_picture数据####################")
@@ -1267,12 +1499,12 @@ def selectDevicePicture(farmName, typeName, wtid, start_time=datetime.now()-time
         wtid, \
         device \
         from device_picture \
-        where farm_name=%s and type_name=%s and witd=%s and execute_time = (select max(execute_time) from device_picture where execute_time <= %s)\
+        where farm_name=%s and type_name=%s and wtid=%s and execute_time = (select max(execute_time) from device_picture where execute_time <= %s and farm_name=%s and type_name=%s)\
     "
-    data_query = (farmName, typeName, wtid, end_time)
+    data_query = (farmName, typeName, wtid, end_time, farmName, typeName)
     log.info(f'sql语句：{query}')
     log.info(f'sql数据：{data_query}')
-    cursor.execute(query)
+    cursor.execute(query,data_query)
     queryResult = cursor.fetchone()
     if queryResult == None or len(queryResult) <= 0:
         return None
@@ -1286,7 +1518,7 @@ def selectDevicePicture(farmName, typeName, wtid, start_time=datetime.now()-time
         device = queryResult[8]
         log.info(f"图片生成时间：{execute_time}, 风场名：{farm_name}, 风机类型：{type_name}, 风机名：{wtid}, 设备：{device}, 图片名: {file_name} , 图片URL：{minio_url}")
         
-    return wtid, device, download(minio_url)
+    return wtid, device, io.BytesIO(download(minio_url))
 
 ####################################################################3
 
@@ -1415,10 +1647,26 @@ def selectTheoryWindPower(farmName, typeName): #typeName是一个机型，不多
     return wspd, pwrt
 
 def selectPwTimeAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    # if len(typeName) > 0: #str or []
+    #     wtids = []
+    # else:
+    #     wtids = {}
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"####################################提取pw_time_all数据############################")
@@ -1447,9 +1695,9 @@ def selectPwTimeAll(data, farmName, typeName, start_time=datetime.now()-timedelt
             pwrt, \
             count \
             from pw_time_all \
-            where farm_name=%s AND type_name=%s AND execute_time=(select max(execute_time) from pw_time_all) \
+            where farm_name=%s AND type_name=%s AND execute_time=(select max(execute_time) from pw_time_all where farm_name=%s AND type_name=%s) \
         "
-        data_to_obtain = (farmName, typeName)
+        data_to_obtain = (farmName, typeName, farmName, typeName)
         log.info(f'sql语句：{obtain_query}')
         log.info(f'sql数据：{data_to_obtain}')
         cursor.execute(obtain_query, data_to_obtain)
@@ -1465,9 +1713,9 @@ def selectPwTimeAll(data, farmName, typeName, start_time=datetime.now()-timedelt
             pwrt, \
             count \
             from pw_time_all \
-            where farm_name=%s AND execute_time=(select max(execute_time) from pw_time_all) \
+            where farm_name=%s AND execute_time=(select max(execute_time) from pw_time_all where farm_name=%s) \
         "
-        data_to_obtain = (farmName)
+        data_to_obtain = (farmName, farmName)
         log.info(f'sql语句：{obtain_query}')
         log.info(f'sql数据：{data_to_obtain}')
         cursor.execute(obtain_query, data_to_obtain)
@@ -1498,16 +1746,36 @@ def selectPwTimeAll(data, farmName, typeName, start_time=datetime.now()-timedelt
                 lineValue[8] = np.nan
             if lineValue[4] == firstWtidName:
                 data.loc[i, ['windbin','pwrat',lineValue[4],lineValue[4]+'_count']] = [lineValue[5], lineValue[6],lineValue[7],lineValue[8]]
+                # if len(typeName) > 0:
+                #     wtids.append(lineValue[4])
+                # else:
+                #     wtids[lineValue[3]] = [lineValue[4]]
             else:
                 data.loc[i%wtidCount, ['windbin','pwrat',lineValue[4],lineValue[4]+'_count']] = [lineValue[5], lineValue[6],lineValue[7],lineValue[8]]
+                # if len(typeName) > 0:
+                #     wtids.append(lineValue[4])
+                # else:
+                #     wtids[lineValue[3]] += [lineValue[4]]
     data.replace(b'', 0, inplace=True)
-    return data
+    return data#, wtids
 
 def selectPwTurbineAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     if len(typeName) > 0:
         wtids = []
     else:
@@ -1593,10 +1861,22 @@ def selectPwTurbineAll(data, farmName, typeName, start_time=datetime.now()-timed
     return data, wtids
 
 def selectTurbineWarningAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"###########################提取turbine_warning_all数据###############")
@@ -1707,10 +1987,22 @@ def selectTurbineWarningAll(data, farmName, typeName, start_time=datetime.now()-
     return data, wtids
 
 def selectTechnologyLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"###########################提取technology_loss_all数据###############")
@@ -1822,10 +2114,22 @@ def selectTechnologyLossAll(data, farmName, typeName, start_time=datetime.now()-
         data.set_index('localtime', inplace=True)
     return data, wtids
 def selectLimturbineLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"############################提取limturbine_loss_all数据###########################")
@@ -1927,10 +2231,22 @@ def selectLimturbineLossAll(data, farmName, typeName, start_time=datetime.now()-
         data.set_index('localtime', inplace=True)
     return data,wtids
 def selectFaultgridLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     wtids = {}
@@ -2042,10 +2358,22 @@ def selectFaultgridLossAll(data, farmName, typeName, start_time=datetime.now()-t
         data.set_index('localtime', inplace=True)
     return data, wtids
 def selectStopLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"##############################提取stop_loss_all数据######################")
@@ -2155,10 +2483,22 @@ def selectStopLossAll(data, farmName, typeName, start_time=datetime.now()-timede
         data.set_index('localtime', inplace=True)
     return data, wtids
 def selectFaultLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"########################提取fault_loss_all数据########################")
@@ -2272,10 +2612,22 @@ def selectFaultLossAll(data, farmName, typeName, start_time=datetime.now()-timed
         data.set_index('localtime', inplace=True)
     return data, wtids
 def selectLimgridLossAll(data, farmName, typeName, start_time=datetime.now()-timedelta(days=91), end_time=datetime.now()-timedelta(days=1)):
-    startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
-    endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
-    end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(start_time, str):
+        startTimeStr = start_time # datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d")
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        startTimeStr = datetime.strftime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime.strptime(startTimeStr, "%Y-%m-%d %H:%M:%S")
+    if isinstance(end_time, str):
+        endTimeStr = end_time #datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d")
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+    else:
+        endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     cursor = conn.cursor()
     log.info(f"##########################提取limgrid_loss_all数据#################")
@@ -2725,8 +3077,8 @@ def insertPwTurbineAll(data, algorithms_configs):
         #查询表中每个机子已有数据的时间最大值
         for i in range(len(algorithms_configs['wtids'])):
             turbine_name = algorithms_configs['wtids'][i]
-            queryItem = "select max(data_time) from pw_turbine_all where wtid=%s"
-            dataQuery = (turbine_name,)
+            queryItem = "select max(data_time) from pw_turbine_all where wtid=%s and farm_name=%s AND type_name=%s"
+            dataQuery = (turbine_name, algorithms_configs['farmName'], algorithms_configs['typeName'])
             log.info(f'sql语句：{queryItem}')
             log.info(f'sql数据：{dataQuery}')
             cursor.execute(queryItem, dataQuery)
@@ -2829,9 +3181,11 @@ def insertTurbineWarningAll(data, algorithms_configs):
         #插入数据
         log.info(f"#########################turbine_warning_all表插入数据#########################")
         #查询表中已有数据的时间最大值
-        queryItem = "select max(data_time) from turbine_warning_all"
+        queryItem = "select max(data_time) from turbine_warning_all where farm_name=%s AND type_name=%s"
+        data_to_obtain = (algorithms_configs['farmName'], algorithms_configs['typeName'])
         log.info(f'sql语句：{queryItem}')
-        cursor.execute(queryItem)
+        log.info(f'sql数据：{data_to_obtain}')
+        cursor.execute(queryItem, data_to_obtain)
         result = cursor.fetchone()
         if result != None and result[0] != None:
             max_sql_time = result[0]
@@ -2939,9 +3293,11 @@ def insertTechnologyLossAll(data, algorithms_configs):
         #插入数据
         log.info(f"#########################technology_loss_all表插入数据#########################")
         #查询表中已有数据的时间最大值
-        queryItem = "select max(data_time) from technology_loss_all"
+        queryItem = "select max(data_time) from technology_loss_all where farm_name=%s AND type_name=%s"
+        data_to_obtain = (algorithms_configs['farmName'], algorithms_configs['typeName'])
         log.info(f'sql语句：{queryItem}')
-        cursor.execute(queryItem)
+        log.info(f'sql数据：{data_to_obtain}')
+        cursor.execute(queryItem, data_to_obtain)
         result = cursor.fetchone()
         if result != None and result[0] != None:
             max_sql_time = result[0]
@@ -3043,9 +3399,11 @@ def insertLimturbineLossAll(data, algorithms_configs):
         #插入数据
         log.info(f"#########################limturbine_loss_all表插入数据#########################")
         #查询表中已有数据的时间最大值
-        queryItem = "select max(data_time) from limturbine_loss_all"
+        queryItem = "select max(data_time) from limturbine_loss_all where farm_name=%s AND type_name=%s"
+        data_to_obtain = (algorithms_configs['farmName'], algorithms_configs['typeName'])
         log.info(f'sql语句：{queryItem}')
-        cursor.execute(queryItem)
+        log.info(f'sql数据：{data_to_obtain}')
+        cursor.execute(queryItem, data_to_obtain)
         result = cursor.fetchone()
         if result != None and result[0] != None:
             max_sql_time = result[0]
@@ -3146,9 +3504,11 @@ def insertFaultgridLossAll(data, algorithms_configs):
         #插入数据
         log.info(f"#########################faultgrid_loss_all表插入数据#########################")
         #查询表中已有数据的时间最大值
-        queryItem = "select max(data_time) from faultgrid_loss_all"
+        queryItem = "select max(data_time) from faultgrid_loss_all where farm_name=%s AND type_name=%s"
+        data_to_obtain = (algorithms_configs['farmName'], algorithms_configs['typeName'])
         log.info(f'sql语句：{queryItem}')
-        cursor.execute(queryItem)
+        log.info(f'sql数据：{data_to_obtain}')
+        cursor.execute(queryItem, data_to_obtain)
         result = cursor.fetchone()
         if result != None and result[0] != None:
             max_sql_time = result[0]
@@ -3256,9 +3616,11 @@ def insertStopLossAll(data, algorithms_configs):
         #插入数据
         log.info(f"#########################stop_loss_all表插入数据#########################")
         #查询表中已有数据的时间最大值
-        queryItem = "select max(data_time) from stop_loss_all"
+        queryItem = "select max(data_time) from stop_loss_all where farm_name=%s AND type_name=%s"
+        data_to_obtain = (algorithms_configs['farmName'], algorithms_configs['typeName'])
         log.info(f'sql语句：{queryItem}')
-        cursor.execute(queryItem)
+        log.info(f'sql数据：{data_to_obtain}')
+        cursor.execute(queryItem, data_to_obtain)
         result = cursor.fetchone()
         if result != None and result[0] != None:
             max_sql_time = result[0]
@@ -3367,9 +3729,11 @@ def insertFaultLossAll(data, algorithms_configs):
         #插入数据
         log.info(f"#########################fault_loss_all表插入数据#########################")
         #查询表中已有数据的时间最大值
-        queryItem = "select max(data_time) from fault_loss_all"
+        queryItem = "select max(data_time) from fault_loss_all where farm_name=%s AND type_name=%s"
+        data_to_obtain = (algorithms_configs['farmName'], algorithms_configs['typeName'])
         log.info(f'sql语句：{queryItem}')
-        cursor.execute(queryItem)
+        log.info(f'sql数据：{data_to_obtain}')
+        cursor.execute(queryItem, data_to_obtain)
         result = cursor.fetchone()
         if result != None and result[0] != None:
             max_sql_time = result[0]
@@ -3473,9 +3837,11 @@ def insertLimgridLossAll(data, algorithms_configs):
         #插入数据
         log.info(f"#########################limgrid_loss_all表插入数据#########################")
         #查询表中已有数据的时间最大值
-        queryItem = "select max(data_time) from limgrid_loss_all"
+        queryItem = "select max(data_time) from limgrid_loss_all where farm_name=%s AND type_name=%s"
+        data_to_obtain = (algorithms_configs['farmName'], algorithms_configs['typeName'])
         log.info(f'sql语句：{queryItem}')
-        cursor.execute(queryItem)
+        log.info(f'sql数据：{data_to_obtain}')
+        cursor.execute(queryItem, data_to_obtain)
         result = cursor.fetchone()
         if result != None and result[0] != None:
             max_sql_time = result[0]
@@ -3559,9 +3925,11 @@ def insertEnyWspdAll(data, algorithms_configs):
         #插入数据
         log.info(f"#########################eny_wspd_all表插入数据#########################")
         #查询表中已有数据的时间最大值
-        queryItem = "select max(data_time) from eny_wspd_all"
+        queryItem = "select max(data_time) from eny_wspd_all where farm_name=%s AND type_name=%s"
+        data_to_obtain = (algorithms_configs['farmName'], algorithms_configs['typeName'])
         log.info(f'sql语句：{queryItem}')
-        cursor.execute(queryItem)
+        log.info(f'sql数据：{data_to_obtain}')
+        cursor.execute(queryItem, data_to_obtain)
         result = cursor.fetchone()
         if result != None and result[0] != None:
             max_sql_time = result[0]

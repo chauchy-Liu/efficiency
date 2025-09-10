@@ -32,6 +32,7 @@ import configs.config as config
 import requests
 import json
 import dask.dataframe as dd
+from data.efficiency_function import turbineTypeNameFormat
 
 #能效分析中需要在算法中用到的输入变量量
 # Pwrat_Rate = None
@@ -512,7 +513,9 @@ async def getWindFarm(wind_farms):
             else:
                 WindFarm_attr.loc[i,'容量'] = np.nan
             if "wtgTypes" in WindFarm['attributes'][0]:
-                WindFarm_attr.loc[i,'机型'] = list(map(lambda x: x['wtgTypes'], WindFarm['attributes']))[0]
+                WindFarm_attr.loc[i,'机型'] = list(map(lambda x: turbineTypeNameFormat(x['wtgTypes']), WindFarm['attributes']))[0]
+            else:
+                WindFarm_attr.loc[i,'机型'] = np.nan
             WindFarm_attr.loc[i,'风资源'] = list(map(lambda x: x['resourceType'], WindFarm['attributes']))[0]
             if "DevAmount" in WindFarm['attributes'][0]:
                 WindFarm_attr.loc[i,'风机台数'] = list(map(lambda x: x['DevAmount'], WindFarm['attributes']))[0]
@@ -568,7 +571,7 @@ async def getWindTurbines(wind_farm):
         wind_turbine_df['hubHeight'] = list(
             map(lambda x: x['hubHeight'],  wind_turbine_df['attributes']))
         wind_turbine_df['turbineTypeID'] = list(
-            map(lambda x: x['turbineTypeID'],  wind_turbine_df['attributes']))
+            map(lambda x: turbineTypeNameFormat(x['turbineTypeID']),  wind_turbine_df['attributes']))
         wind_turbine_df['cutOutwindSpeed'] = list(
             map(lambda x: x['cutOutwindSpeed'],  wind_turbine_df['attributes']))
         wind_turbine_df['longitude'] = list(
@@ -1895,6 +1898,7 @@ def wash_data(Df_all, algorithms_configs):
 
 def define_parameters(algorithms_configs, algorithm_name):
     ##############################################################
+    clear_rotspd = algorithms_configs['clear_rotspd']
     algorithms_configs['Df_all_all'].loc[:,algorithms_configs['Df_all_all'].dtypes=='float64'] = algorithms_configs['Df_all_all'].loc[:,algorithms_configs['Df_all_all'].dtypes=='float64'].astype('float32')
     algorithms_configs['Df_all_m_all'].loc[:,algorithms_configs['Df_all_m_all'].dtypes=='float64'] = algorithms_configs['Df_all_m_all'].loc[:,algorithms_configs['Df_all_m_all'].dtypes=='float64'].astype('float32')
     
@@ -1959,9 +1963,9 @@ def define_parameters(algorithms_configs, algorithm_name):
             algorithms_configs['turbine_param_all'].loc[i,'Pitch_Min'] = algorithms_configs['Pitch_Min']
 
         if algorithms_configs['Rotspd_Rate'] != None and algorithms_configs[algorithm_name]['endTime']-algorithms_configs[algorithm_name]['startTime'] > timedelta(days=29):
-            temp = Df_all_m[(Df_all_m['pwrat','nanmean']>algorithms_configs['Pwrat_Rate']*0.95)&(Df_all_m['pwrat','nanmean']<algorithms_configs['Pwrat_Rate']*1.1)&(Df_all_m['rotspd','nanmean']>1.1)&(Df_all_m['state','nanmean']==algorithms_configs['state'])&(Df_all_m['statety','nanmean']==71)]
+            temp = Df_all_m[(Df_all_m['pwrat','nanmean']>algorithms_configs['Pwrat_Rate']*0.95)&(Df_all_m['pwrat','nanmean']<algorithms_configs['Pwrat_Rate']*1.1)&(Df_all_m[clear_rotspd,'nanmean']>1.1)&(Df_all_m['state','nanmean']==algorithms_configs['state'])&(Df_all_m['statety','nanmean']==71)]
             if len(temp)>0:
-                Rotspd_Rate = round(np.nanmean(temp['rotspd','nanmean']),1)
+                Rotspd_Rate = round(np.nanmean(temp[clear_rotspd,'nanmean']),1)
             else:
                 Rotspd_Rate = algorithms_configs['Rotspd_Rate']#np.nan
             algorithms_configs['turbine_param_all'].loc[i,'Rotspd_Rate'] = Rotspd_Rate
@@ -1972,9 +1976,9 @@ def define_parameters(algorithms_configs, algorithm_name):
             temp = Df_all_m[(Df_all_m['pwrat','nanmean']>10.0)&(Df_all_m['pwrat','nanmean']<algorithms_configs['Pwrat_Rate']*0.08)&(Df_all_m['pitch1','mymode']<=(Pitch_Min+1.0))&(Df_all_m['state','nanmean']==algorithms_configs['state'])&(Df_all_m['statety','nanmean']==71)]
             if len(temp)>0:
                 #Rotspd_Connect = round(np.mean(temp['rotspd','nanmean'].nlargest(50)),1)
-                rotspd_q1 = temp['rotspd','nanmean'].quantile(0.6)##分位数
-                rotspd_q2 = temp['rotspd','nanmean'].quantile(0.9)
-                Rotspd_Connect = round(np.nanmean(temp[(temp['rotspd','nanmean']>=rotspd_q1)&(temp['rotspd','nanmean']<=rotspd_q2)]['rotspd','nanmean']),1)
+                rotspd_q1 = temp[clear_rotspd,'nanmean'].quantile(0.6)##分位数
+                rotspd_q2 = temp[clear_rotspd,'nanmean'].quantile(0.9)
+                Rotspd_Connect = round(np.nanmean(temp[(temp[clear_rotspd,'nanmean']>=rotspd_q1)&(temp[clear_rotspd,'nanmean']<=rotspd_q2)][clear_rotspd,'nanmean']),1)
             else:
                 Rotspd_Connect = algorithms_configs['Rotspd_Connect']
             algorithms_configs['turbine_param_all'].loc[i,'Rotspd_Connect'] = Rotspd_Connect
