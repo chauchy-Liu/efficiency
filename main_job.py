@@ -14,7 +14,7 @@ import logging
 from logging_config import init_loggers
 import asyncio
 from datetime import datetime
-from db.db import insertTheoryWindPower, insertFarmInfo, addWtidToFarmInfo #UpdateTubineNum, UpdateAlgorithmInfo, UpdateResult, get_connection, InsertAlgorithmHead, InsertAlgorithmDetail, UpdateAlgorithmHead, ResetTubineNum, ReviewTubineNum, CheckThreshold
+from db.db import insertTheoryWindPower, insertFarmInfo, addWtidToFarmInfo, createAllTable #UpdateTubineNum, UpdateAlgorithmInfo, UpdateResult, get_connection, InsertAlgorithmHead, InsertAlgorithmDetail, UpdateAlgorithmHead, ResetTubineNum, ReviewTubineNum, CheckThreshold
 import os
 import traceback
 from collections import ChainMap
@@ -50,6 +50,9 @@ warnings.simplefilter(action='ignore')
 # warnings.simplefilter(action='ignore', category=FutureWarning)
 
 # mysqlClient = get_connection()
+
+#建数据表
+createAllTable()
 
 # 多模型执行，保证执行频次相同、数据范围相同、依赖测点相似
 async def execute_multi_algorithms(names: list, execute_time=''):

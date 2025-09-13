@@ -509,6 +509,450 @@ create_word_table_query = f'''
     ) comment='word文档';
 '''
 
+################################################
+#建所有表
+################################################
+def createAllTable():
+    conn = get_connection()
+    cursor = conn.cursor()
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'theory_wind_power';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_theory_wind_power_table_query}')
+        cursor.execute(create_theory_wind_power_table_query)
+        #插入数据
+        log.info(f"#########################theory_wind_power表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'pw_turbine_all';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_pw_turbine_all_table_query}')
+        cursor.execute(create_pw_turbine_all_table_query)
+        #插入数据
+        log.info(f"#########################pw_turbine_all表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'pw_time_all';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_pw_time_all_table_query}')
+        cursor.execute(create_pw_time_all_table_query)
+        #插入数据
+        log.info(f"#########################pw_time_all表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'turbine_warning_all';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_turbine_warning_all_table_query}')
+        cursor.execute(create_turbine_warning_all_table_query)
+        #插入数据
+        log.info(f"#########################turbine_warning_all表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'technology_loss_all';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_technology_loss_all_table_query}')
+        cursor.execute(create_technology_loss_all_table_query)
+        #插入数据
+        log.info(f"#########################technology_loss_alll表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'limturbine_loss_all';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_limturbine_loss_all_table_query}')
+        cursor.execute(create_limturbine_loss_all_table_query)
+        #插入数据
+        log.info(f"#########################limturbine_loss_all表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'faultgrid_loss_all';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_faultgrid_loss_all_table_query}')
+        cursor.execute(create_faultgrid_loss_all_table_query)
+        #插入数据
+        log.info(f"#########################faultgrid_loss_all表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'stop_loss_all';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_stop_loss_all_table_query}')
+        cursor.execute(create_stop_loss_all_table_query)
+        #插入数据
+        log.info(f"#########################stop_loss_all表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'limgrid_loss_all';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_limgrid_loss_all_table_query}')
+        cursor.execute(create_limgrid_loss_all_table_query)
+        #插入数据
+        log.info(f"#########################limgrid_loss_all表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'fault_loss_all';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_fault_loss_all_table_query}')
+        cursor.execute(create_fault_loss_all_table_query)
+        #插入数据
+        log.info(f"#########################fault_loss_all表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'eny_wspd_all';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_eny_wspd_all_table_query}')
+        cursor.execute(create_eny_wspd_all_table_query)
+        #插入数据
+        log.info(f"#########################eny_wspd_all表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'wind_frequency_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_wind_frequency_picture_table_query}')
+        cursor.execute(create_wind_frequency_picture_table_query)
+        #插入数据
+        log.info(f"#########################wind_frequency_picture表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'wind_direction_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_wind_direction_picture_table_query}')
+        cursor.execute(create_wind_direction_picture_table_query)
+        #插入数据
+        log.info(f"#########################wind_direction_picture表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'air_density_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_air_density_picture_table_query}')
+        cursor.execute(create_air_density_picture_table_query)
+        #插入数据
+        log.info(f"#########################air_density_picture表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'turbulence_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_turbulence_picture_table_query}')
+        cursor.execute(create_turbulence_picture_table_query)
+        #插入数据
+        log.info(f"#########################turbulence_picture表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'navigation_bias_direction_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_navigation_bias_direction_picture_table_query}')
+        cursor.execute(create_navigation_bias_direction_picture_table_query)
+        #插入数据
+        log.info(f"#########################navigation_bias_direction_picture表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'navigation_bias_control_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_navigation_bias_control_picture_table_query}')
+        cursor.execute(create_navigation_bias_control_picture_table_query)
+        #插入数据
+        log.info(f"#########################navigation_bias_control_picture表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'pitch_angle_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_pitch_angle_picture_table_query}')
+        cursor.execute(create_pitch_angle_picture_table_query)
+        #插入数据
+        log.info(f"#########################pitch_angle_picture表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'pitch_action_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_pitch_action_picture_table_query}')
+        cursor.execute(create_pitch_action_picture_table_query)
+        #插入数据
+        log.info(f"#########################pitch_action_picture表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'pitch_unbalance_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_pitch_unbalance_picture_table_query}')
+        cursor.execute(create_pitch_unbalance_picture_table_query)
+        #插入数据
+        log.info(f"#########################pitch_unbalance_picture表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'torque_control_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_torque_control_picture_table_query}')
+        cursor.execute(create_torque_control_picture_table_query)
+        #插入数据
+        log.info(f"#########################torque_control_picture表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'device_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_device_picture_table_query}')
+        cursor.execute(create_device_picture_table_query)
+        #插入数据
+        log.info(f"#########################device_picture表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'wind_resource';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_wind_resource_table_query}')
+        cursor.execute(create_wind_resource_table_query)
+        #插入数据
+        log.info(f"#########################wind_resource表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'power_curve_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_power_curve_picture_table_query}')
+        cursor.execute(create_power_curve_picture_table_query)
+        #插入数据
+        log.info(f"#########################power_curve_picture表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'cp_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_cp_picture_table_query}')
+        cursor.execute(create_cp_picture_table_query)
+        #插入数据
+        log.info(f"#########################cp_picture表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'zuobiao_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_zuobiao_picture_table_query}')
+        cursor.execute(create_zuobiao_picture_table_query)
+        #插入数据
+        log.info(f"#########################zuobiao_picture表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'fault_pie_picture';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_fault_pie_picture_table_query}')
+        cursor.execute(create_fault_pie_picture_table_query)
+        #插入数据
+        log.info(f"#########################fault_pie_picture表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'farmInfo';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_farmInfo_table_query}')
+        cursor.execute(create_farmInfo_table_query)
+        #插入数据
+        log.info(f"#########################farmInfo表插入数据#########################")
+    ####################################################
+    #查询表名
+    check_table_query = f"show tables like 'word';"
+    #执行
+    log.info(f'sql语句：{check_table_query}')
+    cursor.execute(check_table_query)
+    #获取结果
+    result = cursor.fetchone()
+    #判断表是否存在
+    if not result:
+        #新建表
+        log.info(f'sql语句：{create_word_table_query}')
+        cursor.execute(create_word_table_query)
+        #插入数据
+        log.info(f"#########################word表插入数据#########################")
+    conn.commit()
+    conn.close()
+
 ####################################################33
 #提取数据
 ####################################################33
