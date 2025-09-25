@@ -86,6 +86,7 @@ async def judge_model(algorithms_configs):
         day_list.append(dayStr)
         dayLength = len(day_list) - 1
     else:
+        day_list = day_list[:2] #强制只处理一天的
         dayLength = len(day_list)-1
     for i in range(dayLength):
         print(str(day_list[i]))

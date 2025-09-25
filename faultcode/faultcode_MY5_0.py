@@ -17,8 +17,8 @@ def filter2(Df_all, Df_all_m, medfilt_num, filter1st_tao, choose_num):
     #Df_all['wdir0'] = Df_all['wdir'] - Df_all['yaw']
     Df_all['wdir0'] = Df_all['wdir']
     Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
-    Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir'],filter1st_tao,medfilt_num,11,0.5,1,choose_num)#1:低通滤波器，2：中值滤波，3：wiener滤波，4：巴特沃斯滤波器
-    Df_all_m['wdir0','nanmean'] = Df_all_m['wdir','nanmean']
+    Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],filter1st_tao,medfilt_num,11,0.5,1,choose_num)#1:低通滤波器，2：中值滤波，3：wiener滤波，4：巴特沃斯滤波器
+    Df_all_m['wdir0','nanmean'] = Df_all_m['wdir0','nanmean']
     
     return Df_all, Df_all_m
 

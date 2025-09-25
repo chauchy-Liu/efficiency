@@ -21,8 +21,10 @@ Wind_Farms = ["Z3Kw1DNz"] #物理场站["elU5WmYX", "FuMW37VD", "mgGUOeOY", "bQK
 # Wind_Farm_Name = '甘肃清水' #甘肃清水
 # Wind_Farm = 't1Z1JkuJ' #甘肃清水
 # Wind_Farm_Name = '甘肃通渭' #甘肃清水
-# 内蒙风场 "Z3Kw1DNz", "eOac1sow", "iFKMBKxw", "oQzjEzpf", "ioPLF6UP", "AcVjRFp9", "aFPXpplp", "yueLvGmW"
+# 内蒙风场 "Z3Kw1DNz", "eOac1sow", "iFKMBKxw", "oQzjEzpf", "ioPLF6UP", "AcVjRFp9", "aFPXpplp", "yueLvGmW", "sxoJwg36", "L3EWAdto"
 
+Wind_Farms_zh = ["内蒙古通辽道老杜风电场"]
+# 内蒙风场 "内蒙古通辽道老杜风电场", "新园风电场", "敖伦风电场", "内蒙古霍煤鸿骏风电场（D厂四期）", "山西朔州甘泉山风电场", "木诺日风储电站", "内蒙古阿拉善盟布拉格风电场", "内蒙古包头固阳保力图风电场", "蒙东协合开鲁风电场", "通辽市青格洱新能源有限公司珠日河风电场"
 
 # wspd = wspd_
 # pwrat = pwrat_
@@ -40,8 +42,13 @@ Alarm_Push_Url = 'http://10.67.68.188:9001/api-smartisolar/sub-warn/warn/receive
 
 
 #产业数据中台
-AccessKey = '3f207c85-64b4-476c-a23d-64624bbc0669'
-SecretKey = 'f30502cc-2b51-41d0-a95b-6275d609e5bf'
+#柯国勇
+# AccessKey = '3f207c85-64b4-476c-a23d-64624bbc0669'
+# SecretKey = 'f30502cc-2b51-41d0-a95b-6275d609e5bf'
+# OrgId = "o16323808037221371"
+#内蒙
+AccessKey = '8005fbb1-bd6d-4d2f-a1d5-c99736ead246'
+SecretKey = '2d0215c5-a329-433a-9fe6-f79e686ccc8e'
 OrgId = "o16323808037221371"
 GW_Url = 'https://ag-spic1.eniot.io'
 
@@ -60,27 +67,31 @@ ALARM_PUSH_MODE = 'http'
 
 
 ########################################## 项目服务IP配置#######################################################################
-MainIP = "172.17.11.93" #"173.17.4.11"#"127.0.0.1" . "173.17.4.11", #本算法应用部署的机子
+# MainIP = "172.17.11.93" #"173.17.4.11"#"127.0.0.1" . "173.17.4.11", #本算法应用部署的机子
+MainIP = "10.191.64.245" #"173.17.4.11"#"127.0.0.1" . "173.17.4.11", #本算法应用部署的机子
 MainPort = 8889
 BackIP = "173.17.4.11" #后端java应用部署的机子
+#oos网关地址
+OosUrl = "http://10.191.2.191:8080/xny/"
+OsFixUrl = "file/basics/fileDownload/"
+
 #智慧场站数据提取配置url
 Data_Url = 'http://'+str(BackIP)+':'+str(9100)
 token = 'v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW'
 
 ######################################### mysql数据库配置#######################################################################
-
-# DB_HOST = '10.191.2.240'#'172.17.11.95' #'127.0.0.1'
+# DB_HOST = "127.0.0.1"#'173.17.4.15'#'127.0.0.1'#'172.17.11.95' #'127.0.0.1'
 # DB_USERNAME = 'root'#'iwind2'
-# DB_PORT = 9906
-# DB_PASSWORD = 'U_zT-oLij23_D3Ld'
+# DB_PORT = 13306#3307#13306
+# DB_PASSWORD = 'Zhang123.'#'smartisolar@123,.'#'Zhang123.'
 # DB_DATABASE = 'cloud_core'
-
-DB_HOST = "127.0.0.1"#'173.17.4.15'#'127.0.0.1'#'172.17.11.95' #'127.0.0.1'
-DB_USERNAME = 'root'#'iwind2'
-DB_PORT = 13306#3307#13306
-DB_PASSWORD = 'Zhang123.'#'smartisolar@123,.'#'Zhang123.'
-DB_DATABASE = 'cloud_core'
-DB_DATABASE2 = 'cloud_screen'
+# DB_DATABASE2 = 'cloud_screen'
+######################################### pggresql数据库配置#######################################################################
+DB_HOST = "10.212.33.166"#'173.17.4.15'#'127.0.0.1'#'172.17.11.95' #'127.0.0.1'
+DB_USERNAME = 'test'#'iwind2'
+DB_PORT = 15400#3307#13306
+DB_PASSWORD = 'Gsoq@461'#'smartisolar@123,.'#'Zhang123.'
+DB_DATABASE = 'qcy_dev_test'
 
 # AL_PORT = 8088
 
@@ -159,10 +170,12 @@ scheduleConfig = {
 
 # turbine number setup
 turbineConfig = {
-    'turbineNameList' : None, #2, #["A09"], #2, #["10#","1#","5#" ] # None#['#07', '#06']#None #["#01","#10"] None
+    'turbineNameList' : 2, #2, #["A09"], #2, #["10#","1#","5#" ] # None#['#07', '#06']#None #["#01","#10"] None
     'turbineTypeList' : ["GW", "EN", "MY", "SE", "SI"] #[]  None , "XE"
 }
 
+#是否使用本地存储的风场属性数据和风机属性数据
+isLocalData = True
 
 #各算法测点配置
 if Platform == "ZhongTai":
@@ -270,7 +283,7 @@ if Platform == "ZhongTai":
             'pointNum': 20, #测点分组后，每组中的测点数量
             'timeSlice': "hours=4",
             "customMergeFlag": True,
-            "saveData": True #是否保存数据
+            "saveData": True #是否使用本地保存数据
         },
         'record_loss_indicator':{
             'name' : '10天调度记录功率数据和结果图片',
@@ -334,8 +347,8 @@ if Platform == "ZhongTai":
             'pointNum': 20,
             'timeSlice': "hours=4",
             "customMergeFlag": True,
-            "saveData": False,
-            "isStatety": True
+            "saveData": True,
+            "isStatety": True  #是否使用统一状态
         },
     }
 elif Platform == 'WuLianWang':

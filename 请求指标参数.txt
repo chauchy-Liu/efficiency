@@ -1,0 +1,18 @@
+https://ag-spic1.eniot.io/cds-metric-service/v1.0/metric
+
+3f207c85-64b4-476c-a23d-64624bbc0669
+
+f30502cc-2b51-41d0-a95b-6275d609e5bf
+
+o16323808037221371
+
+Z3Kw1DNz
+
+"org_code",	"org_name",	"org_type",	"station_type",	"access_type",	"month_no",	"production_budget",	"production",	"production_lastyear",	"production_rate",	"production_yoy",	"overdue",	"full_load_hours"
+
+2025-02-01 00:00:00
+
+2025-08-01 00:00:00
+
+
+EnOS_Wind_Farm

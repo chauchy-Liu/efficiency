@@ -17,18 +17,46 @@ from scipy import signal,integrate
 from datetime import datetime
 import os
 import data.generate_word as generate_word
-from db.db import upload, insertWord, selectFarmInfo
+from db.db import upload, insertWord, selectFarmInfo, updateWord
+import traceback
+import logging
 # from configs.config import wspd, pwrat
 
-def analyse(farmName, startTime, endTime):
-    # 生成word报告
-        
-    # word_path_name = generate_word.write_word(word_path, algorithms_configs['farmName'], Df_all_m_all_alltype.index.min(), Df_all_m_all_alltype.index.max(), algorithms_configs['Turbine_attr_type_filted'], wind_freq, wind_freq, wind_max, wind_mean, month_data, wind_ti_alltype)
-    farmInfo = selectFarmInfo(farmName, startTime, endTime)
-    word_path_name = generate_word.write_word(farmInfo, startTime, endTime)
-    #上传word
-    url_word = upload(word_path_name, farmInfo)
-    #mysql记录
-    insertWord(farmInfo, url_word)
-    
-    return {"word_url": url_word}
+logger = logging.getLogger('http-word')
+if not logger.handlers:
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(process)d - %(threadName)s - %(message)s')
+    # console_handler = logging.StreamHandler()
+    # console_handler.setFormatter(formatter)
+    # alarm_file_handler = TimedRotatingFileHandler('logs/alarm.log', when='midnight', interval=1, backupCount=30)
+    data_file_handler = logging.handlers.RotatingFileHandler(filename=os.path.join("logs","http-word"+".log"), mode='a', maxBytes=5*1024**2, backupCount=3)
+    data_file_handler.setFormatter(formatter)
+    logger.setLevel(logging.INFO)
+    # data_logger.addHandler(console_handler)
+    logger.addHandler(data_file_handler)
+
+def analyse(farmName, startTime, endTime, stateType):
+    try:
+        # 生成word报告
+        # word_path_name = generate_word.write_word(word_path, algorithms_configs['farmName'], Df_all_m_all_alltype.index.min(), Df_all_m_all_alltype.index.max(), algorithms_configs['Turbine_attr_type_filted'], wind_freq, wind_freq, wind_max, wind_mean, month_data, wind_ti_alltype)
+        farmInfo = selectFarmInfo(farmName, startTime, endTime)
+        #先生成一条空的word记录，状态为生成中
+        execute_time = insertWord(farmInfo, "", startTime, endTime)
+        word_path_name = generate_word.write_word(farmInfo, startTime, endTime, execute_time)
+        #word上传minio 
+        if stateType == 0:
+            url_word = upload(word_path_name, farmInfo)
+        else:
+            url_word = word_path_name
+        #mysql记录
+        updateWord(execute_time, url_word, word_process=1)
+        if stateType == 0:
+            return {"word_url": url_word}
+        else:
+            #调取后端接口通知word生成完毕
+            pass
+    except Exception as e:
+        errorInfomation = traceback.format_exc()
+        logger.info(f'\033[31m{errorInfomation}\033[0m')
+        logger.info(f'\033[33m指标报错：{e}\033[0m')
+        #调取后端接口通知word生成失败
+        updateWord(execute_time, "", word_process=-1)

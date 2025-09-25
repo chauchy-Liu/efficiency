@@ -535,10 +535,23 @@ def generate_word():
             name_dict['name'] = turbineTypeNameFormat(name_dict['name']) #name_dict['name']
         startTime = params['target']['startDate']
         endTime = params['target']['endDate']
-        result = show_word.analyse(farmName, startTime, endTime)
-        logger.info(f"word返回结果：")
-        logger.info(f"{result['word_url']}")
-        return result['word_url']
+        #####################
+        #异步
+        ##################
+        response = make_response('ok2')
+        response.data = response.data.decode('utf-8')
+        response.status_code = 200
+
+        thread = threading.Thread(target=show_word.analyse, args=(farmName, startTime, endTime, 1))
+        thread.start()
+        return response
+        ######################
+        #同步
+        ####################
+        # result = show_word.analyse(farmName, startTime, endTime, stateType=0)
+        # logger.info(f"word返回结果：")
+        # logger.info(f"{result['word_url']}")
+        # return result['word_url']
     except Exception as e:
         errorInfomation = traceback.format_exc()
         logger.info(f'\033[31m{errorInfomation}\033[0m')

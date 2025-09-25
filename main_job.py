@@ -5,7 +5,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import algorithms
 # from data.get_data import getData, getWindTurbines, getDataForMultiAlgorithms
 from data.get_data_async import getWindTurbinesNode, getWindTurbines, getDataForMultiAlgorithms, getWindFarm, getWindTurbinesIntel, getWindFarmIntel
-from configs.config import Wind_Farms, EXCEPT_MODLES, extraModelName, scheduleConfig, turbineConfig, algConfig, Platform
+from configs.config import Wind_Farms, EXCEPT_MODLES, extraModelName, scheduleConfig, turbineConfig, algConfig, Platform, isLocalData, Wind_Farms_zh
 from utils import time_util, display_util
 import datetime
 import importlib
@@ -14,7 +14,7 @@ import logging
 from logging_config import init_loggers
 import asyncio
 from datetime import datetime
-from db.db import insertTheoryWindPower, insertFarmInfo, addWtidToFarmInfo, createAllTable #UpdateTubineNum, UpdateAlgorithmInfo, UpdateResult, get_connection, InsertAlgorithmHead, InsertAlgorithmDetail, UpdateAlgorithmHead, ResetTubineNum, ReviewTubineNum, CheckThreshold
+from db.db import insertTheoryWindPower, insertFarmInfo, addWtidToFarmInfo, createAllTable, selectFarmInfo #UpdateTubineNum, UpdateAlgorithmInfo, UpdateResult, get_connection, InsertAlgorithmHead, InsertAlgorithmDetail, UpdateAlgorithmHead, ResetTubineNum, ReviewTubineNum, CheckThreshold
 import os
 import traceback
 from collections import ChainMap
@@ -237,13 +237,39 @@ async def _do_execute(multi_algorithms, algorithms_configs, mainLog): #startTime
         algorithmLogs[name].info("+++++++++++++++++++++++++++++++++++++++++++新任务++++++++++++++++++++++++++++++++++++++++++")
         algorithmLogs[name].info("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
     # 获取风场
-    # for Wind_Farm in Wind_Farms:
-    if Platform == "ZhongTai":
-        WindFarm_attr = await getWindFarm(Wind_Farms)
-    elif Platform == "WuLianWang":
-        WindFarm_attr = await getWindFarmIntel()
+    #是否使用本地已存在的风场属性数据
+    if isLocalData:
+        #风场中文名取一个就可以，
+        localDict = selectFarmInfo(Wind_Farms_zh[0], algorithms_configs["jobTime"], algorithms_configs["jobTime"])
+        localPath = os.path.dirname(localDict["path_farm"])
+        isPKLExist = os.path.exists(os.path.join(localPath,'FarmAttribute.pkl'))
+    if isLocalData and isPKLExist:
+        with open(os.path.join(localPath,'FarmAttribute.pkl'), 'rb') as f:
+            WindFarm_attr = pickle.load(f)
+        mainLog.info(f"# 风场属性：使用本地已存在的风场属性数据 {localPath}/FarmAttribute.pkl ###################################################################################\n")
+    elif isLocalData == False and isPKLExist:
+        mainLog.info(f"# 风场属性：中台提数据, 不使用已保存数据 ###################################################################################\n")
+        if Platform == "ZhongTai":
+            WindFarm_attr = await getWindFarm(Wind_Farms)
+        elif Platform == "WuLianWang":
+            WindFarm_attr = await getWindFarmIntel()
+    elif isLocalData and isPKLExist == False:
+        mainLog.info(f"# 风场属性：中台提数据, 并保存数据 {localPath}/FarmAttribute.pkl ###################################################################################\n")
+        if Platform == "ZhongTai":
+            WindFarm_attr = await getWindFarm(Wind_Farms)
+        elif Platform == "WuLianWang":
+            WindFarm_attr = await getWindFarmIntel()
+        with open(os.path.join(localPath,'FarmAttribute.pkl'), 'wb') as f:
+            pickle.dump(WindFarm_attr, f)
+    elif isLocalData == False and isPKLExist == False:
+        mainLog.info(f"# 风场属性：中台提数据, 不保存数据 ###################################################################################\n")
+        if Platform == "ZhongTai":
+            WindFarm_attr = await getWindFarm(Wind_Farms)
+        elif Platform == "WuLianWang":
+            WindFarm_attr = await getWindFarmIntel()
+
     # 遍历风场 ###################################################################################
-    mainLog.info(f"# 遍历风场 ###################################################################################")
+    mainLog.info(f"# 遍历风场 ###################################################################################\n")
     for farm_index, farm_item in WindFarm_attr.iterrows():
         if Platform == "ZhongTai":
             algorithms_configs['farmId'] = farm_item['mdmId']
@@ -269,12 +295,40 @@ async def _do_execute(multi_algorithms, algorithms_configs, mainLog): #startTime
             if os.path.exists(path_farm)==False:
                 os.makedirs(path_farm)
             farm_item.to_csv(str(path_farm+'/WindFarm.csv'),index=True, encoding='utf-8') 
-        mainLog.info(f"# {farm_index+1}/{WindFarm_attr.shape[0]}: {algorithms_configs['farmName']} ###################################################################################")
+        mainLog.info(f"# {farm_index+1}/{WindFarm_attr.shape[0]}: {algorithms_configs['farmName']} ###################################################################################\n")
+        if farm_item['mdmId'] not in Wind_Farms:
+            continue
         #  获取所有风机
-        if Platform == "ZhongTai":
-            Turbine_attr = await getWindTurbines(farm_item['mdmId']) #Wind_Farm
-        elif Platform == "WuLianWang":
-            Turbine_attr = await getWindTurbinesIntel(farm_item['orgId'])
+        #是否使用本地已存在的风机属性数据
+        if isLocalData:
+            isPKLExist = os.path.exists(os.path.join(path_farm,'TurbineAttribute.pkl'))
+        if isLocalData and isPKLExist:
+            with open(os.path.join(path_farm,'TurbineAttribute.pkl'), 'rb') as f:
+                Turbine_attr = pickle.load(f)
+            mainLog.info(f"# 风机属性：使用本地已存在的风场属性数据 {path_farm}/TurbineAttribute.pkl ###################################################################################\n")
+        elif isLocalData == False and isPKLExist:
+            mainLog.info(f"# 风机属性：中台提数据, 不使用已保存数据 ###################################################################################\n")
+            if Platform == "ZhongTai":
+                Turbine_attr = await getWindTurbines(farm_item['mdmId']) #Wind_Farm
+            elif Platform == "WuLianWang":
+                Turbine_attr = await getWindTurbinesIntel(farm_item['orgId'])
+        elif isLocalData and isPKLExist == False:
+            mainLog.info(f"# 风机属性：中台提数据, 并保存数据{path_farm}/TurbineAttribute.pkl ###################################################################################\n")
+            if Platform == "ZhongTai":
+                Turbine_attr = await getWindTurbines(farm_item['mdmId']) #Wind_Farm
+            elif Platform == "WuLianWang":
+                Turbine_attr = await getWindTurbinesIntel(farm_item['orgId'])
+            with open(os.path.join(path_farm,'TurbineAttribute.pkl'), 'wb') as f:
+                pickle.dump(Turbine_attr, f)
+        elif isLocalData == False and isPKLExist == False:
+            mainLog.info(f"# 风机属性：中台提数据, 不保存数据 ###################################################################################\n")
+            if Platform == "ZhongTai":
+                Turbine_attr = await getWindTurbines(farm_item['mdmId']) #Wind_Farm
+            elif Platform == "WuLianWang":
+                Turbine_attr = await getWindTurbinesIntel(farm_item['orgId'])
+
+
+        
         if str(algorithms_configs['turbineType']) == "nan":
             turbineTypeIDList = np.unique(Turbine_attr['turbineTypeID']).tolist()
             algorithms_configs['turbineType'] = ",".join(turbineTypeIDList)
@@ -310,7 +364,7 @@ async def _do_execute(multi_algorithms, algorithms_configs, mainLog): #startTime
             # 查找机型表中的故障文件
             faultCodeFile = selectFaultCode(algorithms_configs['turbineTypeID'])
             if faultCodeFile == None:
-                mainLog.info("没有在turbineTypeToFaultCodeMap表中找到机型: "+algorithms_configs['turbineTypeID'])
+                mainLog.info("没有在 turbine_type_to_fault_code_map表中找到机型: "+algorithms_configs['turbineTypeID'])
                 continue
             else: 
                 if ".py" in faultCodeFile:
@@ -678,6 +732,7 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
         if days[0] == '0':
             days = days[1]
         if not isPKLExist or not algConfig[name]["saveData"]: #name != 'Efficiency_ana_V3' or (name == 'Efficiency_ana_V3' and days == '1') or (name == 'Efficiency_ana_V3' and )
+            mainLog.info(f"\n# 风机测点：中台提取数据 ###################################################################################\n")
             algorithmData = await getDataForMultiAlgorithms({name:algorithms_configs[name]}, algorithms_configs['state']) #mainLog, algorithmLogs, 
         else:
             # if algorithms_configs[name]['PrepareTurbines'] == True:
@@ -688,6 +743,10 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
             Rotspd_Rate = algorithms_configs['Rotspd_Rate']
             state_ = algorithms_configs['state']
             Pitch_Min = algorithms_configs['Pitch_Min']
+            if 'statetyNorm' in algorithms_configs:
+                statetyNorm = algorithms_configs['statetyNorm']
+            if 'limpw_state' in algorithms_configs:
+                limpw_state = algorithms_configs['limpw_state']
             with open(os.path.join(algorithms_configs['path'],'Efficiency_ana_V3.pkl'), 'rb') as f:
                 algorithms_configs = pickle.load(f)
                 algorithms_configs["Df_all_m_all"].to_csv(os.path.join(algorithms_configs['path'],"Df_all_m_all.csv"), index=True)
@@ -698,6 +757,11 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
                 algorithms_configs['Rotspd_Rate'] = Rotspd_Rate
                 algorithms_configs['state'] = state_
                 algorithms_configs['Pitch_Min'] = Pitch_Min
+                algorithms_configs['statetyNorm'] = statetyNorm
+                algorithms_configs['limpw_state'] = limpw_state
+            
+            algorithms_configs["record_loss_indicator"] = algorithms_configs["record_pwrt_picture"]
+            mainLog.info(f"\n# 风机测点：读取已存数据{algorithms_configs['path']}/Efficiency_ana_V3.pkl ###################################################################################\n")
                 
             # else:
                 # algorithmData = {name: pd.DataFrame()}
@@ -765,6 +829,7 @@ async def single_measure_point_batch(mainLog, turbineName, algorithms_configs, n
     # if (algorithms_configs[name]['PrepareTurbines'] == True and days==1 and name == 'Efficiency_ana_V3') or (algorithms_configs[name]['PrepareTurbines'] == True and not os.path.exists('Efficiency_ana_V3.pkl.gz') and name == 'Efficiency_ana_V3'):
     if  not isPKLExist and algConfig[name]["saveData"]:
         # data_df.to_pickle('Efficiency_ana_V3.pkl.gz', compression='gzip')
+        mainLog.info(f"\n# 风机测点：保存数据{algorithms_configs['path']}/Efficiency_ana_V3.pkl ###################################################################################\n")
         with open(os.path.join(algorithms_configs['path'],'Efficiency_ana_V3.pkl'), 'wb') as f:
             pickle.dump(algorithms_configs, f)
     try:

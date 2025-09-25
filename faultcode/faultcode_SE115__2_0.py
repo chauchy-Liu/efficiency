@@ -18,7 +18,7 @@ def filter2(Df_all, Df_all_m, medfilt_num, filter1st_tao, choose_num):
     else:
         Df_all['wdir0'] = Df_all['wdir0'].fillna(0)
         
-    Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdirs'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
+    Df_all['wdir0'] = turbine_efficiency_function.pass_filter(Df_all['wdir0'],filter1st_tao,medfilt_num,11,0.1,1,choose_num)
     
     return Df_all, Df_all_m
 

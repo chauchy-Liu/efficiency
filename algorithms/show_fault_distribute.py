@@ -32,7 +32,7 @@ def analyse(farmName, typeName:list, startTime, endTime):
     result = {}
     #################################
     if fault_loss_all.empty:
-        return result
+        return result, None
     fault_loss_show = pd.DataFrame()
     if len(turbine_type) > 0:
         fault_loss_all_temp = fault_loss_all[fault_loss_all['type'].isin(turbine_type)]

@@ -27,6 +27,8 @@ import algorithms.show_technology_loss as show_technology_loss
 import algorithms.show_stop_loss as show_stop_loss
 import algorithms.show_power_consistence as show_power_consistence
 import traceback
+from datetime import datetime, timedelta
+
 
 
 
@@ -169,7 +171,7 @@ def fill_table(table, x, y, merge_x=-1, merge_y=-1,
     return
 
 
-def write_word(farmInfo, startTime, endTime):
+def write_word(farmInfo, startTime, endTime, execute_time):
     document = Document()
     
     
@@ -2045,8 +2047,42 @@ def write_word(farmInfo, startTime, endTime):
     paragraph2_run._element.rPr.rFonts.set(qn('w:eastAsia'),u'黑体')
     paragraph2.paragraph_format.space_before = Pt(12)
     paragraph2.paragraph_format.space_after = Pt(6)
-    document.save(farmInfo['path_farm'] + '/' + windfarm_name + '能效评估报告.docx')
-    return farmInfo['path_farm'] + '/' + windfarm_name + '能效评估报告.docx'
+    document.save(farmInfo['path_farm'] + '/'+ datetime.strftime(execute_time, "%Y-%m-%d_%H-%M-%S")+"_" + windfarm_name + '能效评估报告.docx')
+    removeFile(farmInfo['path_farm'])
+
+    return os.path.abspath(farmInfo['path_farm'] + '/' + datetime.strftime(execute_time, "%Y-%m-%d_%H-%M-%S")+"_"+ windfarm_name + '能效评估报告.docx')
+
+
+
+
+
+def removeFile(path):
+    # 设置截止日期，例如，删除10天之前的文件
+    cutoff_time = datetime.now() - timedelta(days=10)
+    
+    # 指定要检查的目录
+    directory = path
+    #扩展名
+    ext = ["docx", "doc"]
+    
+    # 遍历目录中的所有文件
+    for filename in os.listdir(directory):
+        file_path = os.path.join(directory, filename)
+        file_extension = file_path.split(".")[-1]
+        if file_extension in ext:
+            try:
+                # 获取文件的修改时间
+                file_mtime = os.path.getmtime(file_path)
+                # 将时间转换为datetime对象进行比较
+                file_time = datetime.fromtimestamp(file_mtime)
+                # 如果文件修改时间早于截止时间，则删除文件
+                if file_time < cutoff_time:
+                    os.remove(file_path)
+                    print(f"Deleted: {filename}")
+            except Exception as e:
+                errorInfomation = traceback.format_exc()
+                print(f"#########################Error processing {filename}#######################################3:\n {errorInfomation}")
+
     '''
     
 
