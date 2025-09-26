@@ -108,8 +108,9 @@ def upload(filename:str, algorithms_configs:dict):
     #     log.info("Bucket "+ylv['bucketName']+" already exists")
     #name_uuid = uuid.uuid3(uuid.NAMESPACE_DNS, filename)
     #绝对路径
-    filename = os.path.abspath(filename)
-    # filename = "/Users/zhang/Downloads/"+filename #os.path.abspath(filename)
+    # filename = os.path.abspath(filename)
+    #调试修改路径
+    filename = "/Users/zhang/Downloads/"+filename #os.path.abspath(filename)
     basename = os.path.basename(filename)
     dirname =os.path.dirname(filename)
     dirList = dirname.split('/')
