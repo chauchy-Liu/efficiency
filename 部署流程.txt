@@ -68,6 +68,19 @@ nohup python main.py 2>output.log &
 MainIP = "127.0.0.1"
 MainPort = 8889
 
+####################### python请求token配置###############
+#内蒙请求token配置url
+TokenIP = "10.191.2.191" #后端java应用部署的机子
+Token_Url = 'http://'+str(TokenIP)+':'+str(8080)
+serviceKey = {
+    "appKey": "AA0D53441F2C4CEC3CF56BCC0C2FA4C8",
+    "id": "1971091686256758785"
+}
+
+#####################请求java url配置#############################
+#下载图片配置url
+OosUrl = "http://10.191.2.191:8080/zk-xny/"
+OsFixUrl = "file/basics/fileDownload/"
 
 
 
