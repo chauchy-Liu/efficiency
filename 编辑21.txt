@@ -9,5 +9,5 @@ url:/loss_analysis/warning
 		"meanWindSpeed": "0.0000", //平均风速(m/s)
 		"faultDescribe": "发电机绕组1温度高预警", //告警描述
 		
-	},
+	},,,
 ]
