@@ -1,0 +1,51 @@
+#ip: 10.191.2.16
+# ip: 127.0.0.1
+
+# port: 8807
+
+#MINIO
+# minio_enable: True
+# url: 10.104.2.160:9000 #172.16.1.189:9000  #10.104.2.160:9000 #82.157.145.88:19000 #172.24.108.18:9000
+# # domainName: osp.spic #null #osp.spic
+# accesskey: minioadmin
+# secretkey: nt-Y9@xAfyyMoHBc
+# bucketName: wind-efficiency-pictures
+
+# url: 127.0.0.1:19000 #173.17.4.12:9000 #127.0.0.1:19000 #172.16.1.189:9000  #10.104.2.160:9000 #82.157.145.88:19000 #172.24.108.18:9000
+# domainName:  #10.70.146.9:9000 #osp.spic #null #osp.spic
+# accesskey: minioadmin #admin #minioadmin
+# secretkey: Zhang123. #minio1234 #Zhang123.
+# bucketName: wind-efficiency-pictures
+
+# #OSS
+url: 10.214.142.23:80 #173.17.4.12:9000 #127.0.0.1:19000 #172.16.1.189:9000  #10.104.2.160:9000 #82.157.145.88:19000 #172.24.108.18:9000
+domainName: #10.70.146.9:9000 #osp.spic #null #osp.spic http://nmggsqcyxtddzhpt.oss-cn-anshun-dtcloud-d01-a.ops.dtcloud.spic.com.cn
+accesskey: 4J44v7fHRUui7Tvy #admin #minioadmin
+secretkey: 8gPs8R7fEgJA3FGRj7cFHQhR0yhMdg #minio1234 #Zhang123.
+bucketName: nmggsqcyxtddzhpt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 数据库配置
+# DB_HOST: 10.104.2.160 #172.16.3.232
+# DB_PORT: 3306
+# DB_USERNAME: iwind
+# DB_PASSWORD: IotPlatform!v1.0
+# DB_DATABASE: ewind

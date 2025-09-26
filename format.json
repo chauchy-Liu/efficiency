@@ -1,0 +1,104 @@
+调后端的风机属性、风场属性接口要加header头，
+head:{
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer '+ token(现场配v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW)
+}
+请求数据的url前缀：http:/173.17.4.11:9100   不同网络需要配置不同IP, 在哪部署算法用哪个IP，是算法的ip和端口9100是算法访问后端
+#风场信息
+接口：/wind/farm/list
+#风机信息
+接口：/wind/turbine/listByOrgId/{orgId}   orgId：替换为风场提取的orgId, {}去掉
+#测点信息
+接口：/iot/device/search/point/history
+{
+    "assetIds": '风机ID', 
+    "pointIds": '测点1，测点2, ...',  //英文逗号分隔
+    "dataType": "avg", //avg：平均值，original：原始值
+    "interval": "60", //间隔时间，单位：秒
+    "startTime": startTime,
+    "endTime": endTime
+}
+查询
+{
+	farm:[{
+		mdmId: "",
+		turbineType: [{
+			name: "",
+		}]
+	}],
+	target: {
+		startDate: "2020-02-02"
+		endDate: "2020-02-03"
+	}
+	
+	
+}
+
+
+绩效指标：
+{
+	farm:[{
+		mdmId: "",
+		turbineType: [{
+			name: "",
+			turbine: []
+		}]
+	}],
+	target: {
+		startDate: "2020-02-02"
+		endDate: "2020-02-03"
+	}
+	
+}
+
+
+场站维度对标分析
+{
+	farm:[{
+		mdmId: ""
+	},{
+		mdmId: ""
+	}],
+	target: {
+		startDate: "2020-02-02"
+		endDate: "2020-02-03"
+	}
+}
+
+
+时间维度对标分析：
+{
+	farm:[{
+		mdmId: ""
+	}],
+	target: {
+		startDate:
+		endDate: 
+	}
+	compare:{
+		startDate:
+		endDate: 
+	}
+}
+
+机型为度对标分析：
+{
+	farm:[{
+		mdmId: "",
+		turbineType: [{
+			name: ""
+		}]
+	},{
+		mdmId: "",
+		turbineType: [{
+			name: ""
+		}]
+	}],
+	target: {
+		startDate: "2020-02-02"
+		endDate: "2020-02-03"
+	}
+}
+
+
+

@@ -1,0 +1,129 @@
+#####################################能效搭建#################################
+方式1、在mysql或者postGreSql中手动创建机型故障文件映射表turbine_type_to_fault_code_map
+方式2、在mysql中导入或执行本项目下的mysql/turbine_type_to_fault_code_map.sql文件
+      在postGreSql中导入或执行本项目下的postGreSql/turbine_type_to_fault_code_map.sql文件
+
+########################################## docker部署########################################## 
+
+-1、生成镜像
+	docker打包(打包成x86架构)
+	docker buildx build --platform=linux/amd64  -t  efficiency:latest .   
+	
+	docker打包(打包成arm架构)
+	docker buildx build --platform=linux/arm64   -t efficiency:latest .   
+
+0、镜像打包
+	docker save -o efficiency.tar efficiency
+	gzip efficiency.tar
+
+1、启动能效项目docker
+（1）把efficiency.tar.gz文件考到自己的目录下
+（2）docker load -i efficiency.tar.gz
+（3）docker run -d -p 0.0.0.0:8889:8889 --name eff  -v /自己的目录/logs:/app/logs  -v /自己目录/configs:/app/configs  -v /自己目录/faultcode:/app/faultcode efficiency 
+ (4)每次修改(/自己目录/configs/config.py)文件、(/自己的目录/logs里的文件)后需要重启docker(docker restart eff)
+ (5) 执行（3）前确保宿主机自己目录下有：1、logs文件夹和logs文件 2、faultcode文件夹和faultcode文件 3、configs文件夹和configs文件 , 否则对导致docker容器内的对应位置处的文件清空运行失败，所以需要将源码中的logs、faultcode、configs文件夹拷贝到宿主机上。这样修改宿主机上的配置文件、faultcode文件后，docker容器中的文件会跟着一起改，同时docker中生成的日志也在宿主机中查看，不需要进docker查看。
+ 
+
+###########################################################################
+2、启动docker的myslq
+	(1)docker拉镜像
+		docker pull mysql:8.4.3
+	(2)启动
+		docker run -d --name mysql -p 13306:3306 -e MYSQL_ROOT_PASSWORD=Zhang123. -v  自己的目录/docker/mysql/data:/var/lib/mysql --restart=always -d mysql --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
+
+###########################################################################
+3、启动 docker的minio
+	(1)docker拉镜像
+		docker pull quay.io/minio/minio
+		或
+		docker pull minio/minio
+	(2)启动
+		docker run -d -p 19000:9000 -p 19090:9090 --name minio  -e "MINIO_ROOT_USER=minioadmin" -e "MINIO_ROOT_PASSWORD=Zhang123." -v 自己的目录/docker/minio:/data quay.io/minio/minio server /data --console-address ":9090"
+		或
+		docker run -d -p 19000:9000 -p 19090:9090 --name minio  -e "MINIO_ROOT_USER=minioadmin" -e "MINIO_ROOT_PASSWORD=Zhang123." -v 自己的目录/docker/minio:/data minio/minio server /data --console-address ":9090"
+
+
+########################################## 非docker部署########################################## 
+# 服务器安装python==3.9.19和pip==24.2
+#第一次部署安装依赖
+pip install -r requirements.txt
+
+#编译文件
+python setup.py
+
+#编译目录改名
+cd build
+#mv build app
+
+#启动应用
+#方式一：
+nohup gunicorn app:app --preload --timeout 0 --log-level info --access-logfile - --error-logfile - -c gunicorn.config.py 2>output.log & 
+#方式二：
+nohup python main.py 2>output.log &
+
+
+
+
+
+########################################## ########################################## ########################################## 
+
+配置（目录 /自己目录/configs）和 gunicorn.config.py
+1、项目IP
+项目工作目录/configs/config.py
+
+########################################## 项目服务IP配置#######################################################################
+MainIP = "127.0.0.1"
+MainPort = 8889
+MainPort = 8889 和 gunicorn.config.py 中的端口保持一致
+
+####################### python请求token配置###############
+#内蒙请求token配置url
+TokenIP = "10.191.2.191" #后端java应用部署的机子
+Token_Url = 'http://'+str(TokenIP)+':'+str(8080)
+serviceKey = {
+    "appKey": "AA0D53441F2C4CEC3CF56BCC0C2FA4C8",
+    "id": "1971091686256758785"
+}
+
+#####################请求java url配置#############################
+#下载图片配置url
+OosUrl = "http://10.191.2.191:8080/zk-xny/"
+OsFixUrl = "file/basics/fileDownload/"
+
+
+
+2、mysql IP
+项目工作目录/configs/config.py
+
+######################################### mysql数据库配置#######################################################################
+DB_HOST = '127.0.0.1'
+DB_USERNAME = 'root'
+DB_PORT = 13306
+DB_PASSWORD = 'Zhang123.'
+DB_DATABASE = 'cloud_core'
+
+
+
+3、 Minio IP
+项目工作目录/configs/config.yaml
+
+url: 127.0.0.1:19000 
+domainName: 
+accesskey: minioadmin
+secretkey: Zhang123.
+bucketName: wind-efficiency-pictures
+
+
+4、风场输入
+Wind_Farms = ["Z3Kw1DNz"]
+Wind_Farms_zh = ["内蒙古通辽道老杜风电场"]
+
+5、#是否使用本地存储的风场属性数据和风机属性数据
+isLocalData = True
+
+6、#是否使用本地保存测点数据
+"saveData": True 
+
+7、#是否使用统一状态
+"isStatety": True  
+

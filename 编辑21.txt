@@ -1,0 +1,13 @@
+告警
+url:/loss_analysis/warning
+"table": [
+	{
+		"wtid": "#06", //机位号
+		"faultCode": "90005", //告警编码
+		"faultCount": "5", //告警频次
+		"faultTime": "0.0000", //告警时长(h)
+		"meanWindSpeed": "0.0000", //平均风速(m/s)
+		"faultDescribe": "发电机绕组1温度高预警", //告警描述
+		
+	}
+]

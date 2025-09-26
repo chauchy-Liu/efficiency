@@ -1,0 +1,21 @@
+# Spring
+spring:
+    application:
+        # 应用名称
+        name: tianyi-intelligent-ai
+    cloud:
+        # inetutils:
+            # preferred-networks: 10.191
+        nacos:
+            discovery:
+                # 服务注册地址
+                server-addr: http://173.17.4.18:8848
+                group: DEFAULT_GROUP
+                username: snpit-discovery
+                password: VQx8eNLJkYacRJosaNyCGKccaRAihw9p
+            config:
+                server-addr: http://173.17.4.18:8848
+                group: DEFAULT_GROUP
+                username: snpit-discovery
+                password: VQx8eNLJkYacRJosaNyCGKccaRAihw9p
+

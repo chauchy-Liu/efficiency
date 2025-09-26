@@ -1,0 +1,513 @@
+{
+	"info": {
+		"_postman_id": "4bcd82b8-0228-4e8d-8edc-c58b5e1de90d",
+		"name": "能效-定时调度",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "34231944",
+		"_collection_link": "https://universal-moon-798181.postman.co/workspace/Team-Workspace~55f7612d-c35b-41a6-8eb6-95e7588058b1/collection/34231944-4bcd82b8-0228-4e8d-8edc-c58b5e1de90d?action=share&source=collection_link&creator=34231944"
+	},
+	"item": [
+		{
+			"name": "test",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:8889/job/excute",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8889",
+					"path": [
+						"job",
+						"excute"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "能效甘肃调试90天数据",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "[\n    \"record_pwrt_picture\"\n]\n//record_loss_indicator\n//record_pwrt_picture",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseURL}}/wind-algorithm-model/job/execute",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"wind-algorithm-model",
+						"job",
+						"execute"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "能效甘肃调试1天损失数据",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "[\n    \"record_loss_indicator\"\n]\n//record_loss_indicator\n//record_pwrt_picture",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseURL}}/wind-algorithm-model/job/execute",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"wind-algorithm-model",
+						"job",
+						"execute"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "能效甘肃现场调试",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "[\n    \"record_loss_indicator\"\n]\n//record_loss_indicator\n// record_pwrt_picture",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://173.17.4.11:8889/wind-algorithm-model/job/execute",
+					"protocol": "http",
+					"host": [
+						"173",
+						"17",
+						"4",
+						"11"
+					],
+					"port": "8889",
+					"path": [
+						"wind-algorithm-model",
+						"job",
+						"execute"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "风场信息",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {
+					"connection": true,
+					"accept-encoding": true,
+					"accept": true,
+					"user-agent": true,
+					"content-length": true,
+					"content-type": true
+				}
+			},
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://173.17.4.11:9100/wind/farm/list",
+					"protocol": "http",
+					"host": [
+						"173",
+						"17",
+						"4",
+						"11"
+					],
+					"port": "9100",
+					"path": [
+						"wind",
+						"farm",
+						"list"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "风机信息",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "http://173.17.4.11:9100/wind/turbine/listByOrgId/1857264288838782978",
+					"protocol": "http",
+					"host": [
+						"173",
+						"17",
+						"4",
+						"11"
+					],
+					"port": "9100",
+					"path": [
+						"wind",
+						"turbine",
+						"listByOrgId",
+						"1857264288838782978"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "测点信息",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "// {\n//     \"assetIds\": \"QSFD1FJ10\", \n//     \"pointIds\": \"WNACTemOut,WNACWindSpeed\",  //WTURLimitPowerSts,WNACTemOut,WNACWindSpeed,\n//     \"type\": 1,\n//     \"interval\": \"3600\", \n//     \"startTime\": \"2024-12-09 01:00:00\",\n//     \"endTime\": \"2024-12-09 06:00:00\"\n// }\n{\"assetIds\": \"QSFD1FJ01\", \"pointIds\": \"WNACWindSpeed\", \"startTime\": \"2025-04-28 11:12:13\", \"endTime\": \"202-04-28 15:12:13\", \"interval\": \"1\", \"type\": 1}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://173.17.4.11:9100/iot/device/search/point/history",
+					"protocol": "http",
+					"host": [
+						"173",
+						"17",
+						"4",
+						"11"
+					],
+					"port": "9100",
+					"path": [
+						"iot",
+						"device",
+						"search",
+						"point",
+						"history"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "前端请求风场",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzUxMiJ9.eyJjcmVhdGVfdGltZSI6IjIwMjQtMTItMjYgMTg6NDM6MjciLCJhdXRoX3Rva2VuIjoiOWQzY2NiOGI5YWM4NDUyMTljZTgyZGM4MTQ3OGYyZDciLCJ1c2VyX2NvZGUiOiI3ODEwMDI5MiIsInVzZXJfaWQiOiIxODY2MzYzNDczMjkwNjM3MzE0In0.i3dmi1A-J6lDvM3adDpJhyYF_Quu-emMZjK2MO7oYau41W8jY-9GfzjY-PTt5bPBLGhKzdasKLcwoRu1NCvbng",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJjcmVhdGVfdGltZSI6IjIwMjQtMTItMjYgMTg6NDM6MjciLCJhdXRoX3Rva2VuIjoiOWQzY2NiOGI5YWM4NDUyMTljZTgyZGM4MTQ3OGYyZDciLCJ1c2VyX2NvZGUiOiI3ODEwMDI5MiIsInVzZXJfaWQiOiIxODY2MzYzNDczMjkwNjM3MzE0In0.i3dmi1A-J6lDvM3adDpJhyYF_Quu-emMZjK2MO7oYau41W8jY-9GfzjY-PTt5bPBLGhKzdasKLcwoRu1NCvbng",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://173.17.4.11:9100/wind/farm/windFarmList",
+					"protocol": "http",
+					"host": [
+						"173",
+						"17",
+						"4",
+						"11"
+					],
+					"port": "9100",
+					"path": [
+						"wind",
+						"farm",
+						"windFarmList"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "前端请求机型",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJjcmVhdGVfdGltZSI6IjIwMjQtMTItMjYgMTg6NDM6MjciLCJhdXRoX3Rva2VuIjoiOWQzY2NiOGI5YWM4NDUyMTljZTgyZGM4MTQ3OGYyZDciLCJ1c2VyX2NvZGUiOiI3ODEwMDI5MiIsInVzZXJfaWQiOiIxODY2MzYzNDczMjkwNjM3MzE0In0.i3dmi1A-J6lDvM3adDpJhyYF_Quu-emMZjK2MO7oYau41W8jY-9GfzjY-PTt5bPBLGhKzdasKLcwoRu1NCvbng",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\":[\"1857264288838782978\"]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://173.17.4.11:9100/wind/farm/windTurbineTypeList",
+					"protocol": "http",
+					"host": [
+						"173",
+						"17",
+						"4",
+						"11"
+					],
+					"port": "9100",
+					"path": [
+						"wind",
+						"farm",
+						"windTurbineTypeList"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "前端请求机组号",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzUxMiJ9.eyJjcmVhdGVfdGltZSI6IjIwMjQtMTItMjYgMTg6NDM6MjciLCJhdXRoX3Rva2VuIjoiOWQzY2NiOGI5YWM4NDUyMTljZTgyZGM4MTQ3OGYyZDciLCJ1c2VyX2NvZGUiOiI3ODEwMDI5MiIsInVzZXJfaWQiOiIxODY2MzYzNDczMjkwNjM3MzE0In0.i3dmi1A-J6lDvM3adDpJhyYF_Quu-emMZjK2MO7oYau41W8jY-9GfzjY-PTt5bPBLGhKzdasKLcwoRu1NCvbng",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJjcmVhdGVfdGltZSI6IjIwMjQtMTItMjYgMTg6NDM6MjciLCJhdXRoX3Rva2VuIjoiOWQzY2NiOGI5YWM4NDUyMTljZTgyZGM4MTQ3OGYyZDciLCJ1c2VyX2NvZGUiOiI3ODEwMDI5MiIsInVzZXJfaWQiOiIxODY2MzYzNDczMjkwNjM3MzE0In0.i3dmi1A-J6lDvM3adDpJhyYF_Quu-emMZjK2MO7oYau41W8jY-9GfzjY-PTt5bPBLGhKzdasKLcwoRu1NCvbng",
+						"type": "text"
+					},
+					{
+						"key": "",
+						"value": "",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1857264288838782978\"],\n    \"windTurbineTypeList\": [\"MYSE5.0-200\"]\n}\n// Bearer eyJhbGciOiJIUzUxMiJ9.eyJjcmVhdGVfdGltZSI6IjIwMjQtMTItMjYgMTg6NDM6MjciLCJhdXRoX3Rva2VuIjoiOWQzY2NiOGI5YWM4NDUyMTljZTgyZGM4MTQ3OGYyZDciLCJ1c2VyX2NvZGUiOiI3ODEwMDI5MiIsInVzZXJfaWQiOiIxODY2MzYzNDczMjkwNjM3MzE0In0.i3dmi1A-J6lDvM3adDpJhyYF_Quu-emMZjK2MO7oYau41W8jY-9GfzjY-PTt5bPBLGhKzdasKLcwoRu1NCvbng\n// Bearer v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://173.17.4.11:9100/wind/farm/wtidList",
+					"protocol": "http",
+					"host": [
+						"173",
+						"17",
+						"4",
+						"11"
+					],
+					"port": "9100",
+					"path": [
+						"wind",
+						"farm",
+						"wtidList"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "前端请求机组号版本2",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzUxMiJ9.eyJjcmVhdGVfdGltZSI6IjIwMjQtMTItMjYgMTg6NDM6MjciLCJhdXRoX3Rva2VuIjoiOWQzY2NiOGI5YWM4NDUyMTljZTgyZGM4MTQ3OGYyZDciLCJ1c2VyX2NvZGUiOiI3ODEwMDI5MiIsInVzZXJfaWQiOiIxODY2MzYzNDczMjkwNjM3MzE0In0.i3dmi1A-J6lDvM3adDpJhyYF_Quu-emMZjK2MO7oYau41W8jY-9GfzjY-PTt5bPBLGhKzdasKLcwoRu1NCvbng",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJjcmVhdGVfdGltZSI6IjIwMjQtMTItMjYgMTg6NDM6MjciLCJhdXRoX3Rva2VuIjoiOWQzY2NiOGI5YWM4NDUyMTljZTgyZGM4MTQ3OGYyZDciLCJ1c2VyX2NvZGUiOiI3ODEwMDI5MiIsInVzZXJfaWQiOiIxODY2MzYzNDczMjkwNjM3MzE0In0.i3dmi1A-J6lDvM3adDpJhyYF_Quu-emMZjK2MO7oYau41W8jY-9GfzjY-PTt5bPBLGhKzdasKLcwoRu1NCvbng",
+						"type": "text"
+					},
+					{
+						"key": "",
+						"value": "",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"windFarmIds\": [\"1857264288838782978\"],\n    \"windTurbineTypeList\": [\"MYSE5.0-200\"]\n}\n// Bearer eyJhbGciOiJIUzUxMiJ9.eyJjcmVhdGVfdGltZSI6IjIwMjQtMTItMjYgMTg6NDM6MjciLCJhdXRoX3Rva2VuIjoiOWQzY2NiOGI5YWM4NDUyMTljZTgyZGM4MTQ3OGYyZDciLCJ1c2VyX2NvZGUiOiI3ODEwMDI5MiIsInVzZXJfaWQiOiIxODY2MzYzNDczMjkwNjM3MzE0In0.i3dmi1A-J6lDvM3adDpJhyYF_Quu-emMZjK2MO7oYau41W8jY-9GfzjY-PTt5bPBLGhKzdasKLcwoRu1NCvbng\n// Bearer v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://173.17.4.11:9100/wind/farm/wtidList",
+					"protocol": "http",
+					"host": [
+						"173",
+						"17",
+						"4",
+						"11"
+					],
+					"port": "9100",
+					"path": [
+						"wind",
+						"farm",
+						"wtidList"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "baseURL",
+			"value": "",
+			"type": "default"
+		}
+	]
+}
