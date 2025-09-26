@@ -1,1 +1,14 @@
-/.idea/
+logs/*
+.vscode/
+.DS_Store
+result/*
+*.pkl.gz
+*.pkl
+*.gz
+/build
+*.pyc
+*.pyx
+*.tar
+*.tar.gz
+*.csv
+
