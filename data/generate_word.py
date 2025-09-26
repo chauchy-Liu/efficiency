@@ -2061,7 +2061,7 @@ def write_word(farmInfo, startTime, endTime, execute_time):
     document.save(file_word_abs)
     removeFile(farmInfo['path_farm'])
     #调试修改路径
-    file_word_abs = "/Users/zhang/Downloads/" + file_word
+    # file_word_abs = "/Users/zhang/Downloads/" + file_word
 
     return file_word_abs #os.path.abspath(farmInfo['path_farm'] + '/' + datetime.strftime(execute_time, "%Y-%m-%d_%H-%M-%S")+"_"+ windfarm_name + '能效评估报告.docx')
 
