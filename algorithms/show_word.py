@@ -20,6 +20,7 @@ import data.generate_word as generate_word
 from db.db import upload, insertWord, selectFarmInfo, updateWord
 import traceback
 import logging
+from data.get_data_async import getToken, javaUploadWord
 # from configs.config import wspd, pwrat
 
 logger = logging.getLogger('http-word')
@@ -35,6 +36,7 @@ if not logger.handlers:
     logger.addHandler(data_file_handler)
 
 def analyse(farmName, startTime, endTime, stateType):
+    logger.info(f"\n\n##########show_word请求: ############################################3\n")
     try:
         # 生成word报告
         # word_path_name = generate_word.write_word(word_path, algorithms_configs['farmName'], Df_all_m_all_alltype.index.min(), Df_all_m_all_alltype.index.max(), algorithms_configs['Turbine_attr_type_filted'], wind_freq, wind_freq, wind_max, wind_mean, month_data, wind_ti_alltype)
@@ -43,6 +45,7 @@ def analyse(farmName, startTime, endTime, stateType):
         execute_time = insertWord(farmInfo, "", startTime, endTime)
         word_path_name = generate_word.write_word(farmInfo, startTime, endTime, execute_time)
         #word上传minio 
+        logger.info(f"##########word_path_name: {word_path_name}#######3")
         if stateType == 0:
             url_word = upload(word_path_name, farmInfo)
         else:
@@ -53,10 +56,15 @@ def analyse(farmName, startTime, endTime, stateType):
             return {"word_url": url_word}
         else:
             #调取后端接口通知word生成完毕
-            pass
+            #请求Java上传word
+            jobTimeStr = datetime.strftime(execute_time, '%Y-%m-%d %H:%M:%S')
+            token = getToken()
+            logger.info(f"##########token: {token}#######3")
+            javaUploadWord(jobTimeStr, token)
+        logger.info(f"\n##########word生成成功: #######3\n")
     except Exception as e:
         errorInfomation = traceback.format_exc()
         logger.info(f'\033[31m{errorInfomation}\033[0m')
         logger.info(f'\033[33m指标报错：{e}\033[0m')
-        #调取后端接口通知word生成失败
         updateWord(execute_time, "", word_process=-1)
+        logger.info(f"\n##########word生成失败: #######3\n")

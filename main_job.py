@@ -4,7 +4,7 @@ from apscheduler.schedulers.background import BackgroundScheduler,BlockingSchedu
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import algorithms
 # from data.get_data import getData, getWindTurbines, getDataForMultiAlgorithms
-from data.get_data_async import getWindTurbinesNode, getWindTurbines, getDataForMultiAlgorithms, getWindFarm, getWindTurbinesIntel, getWindFarmIntel
+from data.get_data_async import getWindTurbinesNode, getWindTurbines, getDataForMultiAlgorithms, getWindFarm, getWindTurbinesIntel, getWindFarmIntel, getToken, javaUploadImage
 from configs.config import Wind_Farms, EXCEPT_MODLES, extraModelName, scheduleConfig, turbineConfig, algConfig, Platform, isLocalData, Wind_Farms_zh
 from utils import time_util, display_util
 import datetime
@@ -168,6 +168,11 @@ async def execute_multi_algorithms(names: list, execute_time=''):
         # 多模型执行
         # await _do_execute(multi_algorithms, startTime, endTime)
         await _do_execute(multi_algorithms, multi_algorithms_config, mainLog)
+        if "record_pwrt_picture" in final_names:
+            #请求Java上传图片
+            jobTimeStr = datetime.strftime(multi_algorithms_config["jobTime"], '%Y-%m-%d %H:%M:%S')
+            token = getToken()
+            javaUploadImage(jobTimeStr, token)
     except Exception as e:
         errorInfomation = traceback.format_exc()
         mainLog.info(f'\033[31m{errorInfomation}\033[0m')

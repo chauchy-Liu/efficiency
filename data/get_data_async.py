@@ -17,7 +17,7 @@ import utils.time_util as time_util
 from utils.time_util import timestamp_to_localtime
 from datetime import timedelta
 import logging
-from configs.config import AccessKey, SecretKey, GW_Url, OrgId, algConfig, Data_Url, token, MainIP, MainPort, Platform, farmOrIds
+from configs.config import AccessKey, SecretKey, GW_Url, OrgId, algConfig, Data_Url, token, MainIP, MainPort, Platform, farmOrIds, serviceKey, Token_Url, OosUrl
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import time
@@ -126,6 +126,52 @@ head = {
     'Content-Type': 'application/json',
     'Authorization': 'Bearer '+ token
 }
+#########################################################################
+#内蒙请求服务获取token
+Url_token = Token_Url + "/auth/login/externalApp"
+headToken = {'Content-Type': 'application/json'}
+def getToken():
+    data_logger.info(f"#######################Url_token：{Url_token}###############")
+    data_logger.info(f"#######################headToken:{headToken}###############")
+    data_logger.info(f"#######################serviceKey:{serviceKey}###############")
+    response = requests.post(Url_token, headers=headToken, data=json.dumps(serviceKey))
+    if response != None:
+        response = json.loads(response.text)
+    if response != None and len(response["data"]) > 0:
+        data_logger.info(f"#######################access_token: {response['data']['access_token']}###############")
+        return response["data"]["access_token"]
+    else:
+        data_logger.info(f"#######################access_token: None ###############")
+        return None
+
+########################################################################
+#内蒙古请求java上传图片
+def javaUploadImage(execute_time:str, token:str):
+    headImage = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer '+ token
+    }
+    Url_image = OosUrl + "analysis/result/file/image/upload"
+    data = {"executeTime": execute_time}
+    data_logger.info(f"#######################Url_image: {Url_image}###############")
+    data_logger.info(f"#######################headImage: {headImage}###############")
+    data_logger.info(f"#######################params: {data}###############")
+    requests.post(Url_image, headers=headImage, data=json.dumps(data))
+
+########################################################################
+#内蒙古请求java上传word
+def javaUploadWord(execute_time:str, token:str):
+    headWord = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer '+ token
+    }
+    Url_word = OosUrl + "analysis/result/file/word/upload"
+    data = {"executeTime": execute_time}
+    data_logger.info(f"#######################Url_image: {Url_word}###############")
+    data_logger.info(f"#######################headWord: {headWord}###############")
+    data_logger.info(f"#######################params: {data}###############")
+    requests.post(Url_word, headers=headWord, data=json.dumps(data))
+
 #######################################################################
 #智慧场站
 #发送数据请求请求

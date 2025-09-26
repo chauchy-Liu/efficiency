@@ -19,6 +19,7 @@ from urllib.parse import quote
 import psycopg2
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
+from data.get_data_async import getToken
 
 log = logging.getLogger('mysql_log')
 if not log.handlers:
@@ -108,6 +109,7 @@ def upload(filename:str, algorithms_configs:dict):
     #name_uuid = uuid.uuid3(uuid.NAMESPACE_DNS, filename)
     #绝对路径
     filename = os.path.abspath(filename)
+    # filename = "/Users/zhang/Downloads/"+filename #os.path.abspath(filename)
     basename = os.path.basename(filename)
     dirname =os.path.dirname(filename)
     dirList = dirname.split('/')
@@ -120,8 +122,28 @@ def upload(filename:str, algorithms_configs:dict):
     return filename
 
 def download(file_url)-> bytes:
+    log.info(
+        f"\n##############################下载图片###################"
+    )
+    log.info(
+        f"##############################uuid:{file_url}###################"
+    )
+    token = getToken()
+    log.info(
+        f"##############################token:{token}###################"
+    )
+    headImage = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer '+ token
+    }
+    log.info(
+        f"##############################headImage:{headImage}###################"
+    )
     file_url = config.OosUrl+config.OsFixUrl+file_url
-    response = requests.get(file_url)
+    log.info(
+        f"##############################file_url:{file_url}###################\n"
+    )
+    response = requests.get(file_url, headers=headImage)
     imageContent = response.content
     #加载到内存
     imageStream = io.BytesIO(imageContent)
@@ -7755,6 +7777,8 @@ def insertWord(farmInfo, url_path, start_time, end_time):
     else:
         endTimeStr = datetime.strftime(end_time, "%Y-%m-%d %H:%M:%S")
         end_time = datetime.strptime(endTimeStr, "%Y-%m-%d %H:%M:%S")
+
+    execute_time = datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')
     # urlList = urlparse(url_path).path.split('/')
     # urlList = url_path
     # bucket_name = urlList[1]
@@ -7787,13 +7811,13 @@ def insertWord(farmInfo, url_path, start_time, end_time):
                         data_start_time, \
                         data_end_time \
                         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
-    data_to_insert = (farmInfo['execute_time'], farmInfo['farm_name'], farmInfo['farm_id'], 'all', file_name, bucket_name, url_path, start_time, end_time)
+    data_to_insert = (execute_time, farmInfo['farm_name'], farmInfo['farm_id'], 'all', file_name, bucket_name, url_path, start_time, end_time) #farmInfo['execute_time']
     log.info(f'sql语句：{insert_query}')
     log.info(f'sql数据：{data_to_insert}')
     cursor.execute(insert_query, data_to_insert)
     conn.commit()
     cursor.close()
-    return farmInfo['execute_time']
+    return execute_time #farmInfo['execute_time']
 
 
 

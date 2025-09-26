@@ -42,9 +42,17 @@ siteType = pd.DataFrame({'siteType_ID':siteType_ID,'siteType_name':siteType_name
 
 def conver_to_str(data):
     if isinstance(data, float):
-        return str(int(data))
-    else:
         return str(data)
+    elif isinstance(data, int):
+        return str(data)
+    elif isinstance(data, str):
+        return data
+    
+def convert_to_float(data):
+    if isinstance(data, float):
+        return data
+    elif isinstance(data, str):
+        return float(data)
 
 def AddFooterNumber(run):
     fldChar1 = OxmlElement('w:fldChar')  # creates a new element
@@ -743,11 +751,11 @@ def write_word(farmInfo, startTime, endTime, execute_time):
                         elif j == 2:
                             fill_table(tablez2_5, x=i, y=j, content=int(fault_loss_all[i-1]['faultCount']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 3:
-                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(fault_loss_all[i-1]['faultTime']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(eval(fault_loss_all[i-1]['faultTime'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 4:
-                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(fault_loss_all[i-1]['faultLoss']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(eval(fault_loss_all[i-1]['faultLoss'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 5:
-                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(fault_loss_all[i-1]['meanWindSpeed']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(eval(fault_loss_all[i-1]['meanWindSpeed'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 6:
                             fill_table(tablez2_5, x=i, y=j, content=str(fault_loss_all[i-1]['faultDescribe']), font_name='仿宋', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
         else:
@@ -784,7 +792,7 @@ def write_word(farmInfo, startTime, endTime, execute_time):
         
         if (eval(metric_tongji['reason']['limGridLoss'])*10000 > 200) and (len(limgrid_loss_all)>0):
             paragraph2_1_text = ('分析时段内'+str(typeNameList[typei])+'机型各机组电网限电损失电量共'+'{:.1f}'.format(eval(metric_tongji['reason']['limGridLoss'])*10000)+'kWh，折合等效小时'+
-                                '{:.1f}'.format(eval(metric_tongji['reason']['limGridLoss'])*10000/windfarm_capi/1000)+'h，各机组详细统计见下表。')
+                                '{:.1f}'.format(eval(metric_tongji['reason']['limGridLoss'])*10000/eval(windfarm_capi)/1000)+'h，各机组详细统计见下表。')
             paragraph2_1 = document.add_paragraph()
             paragraph2_1_run = paragraph2_1.add_run(paragraph2_1_text)
             paragraph2_1_run.font.size = Pt(12)
@@ -827,11 +835,11 @@ def write_word(farmInfo, startTime, endTime, execute_time):
                         if j == 0:
                             fill_table(tablez2_5, x=i, y=j, content=conver_to_str(limgrid_loss_all[i-1]['wtid']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 1:
-                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(limgrid_loss_all[i-1]['faultTime']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(eval(limgrid_loss_all[i-1]['faultTime'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 2:
-                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(limgrid_loss_all[i-1]['faultLoss']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(eval(limgrid_loss_all[i-1]['faultLoss'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 3:
-                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(limgrid_loss_all[i-1]['meanWindSpeed']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(eval(limgrid_loss_all[i-1]['meanWindSpeed'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         
         else:
             paragraph2_1_text = '分析时段内依据产业数据中台数据统计，'+str(typeNameList[typei])+'机型各机组未发生电网限电情况。'      
@@ -868,8 +876,8 @@ def write_word(farmInfo, startTime, endTime, execute_time):
             limturbine_loss_all = limturbine_loss_all['table']
         
         if (eval(metric_tongji['reason']['limTurbineLoss'])*10000 > 0) and (len(limturbine_loss_all)>0):
-            paragraph2_1_text = ('分析时段内'+str(typeNameList[typei])+'机型各机组自限电损失电量共'+'{:.1f}'.format(metric_tongji['reason']['limTurbineLoss']*10000)+'kWh，折合等效小时'+
-                                '{:.1f}'.format(eval(metric_tongji['reason']['limTurbineLoss'])*10000/windfarm_capi/1000)+'h，各机组详细统计见下表。自限电原因分析*****')
+            paragraph2_1_text = ('分析时段内'+str(typeNameList[typei])+'机型各机组自限电损失电量共'+'{:.1f}'.format(eval(metric_tongji['reason']['limTurbineLoss'])*10000)+'kWh，折合等效小时'+
+                                '{:.1f}'.format(eval(metric_tongji['reason']['limTurbineLoss'])*10000/eval(windfarm_capi)/1000)+'h，各机组详细统计见下表。自限电原因分析*****')
             paragraph2_1 = document.add_paragraph()
             paragraph2_1_run = paragraph2_1.add_run(paragraph2_1_text)
             paragraph2_1_run.font.size = Pt(12)
@@ -911,11 +919,11 @@ def write_word(farmInfo, startTime, endTime, execute_time):
                         if j == 0:
                             fill_table(tablez2_5, x=i, y=j, content=conver_to_str(limturbine_loss_all[i-1]['wtid']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 1:
-                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(limturbine_loss_all[i-1]['faultTime']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(eval(limturbine_loss_all[i-1]['faultTime'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 2:
-                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(limturbine_loss_all[i-1]['faultLoss']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(eval(limturbine_loss_all[i-1]['faultLoss'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 3:
-                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(limturbine_loss_all[i-1]['meanWindSpeed']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(eval(limturbine_loss_all[i-1]['meanWindSpeed'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         
         else:
             paragraph2_1_text = '分析时段内依据产业数据中台数据统计，'+str(typeNameList[typei])+'机型各机组未发生自限电情况。'      
@@ -951,7 +959,7 @@ def write_word(farmInfo, startTime, endTime, execute_time):
         
         if (eval(metric_tongji['reason']['gridFaultLoss'])*10000 > 200) and (len(faultgrid_loss_all)>0):
             paragraph2_1_text = ('分析时段内'+str(typeNameList[typei])+'机型各机组因电网故障发生的损失电量共'+'{:.1f}'.format(eval(metric_tongji['reason']['gridFaultLoss'])*10000)+'kWh，折合等效小时'+
-                                '{:.1f}'.format(eval(metric_tongji['reason']['gridFaultLoss'])*10000/windfarm_capi/1000)+'h，详细故障损失统计见下表，其中***故障发生频次较高。')   
+                                '{:.1f}'.format(eval(metric_tongji['reason']['gridFaultLoss'])*10000/eval(windfarm_capi)/1000)+'h，详细故障损失统计见下表，其中***故障发生频次较高。')   
             paragraph2_1 = document.add_paragraph()
             paragraph2_1_run = paragraph2_1.add_run(paragraph2_1_text)
             paragraph2_1_run.font.size = Pt(12)
@@ -1001,9 +1009,9 @@ def write_word(farmInfo, startTime, endTime, execute_time):
                         elif j == 2:
                             fill_table(tablez2_5, x=i, y=j, content=int(faultgrid_loss_all[i-1]['faultCount']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 3:
-                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(faultgrid_loss_all[i-1]['faultTime']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(eval(faultgrid_loss_all[i-1]['faultTime'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 4:
-                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(faultgrid_loss_all[i-1]['faultLoss']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(eval(faultgrid_loss_all[i-1]['faultLoss'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 5:
                             fill_table(tablez2_5, x=i, y=j, content=str(faultgrid_loss_all[i-1]['faultDescribe']), font_name='仿宋', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
         else:
@@ -1051,8 +1059,8 @@ def write_word(farmInfo, startTime, endTime, execute_time):
             Technology_loss_all = Technology_loss_all['table']
         
         if (eval(metric_tongji['reason']['technologyLoss'])*10000 > 200) and (len(Technology_loss_all)>0):
-            paragraph2_1_text = ('分析时段内'+str(typeNameList[typei])+'机型各机组技术待机损失电量共'+'{:.1f}'.format(metric_tongji.loc[0]['Technology_loss'])+'kWh，折合等效小时'+
-                                '{:.1f}'.format(eval(metric_tongji['reason']['technologyLoss'])*10000/windfarm_capi/1000)+'h，详细损失统计见下表。')   
+            paragraph2_1_text = ('分析时段内'+str(typeNameList[typei])+'机型各机组技术待机损失电量共'+'{:.1f}'.format(eval(metric_tongji.loc[0]['Technology_loss']))+'kWh，折合等效小时'+
+                                '{:.1f}'.format(eval(metric_tongji['reason']['technologyLoss'])*10000/eval(windfarm_capi)/1000)+'h，详细损失统计见下表。')   
             paragraph2_1 = document.add_paragraph()
             paragraph2_1_run = paragraph2_1.add_run(paragraph2_1_text)
             paragraph2_1_run.font.size = Pt(12)
@@ -1100,11 +1108,11 @@ def write_word(farmInfo, startTime, endTime, execute_time):
                         elif j == 1:
                             fill_table(tablez2_5, x=i, y=j, content=int(Technology_loss_all[i-1]['faultCount']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 2:
-                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(Technology_loss_all[i-1]['faultTime']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(eval(Technology_loss_all[i-1]['faultTime'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 3:
-                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(Technology_loss_all[i-1]['faultLoss']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(eval(Technology_loss_all[i-1]['faultLoss'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 4:
-                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(Technology_loss_all[i-1]['meanWindSpeed']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(eval(Technology_loss_all[i-1]['meanWindSpeed'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 5:
                             fill_table(tablez2_5, x=i, y=j, content=str(Technology_loss_all[i-1]['faultDescribe']), font_name='仿宋', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
         else:
@@ -1151,8 +1159,8 @@ def write_word(farmInfo, startTime, endTime, execute_time):
             stop_loss_all = stop_loss_all['table']
         
         if (eval(metric_tongji['reason']['stopLoss'])*10000 > 200) and (len(stop_loss_all)>0):
-            paragraph2_1_text = ('分析时段内'+str(typeNameList[typei])+'机型各机组计划停机损失电量共'+'{:.1f}'.format(metric_tongji.loc[0]['stop_loss'])+'kWh，折合等效小时'+
-                                '{:.1f}'.format(eval(metric_tongji['reason']['stopLoss'])*10000/windfarm_capi/1000)+'h，详细损失统计见下图表。')   
+            paragraph2_1_text = ('分析时段内'+str(typeNameList[typei])+'机型各机组计划停机损失电量共'+'{:.1f}'.format(eval(metric_tongji.loc[0]['stop_loss']))+'kWh，折合等效小时'+
+                                '{:.1f}'.format(eval(metric_tongji['reason']['stopLoss'])*10000/eval(windfarm_capi)/1000)+'h，详细损失统计见下图表。')   
             paragraph2_1 = document.add_paragraph()
             paragraph2_1_run = paragraph2_1.add_run(paragraph2_1_text)
             paragraph2_1_run.font.size = Pt(12)
@@ -1196,13 +1204,13 @@ def write_word(farmInfo, startTime, endTime, execute_time):
                         if j == 0:
                             fill_table(tablez2_5, x=i, y=j, content=conver_to_str(stop_loss_all[i-1]['wtid']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 1:
-                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(stop_loss_all.iloc[i-1]['faultTime']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(eval(stop_loss_all.iloc[i-1]['faultTime'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 2:
-                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(stop_loss_all.iloc[i-1]['faultLoss']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(eval(stop_loss_all.iloc[i-1]['faultLoss'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 3:
-                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(stop_loss_all.iloc[i-1]['meanWindSpeed']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(eval(stop_loss_all.iloc[i-1]['meanWindSpeed'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
                         elif j == 4:
-                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(stop_loss_all[i-1]['exltmp']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                            fill_table(tablez2_5, x=i, y=j, content='{:.2f}'.format(eval(stop_loss_all[i-1]['exltmp'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
         else:
             paragraph2_1_text = '分析时段内'+str(typeNameList[typei])+'机型各机组未发生计划停机情况。'      
             paragraph2_1 = document.add_paragraph()
@@ -1669,7 +1677,7 @@ def write_word(farmInfo, startTime, endTime, execute_time):
                             figure_path = err_temp[i-1]['picture_compare']#glob.glob(path+'/'+conver_to_str(err_temp.iloc[i-1]['wtid'])+'_pitch_min_err.png')[0]
                             fill_table(tablez2_5, x=i, y=j, picture=figure_path, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, topbottommargin=0.01, width=column_width[j], picture_width=column_width[j],picture_height=5.5) 
                         elif j == 3:
-                            fill_table(tablez2_5, x=i, y=j, content='{:.2%}'.format(err_temp[i-1]['pitch_min_loss']), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
+                            fill_table(tablez2_5, x=i, y=j, content='{:.2%}'.format(eval(err_temp[i-1]['pitch_min_loss'])), font_name='Times New Roman', font_size=10, bold=False, paragraph_alignment=WD_PARAGRAPH_ALIGNMENT.CENTER, startendmargin=0, width=column_width[j]) 
         else:
             paragraph2_1_text = '分析时段内'+str(typeNameList[typei])+'机型各机组不存在最小桨距角异常情况。'      
             paragraph2_1 = document.add_paragraph()
@@ -2047,10 +2055,13 @@ def write_word(farmInfo, startTime, endTime, execute_time):
     paragraph2_run._element.rPr.rFonts.set(qn('w:eastAsia'),u'黑体')
     paragraph2.paragraph_format.space_before = Pt(12)
     paragraph2.paragraph_format.space_after = Pt(6)
-    document.save(farmInfo['path_farm'] + '/'+ datetime.strftime(execute_time, "%Y-%m-%d_%H-%M-%S")+"_" + windfarm_name + '能效评估报告.docx')
+
+    file_word = farmInfo['path_farm'] + '/'+ datetime.strftime(execute_time, "%Y-%m-%d_%H-%M-%S")+"_" + windfarm_name + '能效评估报告.docx'
+    file_word = os.path.abspath(file_word)
+    document.save(file_word)
     removeFile(farmInfo['path_farm'])
 
-    return os.path.abspath(farmInfo['path_farm'] + '/' + datetime.strftime(execute_time, "%Y-%m-%d_%H-%M-%S")+"_"+ windfarm_name + '能效评估报告.docx')
+    return file_word #os.path.abspath(farmInfo['path_farm'] + '/' + datetime.strftime(execute_time, "%Y-%m-%d_%H-%M-%S")+"_"+ windfarm_name + '能效评估报告.docx')
 
 
 

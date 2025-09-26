@@ -525,7 +525,7 @@ def turbine_type_compare():
 @api.route('/generate_word', methods=['POST'])
 def generate_word():
     try:
-        logger.info(f"#####################################word报告####################################")
+        logger.info(f"#####################################详细word日志见http-word.log####################################")
         params = request.json
         logger.info(f"参数：{params}")
         farmName = params['farm'][-1]['mdmId']
@@ -538,9 +538,12 @@ def generate_word():
         #####################
         #异步
         ##################
-        response = make_response('ok2')
+        data = {'response': 'ok2'}
+        response = make_response(data, 200) #json.dumps()
+        # response = make_response('ok2')
         response.data = response.data.decode('utf-8')
         response.status_code = 200
+        response.headers['Content-Type'] = 'application/json'
 
         thread = threading.Thread(target=show_word.analyse, args=(farmName, startTime, endTime, 1))
         thread.start()
