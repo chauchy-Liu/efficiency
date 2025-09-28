@@ -19,7 +19,7 @@ from urllib.parse import quote
 import psycopg2
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
-from data.get_data_async import getToken
+from data.get_data_async import getToken, javaUploadOOS
 
 log = logging.getLogger('mysql_log')
 if not log.handlers:
@@ -91,8 +91,67 @@ nan = -99999
 #     imageStream = io.BytesIO(imageContent)
 #     return imageStream.getvalue()
 
+# ####################################################
+# #本地存文件
+# #####################################################
+# # minio_path = os.getcwd()
+# # minio_path = os.path.join(minio_path, 'configs', 'config.yaml')
+# # with open(minio_path, "r") as f:
+# #     ylv = yl.load(f.read(), Loader=yl.FullLoader)
+
+# def upload(filename:str, algorithms_configs:dict):
+#     # found = minio_client.bucket_exists(ylv['bucketName'])
+#     # if not found:
+#     #     minio_client.make_bucket(ylv['bucketName'])
+#     #     minio_client.set_bucket_policy(ylv['bucketName'], policy=minio_policy)
+#     # else:
+#     #     log.info("Bucket "+ylv['bucketName']+" already exists")
+#     #name_uuid = uuid.uuid3(uuid.NAMESPACE_DNS, filename)
+#     #绝对路径
+#     filename = os.path.abspath(filename)
+#     #调试修改路径
+#     # filename = "/Users/zhang/Downloads/"+filename #os.path.abspath(filename)
+#     basename = os.path.basename(filename)
+#     dirname =os.path.dirname(filename)
+#     dirList = dirname.split('/')
+
+#     # dir = algorithms_configs['minio_dir']
+#     # response = minio_client.fput_object(ylv['bucketName'], os.path.join(dir,dirList[-1]+'-'+basename), filename)
+#     log.info(
+#         filename+" is successfully saved"
+#     )
+#     return filename
+
+# def download(file_url)-> bytes:
+#     log.info(
+#         f"\n##############################下载图片###################"
+#     )
+#     log.info(
+#         f"##############################uuid:{file_url}###################"
+#     )
+#     token = getToken()
+#     log.info(
+#         f"##############################token:{token}###################"
+#     )
+#     headImage = {
+#         'Content-Type': 'application/json',
+#         'Authorization': 'Bearer '+ token
+#     }
+#     log.info(
+#         f"##############################headImage:{headImage}###################"
+#     )
+#     file_url = config.OosUrl+config.OsFixUrl+file_url
+#     log.info(
+#         f"##############################file_url:{file_url}###################\n"
+#     )
+#     response = requests.get(file_url, headers=headImage)
+#     imageContent = response.content
+#     #加载到内存
+#     imageStream = io.BytesIO(imageContent)
+#     return imageStream.getvalue()
+
 ####################################################
-#本地存文件
+#访问java获取上传文件uuid
 #####################################################
 # minio_path = os.getcwd()
 # minio_path = os.path.join(minio_path, 'configs', 'config.yaml')
@@ -109,18 +168,19 @@ def upload(filename:str, algorithms_configs:dict):
     #name_uuid = uuid.uuid3(uuid.NAMESPACE_DNS, filename)
     #绝对路径
     filename = os.path.abspath(filename)
-    #调试修改路径
-    # filename = "/Users/zhang/Downloads/"+filename #os.path.abspath(filename)
-    basename = os.path.basename(filename)
-    dirname =os.path.dirname(filename)
-    dirList = dirname.split('/')
-
+    # with open(filename, 'rb') as file:
+    #     # 读取文件内容到BytesIO对象
+    #     byte_stream = io.BytesIO(file.read())
+    # byte_stream = open(filename, 'rb')
+    # 调取java接口获取uuid
+    token = getToken()
+    uuid = javaUploadOOS(filename, token)
     # dir = algorithms_configs['minio_dir']
     # response = minio_client.fput_object(ylv['bucketName'], os.path.join(dir,dirList[-1]+'-'+basename), filename)
     log.info(
-        filename+" is successfully saved"
+        filename+" is successfully uploaded, uuid: " + uuid
     )
-    return filename
+    return uuid
 
 def download(file_url)-> bytes:
     log.info(

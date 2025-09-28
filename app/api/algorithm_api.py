@@ -545,7 +545,7 @@ def generate_word():
         response.status_code = 200
         response.headers['Content-Type'] = 'application/json'
 
-        thread = threading.Thread(target=show_word.analyse, args=(farmName, startTime, endTime, 1))
+        thread = threading.Thread(target=show_word.analyse, args=(farmName, startTime, endTime, 0))
         thread.start()
         return response
         ######################

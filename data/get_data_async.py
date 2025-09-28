@@ -33,6 +33,8 @@ import requests
 import json
 import dask.dataframe as dd
 from data.efficiency_function import turbineTypeNameFormat
+import io
+from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 #能效分析中需要在算法中用到的输入变量量
 # Pwrat_Rate = None
@@ -137,6 +139,9 @@ def getToken():
     response = requests.post(Url_token, headers=headToken, data=json.dumps(serviceKey))
     if response != None:
         response = json.loads(response.text)
+    else:
+        data_logger.info(f"#######################access_token: None ###############")
+        return None
     if response != None and len(response["data"]) > 0:
         data_logger.info(f"#######################access_token: {response['data']['access_token']}###############")
         return response["data"]["access_token"]
@@ -171,6 +176,64 @@ def javaUploadWord(execute_time:str, token:str):
     data_logger.info(f"#######################headWord: {headWord}###############")
     data_logger.info(f"#######################params: {data}###############")
     requests.post(Url_word, headers=headWord, data=json.dumps(data))
+
+########################################################################
+def get_content_type(filename):
+    extension = filename.lower().split('.')[-1]
+    content_types = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'bmp': 'image/bmp',
+        'webp': 'image/webp',
+        'svg': 'image/svg+xml',
+        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'doc': 'application/msword',
+        'pdf': 'application/pdf'
+    }
+    return content_types.get(extension, 'application/octet-stream')
+
+#内蒙古请求java上传oos
+def javaUploadOOS(filename:str, token:str):
+    contentType = get_content_type(filename)
+    # headOOS = {
+    #     # 'Content-Type': contentType,
+    #     'Authorization': 'Bearer '+ token
+    # }
+    # files = {"file": open(filename, 'rb')}
+    #########################################3
+    headerOOS = {
+        # 'Content-Type': contentType,
+        'Authorization': 'Bearer '+ token
+    }
+    files = {"file": (os.path.basename(filename), open(filename, 'rb'), contentType)}
+
+    #########################################3
+    # 精确控制每个部分的 Content-Type
+    # multipart_data = MultipartEncoder(
+    #     fields={
+    #         'image': (os.path.basename(filename), open(filename, 'rb'), contentType),
+    #         'contentType': contentType  # 单独字段
+    #     }
+    # )
+
+    # headerOOS = {'Content-Type': multipart_data.content_type}
+    Url_OOS = OosUrl + "analysis/result/file/upload"
+    # file = {"file": files}
+    data_logger.info(f"#######################Url_OOS: {Url_OOS}###############")
+    data_logger.info(f"#######################headOOS: {headerOOS}###############")
+    data_logger.info(f"#######################file: {files}###############")
+    response = requests.post(Url_OOS, headers=headerOOS, files=files)
+    if response != None:
+        response = json.loads(response.text)
+    if response != None and len(response["data"]) > 0:
+        data_logger.info(f"#######################uuid: {response['data']['id']}###############")
+        return response["data"]["id"]
+    else:
+        data_logger.info(f"#######################uuid: None ###############")
+        return None
+
 
 #######################################################################
 #智慧场站

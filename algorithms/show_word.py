@@ -21,6 +21,7 @@ from db.db import upload, insertWord, selectFarmInfo, updateWord
 import traceback
 import logging
 from data.get_data_async import getToken, javaUploadWord
+import io
 # from configs.config import wspd, pwrat
 
 logger = logging.getLogger('http-word')
@@ -53,7 +54,8 @@ def analyse(farmName, startTime, endTime, stateType):
         #mysql记录
         updateWord(execute_time, url_word, word_process=1)
         if stateType == 0:
-            return {"word_url": url_word}
+            logger.info(f"##########uuid: {url_word}#######3")
+            # return {"word_url": url_word}
         else:
             #调取后端接口通知word生成完毕
             #请求Java上传word

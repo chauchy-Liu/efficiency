@@ -85,8 +85,8 @@ token = 'v6AREBCPzLpd4AqAz1WhAc5xryPqVMZW'
 TokenIP = "10.191.2.191" #后端java应用部署的机子
 Token_Url = 'http://'+str(TokenIP)+':'+str(8080)
 serviceKey = {
-    "appKey": "AA0D53441F2C4CEC3CF56BCC0C2FA4C8",
-    "id": "1971091686256758785"
+    "appKey": "7598CB983BC64FD0F1EE544322344559",#"AA0D53441F2C4CEC3CF56BCC0C2FA4C8",
+    "id": "1972121861580873730"#"1971091686256758785"
 }
 
 ######################################### mysql数据库配置#######################################################################
